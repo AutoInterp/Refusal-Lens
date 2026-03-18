@@ -1,4 +1,4 @@
-# ٍRefusal Lens
+# ٍRefusa- Lens
 
 [![Actions Status][actions-badge]][actions-link]
 [![PyPI version][pypi-version]][pypi-link]

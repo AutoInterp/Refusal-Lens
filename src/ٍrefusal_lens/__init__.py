@@ -1,5 +1,5 @@
 """
-ٍRefusal Lens: A great package for Refusal Lens
+ٍRefusal-Lens: A great package for Refusal-Lens
 """
 
 from __future__ import annotations

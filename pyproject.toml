@@ -3,12 +3,12 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ٍRefusal Lens"
+name = "ٍRefusa- Lens"
 version = "0.1.0"
 authors = [
   { name = "Ruqiya", email = "rbinsafi@gmail.com" },
 ]
-description = "A great package for Refusal Lens"
+description = "A great package for Refusa- Lens"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
