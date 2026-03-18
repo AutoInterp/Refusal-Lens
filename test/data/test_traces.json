@@ -1,0 +1,92 @@
+{
+  "attempt_001": [
+    {
+      "trace_id": "trace_001_001",
+      "layer": 3,
+      "activation_values": [0.5, 0.8, 0.3, 0.9, 0.2],
+      "neuron_indices": [10, 25, 40, 55, 70],
+      "timestamp": "2024-01-15T10:30:00"
+    },
+    {
+      "trace_id": "trace_001_002",
+      "layer": 5,
+      "activation_values": [0.7, 0.6, 0.4, 0.8, 0.5],
+      "neuron_indices": [15, 30, 45, 60, 75],
+      "timestamp": "2024-01-15T10:30:01"
+    },
+    {
+      "trace_id": "trace_001_003",
+      "layer": 7,
+      "activation_values": [0.9, 0.7, 0.6, 0.5, 0.4],
+      "neuron_indices": [20, 35, 50, 65, 80],
+      "timestamp": "2024-01-15T10:30:02"
+    }
+  ],
+  "attempt_002": [
+    {
+      "trace_id": "trace_002_001",
+      "layer": 2,
+      "activation_values": [0.3, 0.5, 0.7, 0.9, 0.8],
+      "neuron_indices": [5, 20, 35, 50, 65],
+      "timestamp": "2024-01-15T11:00:00"
+    },
+    {
+      "trace_id": "trace_002_002",
+      "layer": 4,
+      "activation_values": [0.6, 0.8, 0.4, 0.7, 0.3],
+      "neuron_indices": [10, 25, 40, 55, 70],
+      "timestamp": "2024-01-15T11:00:01"
+    },
+    {
+      "trace_id": "trace_002_003",
+      "layer": 6,
+      "activation_values": [0.5, 0.9, 0.6, 0.8, 0.7],
+      "neuron_indices": [15, 30, 45, 60, 75],
+      "timestamp": "2024-01-15T11:00:02"
+    },
+    {
+      "trace_id": "trace_002_004",
+      "layer": 8,
+      "activation_values": [0.8, 0.4, 0.5, 0.6, 0.9],
+      "neuron_indices": [20, 35, 50, 65, 80],
+      "timestamp": "2024-01-15T11:00:03"
+    }
+  ],
+  "attempt_004": [
+    {
+      "trace_id": "trace_004_001",
+      "layer": 1,
+      "activation_values": [0.4, 0.6, 0.8, 0.5],
+      "neuron_indices": [5, 15, 25, 35],
+      "timestamp": "2024-01-15T12:00:00"
+    },
+    {
+      "trace_id": "trace_004_002",
+      "layer": 3,
+      "activation_values": [0.7, 0.9, 0.5, 0.6, 0.8],
+      "neuron_indices": [10, 20, 30, 40, 50],
+      "timestamp": "2024-01-15T12:00:01"
+    },
+    {
+      "trace_id": "trace_004_003",
+      "layer": 5,
+      "activation_values": [0.3, 0.5, 0.7, 0.9, 0.4],
+      "neuron_indices": [15, 25, 35, 45, 55],
+      "timestamp": "2024-01-15T12:00:02"
+    },
+    {
+      "trace_id": "trace_004_004",
+      "layer": 7,
+      "activation_values": [0.6, 0.8, 0.4, 0.7],
+      "neuron_indices": [20, 30, 40, 50],
+      "timestamp": "2024-01-15T12:00:03"
+    },
+    {
+      "trace_id": "trace_004_005",
+      "layer": 9,
+      "activation_values": [0.9, 0.5, 0.6, 0.8, 0.7],
+      "neuron_indices": [25, 35, 45, 55, 65],
+      "timestamp": "2024-01-15T12:00:04"
+    }
+  ]
+}

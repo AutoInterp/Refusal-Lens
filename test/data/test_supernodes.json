@@ -1,0 +1,53 @@
+{
+  "1": {
+    "neurons": [
+      {"id": 101, "strength": 0.95, "features": ["harmful", "dangerous"], "metadata": {"layer": 5}},
+      {"id": 102, "strength": 0.87, "features": ["illegal", "prohibited"], "metadata": {"layer": 5}},
+      {"id": 103, "strength": 0.82, "features": ["harmful"], "metadata": {"layer": 5}},
+      {"id": 104, "strength": 0.75, "features": ["dangerous", "unsafe"], "metadata": {"layer": 5}},
+      {"id": 105, "strength": 0.68, "features": ["prohibited"], "metadata": {"layer": 5}},
+      {"id": 106, "strength": 0.55, "features": ["harmful", "illegal"], "metadata": {"layer": 5}},
+      {"id": 107, "strength": 0.42, "features": ["unsafe"], "metadata": {"layer": 5}},
+      {"id": 108, "strength": 0.31, "features": ["dangerous"], "metadata": {"layer": 5}}
+    ],
+    "steering_vector": [0.5, 0.8, 0.3, 0.9, 0.2, 0.7, 0.4, 0.6, 0.85],
+    "activation_distribution": {"mean": 0.65, "std": 0.22}
+  },
+  "2": {
+    "neurons": [
+      {"id": 201, "strength": 0.92, "features": ["helpful", "safe"], "metadata": {"layer": 6}},
+      {"id": 202, "strength": 0.88, "features": ["positive", "constructive"], "metadata": {"layer": 6}},
+      {"id": 203, "strength": 0.79, "features": ["helpful"], "metadata": {"layer": 6}},
+      {"id": 204, "strength": 0.71, "features": ["safe", "secure"], "metadata": {"layer": 6}},
+      {"id": 205, "strength": 0.63, "features": ["constructive"], "metadata": {"layer": 6}}
+    ],
+    "steering_vector": [0.3, 0.6, 0.9, 0.4, 0.7, 0.5, 0.8],
+    "activation_distribution": {"mean": 0.72, "std": 0.18}
+  },
+  "3": {
+    "neurons": [
+      {"id": 301, "strength": 0.78, "features": ["refusal", "denial"], "metadata": {"layer": 4}},
+      {"id": 302, "strength": 0.65, "features": ["refusal"], "metadata": {"layer": 4}},
+      {"id": 303, "strength": 0.54, "features": ["denial", "rejection"], "metadata": {"layer": 4}},
+      {"id": 304, "strength": 0.45, "features": ["rejection"], "metadata": {"layer": 4}}
+    ],
+    "activation_distribution": {"mean": 0.45, "std": 0.15}
+  },
+  "4": {
+    "neurons": [
+      {"id": 401, "strength": 0.99, "features": ["jailbreak", "bypass"], "metadata": {"layer": 7}},
+      {"id": 402, "strength": 0.91, "features": ["override", "security"], "metadata": {"layer": 7}},
+      {"id": 403, "strength": 0.85, "features": ["bypass", "exploit"], "metadata": {"layer": 7}},
+      {"id": 404, "strength": 0.77, "features": ["jailbreak"], "metadata": {"layer": 7}},
+      {"id": 405, "strength": 0.69, "features": ["exploit", "vulnerability"], "metadata": {"layer": 7}},
+      {"id": 406, "strength": 0.58, "features": ["security"], "metadata": {"layer": 7}},
+      {"id": 407, "strength": 0.44, "features": ["override"], "metadata": {"layer": 7}},
+      {"id": 408, "strength": 0.33, "features": ["vulnerability"], "metadata": {"layer": 7}},
+      {"id": 409, "strength": 0.21, "features": ["bypass"], "metadata": {"layer": 7}},
+      {"id": 410, "strength": 0.15, "features": ["exploit"], "metadata": {"layer": 7}},
+      {"id": 411, "strength": 0.08, "features": ["jailbreak"], "metadata": {"layer": 7}}
+    ],
+    "steering_vector": [0.9, 0.7, 0.85, 0.6, 0.95, 0.4, 0.75, 0.5, 0.8, 0.65],
+    "activation_distribution": {"mean": 0.68, "std": 0.28}
+  }
+}
