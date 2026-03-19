@@ -1,12 +1,65 @@
 """
-ٍRefusal-Lens: A great package for Refusal-Lens
+Refusal-Lens: A package for analyzing refusal behavior in neural network models.
+
+This package provides tools for:
+- Classifying model responses into refusal categories
+- Generating standardized prompt templates for testing
+- Detecting and analyzing refusal behavior
+- Running experiments with progress tracking
 """
 
 from __future__ import annotations
 
 from importlib.metadata import version
 
-__all__ = ("__version__",)
+# Experiment Runner
+from .experiment_runner import (
+    ExperimentConfig,
+    ExperimentResult,
+    ExperimentRunner,
+)
+
+# Prompt Templates
+from .prompt_template import (
+    PromptCategory,
+    PromptTemplate,
+    PromptTemplateLibrary,
+)
+
+# Refusal Classification
+from .refusal_classifier import (
+    ClassificationResult,
+    RefusalCategory,
+    RefusalClassifier,
+)
+
+# Refusal Detection
+from .refusal_detector import (
+    DetectionResult,
+    DetectionStatus,
+    RefusalDetector,
+)
+
+__all__ = (
+    "ClassificationResult",
+    "DetectionResult",
+    # Refusal Detection
+    "DetectionStatus",
+    # Experiment Runner
+    "ExperimentConfig",
+    "ExperimentResult",
+    "ExperimentRunner",
+    # Prompt Templates
+    "PromptCategory",
+    "PromptTemplate",
+    "PromptTemplateLibrary",
+    # Refusal Classification
+    "RefusalCategory",
+    "RefusalClassifier",
+    "RefusalDetector",
+    # Version
+    "__version__",
+)
 
 try:
     __version__ = version("refusal_lens")
