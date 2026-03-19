@@ -6,7 +6,7 @@
 [![PyPI version][pypi-version]][pypi-link]
 [![PyPI platforms][pypi-platforms]][pypi-link]
 
-A great package for Refusal Lens
+Refusal-Lens is a package for analyzing refusal behavior.
 
 ## Installation
 
