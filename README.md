@@ -16,8 +16,8 @@ python -m pip install ٍrefusal_lens
 
 From source:
 ```bash
-git clone https://github.com/AutoInterp/ٍRefusal-Lens
-cd ٍRefusal-Lens
+git clone https://github.com/AutoInterp/Refusal-Lens.git
+cd Refusal-Lens
 python -m pip install .
 ```
 
