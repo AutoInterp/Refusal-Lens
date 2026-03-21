@@ -134,11 +134,11 @@ def tokenize_prompt(
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
     messages = [{"role": "user", "content": [{"type": "text", "text": text}]}]
-    input_ids = tokenizer.appy_chat_template(
+    input_ids = tokenizer.apply_chat_template(
         messages,
         tokenize=True,
         return_tensors="pt",
-        add_generate_prompt=True,
+        add_generation_prompt=True,
     ).to(device)
     return input_ids
 
@@ -171,7 +171,6 @@ def generate_text(
 
 
 def display_topk(
-    prompt: str,
     orig_logits: Any,
     new_logits: Any,
     tokenizer: Any,

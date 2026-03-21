@@ -26,6 +26,7 @@ from .model_loader import (
     get_device_info,
     load_model,
     tokenize_prompt,
+    display_topk,
 )
 
 # Prompt Templates
@@ -74,6 +75,7 @@ __all__ = (
     "get_device_info",
     "load_model",
     "tokenize_prompt",
+    "display_topk",
 )
 
 try:
