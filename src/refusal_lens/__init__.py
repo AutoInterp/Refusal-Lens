@@ -19,6 +19,15 @@ from .experiment_runner import (
     ExperimentRunner,
 )
 
+# Model loading
+from .model_loader import (
+    ModelConfig,
+    generate_text,
+    get_device_info,
+    load_model,
+    tokenize_prompt,
+)
+
 # Prompt Templates
 from .prompt_template import (
     PromptCategory,
@@ -59,6 +68,12 @@ __all__ = (
     "RefusalDetector",
     # Version
     "__version__",
+    # Model loading
+    "ModelConfig",
+    "generate_text",
+    "get_device_info",
+    "load_model",
+    "tokenize_prompt",
 )
 
 try:

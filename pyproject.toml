@@ -38,6 +38,15 @@ dev = [
   "pre-commit",
 ]
 
+steering = [
+  "torch >= 2.0",
+  "transformers >= 4.50.0",
+  "accelerate",
+  "safetensors",
+  "huggingface_hub",
+  "einops",
+]
+
 [project.urls]
 Homepage = "https://github.com/AutoInterp/refusal-lens"
 "Bug Tracker" = "https://github.com/AutoInterp/refusal-lens/issues"
@@ -74,7 +83,7 @@ strict = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 
 [[tool.mypy.overrides]]
-module = "numpy.*"
+module = ["numpy.*", "torch.*", "transformers.*", "accelerate.*", "safetensors.*", "huggingface_hub.*", "einops.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
