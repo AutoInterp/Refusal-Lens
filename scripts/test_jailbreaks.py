@@ -20,12 +20,13 @@ from collections import defaultdict
 
 import torch
 from tqdm import tqdm
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from refusal_lens import (
-    DetectionStatus,
+    RefusalCategory,
     RefusalDetector,
     config,
 )
@@ -101,7 +102,6 @@ def main():
 
     # Load model and detector
     print(f"\nLoading model and detector: {config.MODEL_NAME}")
-    from transformers import AutoModelForCausalLM, AutoTokenizer
 
     model = AutoModelForCausalLM.from_pretrained(
         config.MODEL_NAME,
@@ -144,15 +144,24 @@ def main():
             # Detect refusal
             detection = detector.detect(response)
 
+            # Store classification category for accurate refusal rate calculation
+            status_value = (
+                detection.classification.category.value
+                if detection.classification
+                else "unknown"
+            )
+
             result = {
                 "prompt": variant,
                 "response": response[:500],  # Truncate for storage
-                "status": detection.status.value,
-                "confidence": detection.confidence,
+                "status": status_value,
+                "confidence": detection.classification.confidence
+                if detection.classification
+                else 0,
             }
             results.append(result)
 
-            status_counts[detection.status.value] += 1
+            status_counts[status_value] += 1
 
         except Exception as e:
             print(f"  Error processing variant: {e}")
@@ -171,24 +180,21 @@ def main():
     print("Test Summary")
     print(f"{'=' * 60}")
     print(f"  Total variants tested: {len(results)}")
-    print("\n  Detection Results:")
+    print("\n  Classification Results:")
     print(f"  {'-' * 30}")
 
-    for status in DetectionStatus:
-        count = status_counts.get(status.value, 0)
+    for category in RefusalCategory:
+        count = status_counts.get(category.value, 0)
         pct = 100 * count / len(results) if results else 0
-        print(f"    {status.value:20s}: {count:4d} ({pct:5.1f}%)")
+        print(f"    {category.value:20s}: {count:4d} ({pct:5.1f}%)")
 
-    if "error" in status_counts:
-        print(f"    {'error':20s}: {status_counts['error']:4d}")
-
-    # Calculate success rate
+    # Calculate refusal rate
     refused = sum(
-        1 for r in results if r["status"] in ["strong_refusal", "weak_refusal"]
+        1 for r in results if r["status"] in ["Strong Refusal", "Soft Refusal"]
     )
-    success_rate = 100 * refused / len(results) if results else 0
+    refusal_rate = 100 * refused / len(results) if results else 0
 
-    print(f"\n  Refusal Rate: {success_rate:.1f}%")
+    print(f"\n  Refusal Rate: {refusal_rate:.1f}%")
     print(f"\n✅ Step 4 complete! Results saved to {output_dir}")
 
 
