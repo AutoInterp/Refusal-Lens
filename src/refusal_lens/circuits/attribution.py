@@ -125,12 +125,21 @@ class AttributionGraph:
         handles = []
         try:
             if hasattr(self.model, "model"):
-                if hasattr(self.model.model, "layers"):
+                if hasattr(self.model.model, "language_model"):
+                    # Gemma-3: use language_model.layers
+                    layers_module = self.model.model.language_model.layers
+                elif hasattr(self.model.model, "layers"):
                     layers_module = self.model.model.layers
                 else:
                     layers_module = self.model.model
-            else:
+            elif hasattr(self.model, "layers"):
                 layers_module = self.model.layers
+            else:
+                layers_module = None
+
+            if layers_module is None or not hasattr(layers_module, "__len__"):
+                msg = f"Cannot find layers module for model type {type(self.model).__name__}"
+                raise ValueError(msg)
 
             handle = layers_module[layer].register_forward_hook(
                 create_hook(f"layer_{layer}")
@@ -175,8 +184,11 @@ class AttributionGraph:
         token_attributions = scores.cpu().tolist()
 
         # Compute feature-level attributions (per-dimension)
-        # Sum of absolute attribution per dimension
-        feature_attributions = torch.abs(activations.mean(0) @ refusal_dir)
+        # For each dimension, compute contribution to refusal
+        # activations: (seq_len, d_model), refusal_dir: (d_model,)
+        # Result: (d_model,) - how much each dimension contributes
+        mean_activations = activations.mean(0)  # (d_model,)
+        feature_attributions = torch.abs(mean_activations * refusal_dir)
         feature_scores = feature_attributions.cpu()
 
         # Get top features
