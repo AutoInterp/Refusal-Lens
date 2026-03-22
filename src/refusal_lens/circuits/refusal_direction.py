@@ -112,15 +112,24 @@ class RefusalDirectionComputer:
     def _get_hidden_size(self) -> int:
         """Get the hidden dimension size of the model."""
         # Try common attribute names
-        for attr in ["hidden_size", "d_model", "embed_dim"]:
+        for attr in ["hidden_size", "d_model", "embed_dim", "head_dim"]:
             if hasattr(self.model.config, attr):
                 value = getattr(self.model.config, attr)
-                if isinstance(value, int):
+                if isinstance(value, int) and value is not None:
                     return value
         # Fallback: try to infer from embedding layer
         if hasattr(self.model, "model"):
             if hasattr(self.model.model, "embed_tokens"):
                 return int(self.model.model.embed_tokens.weight.shape[-1])
+            # Gemma-3: check language_model
+            if hasattr(self.model.model, "language_model"):
+                lm = self.model.model.language_model
+                if hasattr(lm, "embed_tokens"):
+                    return int(lm.embed_tokens.weight.shape[-1])
+                if hasattr(lm.config, "hidden_size"):
+                    val = lm.config.hidden_size
+                    if val is not None:
+                        return int(val)
         if hasattr(self.model, "embed_tokens"):
             return int(self.model.embed_tokens.weight.shape[-1])
         msg = "Cannot determine hidden size from model config"
@@ -130,10 +139,20 @@ class RefusalDirectionComputer:
         """Get the number of layers in the model."""
         if hasattr(self.model.config, "num_hidden_layers"):
             value = self.model.config.num_hidden_layers
-            if isinstance(value, int):
+            if isinstance(value, int) and value is not None:
                 return value
-        if hasattr(self.model, "model") and hasattr(self.model.model, "layers"):
-            return len(self.model.model.layers)
+        # Gemma-3: check language_model
+        if hasattr(self.model, "model"):
+            if hasattr(self.model.model, "language_model"):
+                lm = self.model.model.language_model
+                if hasattr(lm.config, "num_hidden_layers"):
+                    val = lm.config.num_hidden_layers
+                    if val is not None:
+                        return int(val)
+                if hasattr(lm, "layers"):
+                    return len(lm.layers)
+            if hasattr(self.model.model, "layers"):
+                return len(self.model.model.layers)
         if hasattr(self.model, "layers"):
             return len(self.model.layers)
         msg = "Cannot determine number of layers from model config"
@@ -180,12 +199,21 @@ class RefusalDirectionComputer:
         try:
             # Get the layers module
             if hasattr(self.model, "model"):
-                if hasattr(self.model.model, "layers"):
+                if hasattr(self.model.model, "language_model"):
+                    # Gemma-3: use language_model.layers
+                    layers_module = self.model.model.language_model.layers
+                elif hasattr(self.model.model, "layers"):
                     layers_module = self.model.model.layers
                 else:
                     layers_module = self.model.model
-            else:
+            elif hasattr(self.model, "layers"):
                 layers_module = self.model.layers
+            else:
+                layers_module = None
+
+            if layers_module is None or not hasattr(layers_module, "__len__"):
+                msg = f"Cannot find layers module for model type {type(self.model).__name__}"
+                raise ValueError(msg)
 
             # Register hook on the specific layer
             handle = layers_module[layer].register_forward_hook(
@@ -289,8 +317,8 @@ class RefusalDirectionComputer:
 
         # Compute separation score
         # How well does the direction separate the two classes?
-        harmful_proj = (harmful_acts @ direction).mean().item()
-        harmless_proj = (harmless_acts @ direction).mean().item()
+        harmful_proj = (harmful_acts_tensor @ direction).mean().item()
+        harmless_proj = (harmless_acts_tensor @ direction).mean().item()
         separation = harmful_proj - harmless_proj
 
         if show_progress:

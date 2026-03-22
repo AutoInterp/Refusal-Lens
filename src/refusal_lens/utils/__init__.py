@@ -87,7 +87,9 @@ def load_dataset_split(
         List of prompt strings
     """
     filepath = f"{config.DATASET_SPLITS_DIR}/{category}_{split}.json"
-    return load_prompts_from_json(filepath, max_prompts=max_prompts)
+    return load_prompts_from_json(
+        filepath, text_field="instruction", max_prompts=max_prompts
+    )
 
 
 def set_seed(seed: int = config.RANDOM_SEED) -> None:
