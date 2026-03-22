@@ -10,10 +10,10 @@ This roadmap implements the 4-week research plan for understanding how language 
 
 | Week | Step | Description | Status |
 |------|------|-------------|--------|
-| Week 1 | 1 | Compute refusal directions | ✅ Ready |
-| Week 2 | 2 | Analyze attribution circuits | ✅ Ready |
-| Week 3 | 3 | Explore supernodes | 🔄 Available |
-| Week 4 | 4 | Test jailbreak variants | 🔄 Available |
+| Week 1 | 1 | Compute refusal directions | ✅ Complete |
+| Week 2 | 2 | Analyze attribution circuits | ✅ Complete |
+| Week 3 | 3 | Explore supernodes | ✅ Complete |
+| Week 4 | 4 | Test jailbreak variants | ✅ Complete |
 
 ---
 
@@ -26,12 +26,15 @@ This roadmap implements the 4-week research plan for understanding how language 
 - [x] **circuits/** - Step 1 & 2 implementation
 - [x] **RefusalDirectionComputer** - Compute r_ℓ = E[x|harmful] - E[x|harmless]
 - [x] **AttributionGraph** - Trace refusal computation
+- [x] **SupernodeAnalyzer** - Step 3 supernode exploration
+- [x] **RefusalDetector** - Step 4 jailbreak testing
+- [x] **Gemma-3 support** - All scripts work with Gemma-3-4B model
+- [x] **explore_supernodes.py** - New script for Step 3
 
 ### 🔄 Remaining
 
-- [ ] Step 3: Supernode exploration (already have `SupernodeAnalyzer`)
-- [ ] Step 4: Jailbreak testing (already have `RefusalDetector`)
-- [ ] Scripts for end-to-end execution
+- [ ] Run full experiments with larger datasets
+- [ ] Add more model support (other transformers)
 
 ---
 
@@ -198,12 +201,17 @@ refusal-lens/
 │   │   ├── __init__.py
 │   │   ├── refusal_direction.py # ✅ Step 1
 │   │   └── attribution.py       # ✅ Step 2
-│   ├── supernode_analyzer.py    # 🔄 Step 3
-│   ├── refusal_detector.py      # 🔄 Step 4
+│   ├── supernode_analyzer.py    # ✅ Step 3
+│   ├── refusal_detector.py      # ✅ Step 4
 │   ├── refusal_classifier.py
 │   ├── experiment_runner.py
 │   ├── jailbreak_tracer.py
 │   └── prompt_template.py
+├── scripts/
+│   ├── compute_directions.py    # ✅ Step 1 script
+│   ├── compute_circuits.py      # ✅ Step 2 script
+│   ├── explore_supernodes.py    # ✅ Step 3 script
+│   └── test_jailbreaks.py       # ✅ Step 4 script
 ├── dataset/
 │   └── refusal_direction_dataset/
 │       └── splits/
@@ -233,24 +241,25 @@ pip install -e ".[dev]"
 ### Run Step 1 (Compute Directions)
 
 ```bash
-python -c "
-from refusal_lens import RefusalDirectionComputer, config, save_directions
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import json
+python scripts/compute_directions.py
+```
 
-model = AutoModelForCausalLM.from_pretrained(config.MODEL_NAME)
-tokenizer = AutoTokenizer.from_pretrained(config.MODEL_NAME)
+### Run Step 2 (Analyze Circuits)
 
-with open(config.DATASET_HARMFUL_TRAIN) as f:
-    harmful = json.load(f)
-with open(config.DATASET_HARMLESS_TRAIN) as f:
-    harmless = json.load(f)
+```bash
+python scripts/compute_circuits.py --layer 9
+```
 
-computer = RefusalDirectionComputer(model, tokenizer)
-results = computer.compute_all_layers(harmful, harmless)
-save_directions(results, config.COMPUTED_DIRECTIONS_DIR)
-print('Step 1 complete!')
-"
+### Run Step 3 (Explore Supernodes)
+
+```bash
+python scripts/explore_supernodes.py
+```
+
+### Run Step 4 (Test Jailbreaks)
+
+```bash
+python scripts/test_jailbreaks.py
 ```
 
 ---
@@ -263,9 +272,10 @@ See [`src/refusal_lens/config.py`](src/refusal_lens/config.py) for all settings:
 |----------|-----|---------|-------------|
 | Model | `MODEL_NAME` | google/gemma-3-4b-it | Model to analyze |
 | Model | `DEVICE` | cuda | Computation device |
-| Step 1 | `REFUSAL_LAYERS` | [8, 23] | Layers to compute |
+| Step 1 | `REFUSAL_LAYERS` | list(range(8, 24)) | Layers to compute |
 | Step 1 | `REFUSAL_POSITION` | last_prompt_token | Activation position |
 | Step 2 | `MEASUREMENT_LAYER` | 20 | Attribution layer |
+| Step 3 | `NEURONPEDIA_CACHE_DIR` | data/results/neuronpedia_cache | Supernode data |
 | Testing | `N_BASE_PROMPTS` | 15 | Base prompts |
 | Testing | `MAX_NEW_TOKENS` | 512 | Max generation |
 
@@ -273,10 +283,15 @@ See [`src/refusal_lens/config.py`](src/refusal_lens/config.py) for all settings:
 
 ## 📝 Next Steps
 
-1. **Run Week 1**: Execute `RefusalDirectionComputer` on your dataset
-2. **Identify best layer**: Check `summary.json` for separation scores
-3. **Run Week 2**: Use best layer for `AttributionGraph` analysis
-4. **Iterate**: Refine based on results
+1. **Run Week 1**: `python scripts/compute_directions.py`
+2. **Identify best layer**: Check `data/results/computed_directions/summary.json` for separation scores
+3. **Run Week 2**: `python scripts/compute_circuits.py --layer <best_layer>`
+4. **Run Week 3**: `python scripts/explore_supernodes.py`
+5. **Run Week 4**: `python scripts/test_jailbreaks.py`
+
+## 🧪 Tested Models
+
+- google/gemma-3-4b-it ✅
 
 ---
 

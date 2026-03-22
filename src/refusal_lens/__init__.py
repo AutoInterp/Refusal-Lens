@@ -65,6 +65,13 @@ from .refusal_detector import (
     RefusalDetector,
 )
 
+# Supernode Analysis (Step 3)
+from .supernode_analyzer import (
+    NeuronPattern,
+    SupernodeAnalyzer,
+    SupernodeData,
+)
+
 # Utils (shared utilities)
 from .utils import (
     get_device,
@@ -97,6 +104,10 @@ __all__ = (
     "RefusalCategory",
     "RefusalClassifier",
     "RefusalDetector",
+    # Supernode Analysis
+    "NeuronPattern",
+    "SupernodeAnalyzer",
+    "SupernodeData",
     # Circuits
     "RefusalDirectionComputer",
     "RefusalDirectionResult",
