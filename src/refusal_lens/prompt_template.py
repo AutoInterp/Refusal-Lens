@@ -193,9 +193,9 @@ class PromptTemplateLibrary:
         self,
         category: PromptCategory,
         topic_info: str,
-        topic_request: str = "",  # noqa: ARG002
+        topic_request: str = "",
         expert_role: str | None = None,
-        hypothetical_condition: str | None = None,  # noqa: ARG002
+        hypothetical_condition: str | None = None,
     ) -> dict[str, str]:
         """Get the appropriate framing for the category."""
         if category == PromptCategory.CONTEXTUAL_EDUCATIONAL:

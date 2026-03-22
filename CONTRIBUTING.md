@@ -39,7 +39,7 @@ pytest
 Use pytest-cov to generate coverage reports:
 
 ```bash
-pytest --cov=ٍrefusal_lens
+pytest --cov=refusal_lens
 ```
 
 # Pre-commit
