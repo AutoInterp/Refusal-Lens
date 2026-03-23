@@ -65,6 +65,18 @@ from .sae import (
     WIDE_LAYERS,
 )
 
+# Data loading
+from .data_loader import (
+    ContrastiveDataset,
+    ContrastiveSplit,
+    Instruction,
+    create_contrastive_dataset,
+    list_available_processed,
+    list_available_splits,
+    load_processed,
+    load_split,
+)
+
 __all__ = (
     "ClassificationResult",
     "DetectionResult",
@@ -103,6 +115,15 @@ __all__ = (
     "WIDTH_16K",
     "WIDTH_262K",
     "WIDE_LAYERS",
+    # Data loading
+    "ContrastiveDataset",
+    "ContrastiveSplit",
+    "Instruction",
+    "create_contrastive_dataset",
+    "list_available_processed",
+    "list_available_splits",
+    "load_processed",
+    "load_split",
 )
 
 try:
