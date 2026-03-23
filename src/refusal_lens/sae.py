@@ -4,8 +4,10 @@ JumpRelu Sparse Autoencoder / Transcoder (Gemma Scope 2).
 Provides the SAE architecture, loading utilities, and width-mismatch diagnostic.
 Requires optional deps: torch, safetensors, huggingface_hub.
 """
+from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -143,3 +145,134 @@ def load_sae(
     if device is None:
         device = "cuda" if torch.cuda_is_available() else "cpu"
     return sae.to(device).eval()
+
+def load_sae_flexible(
+        category: str,
+        layer: int,
+        width: str = WIDTH_16K,
+        l0: str = L0,
+        *,
+        affine: bool = False,
+        repo: str = DEFAULT_SCOPE_REPO,
+        device: str | None = None,
+) -> JumpReLUSAE:
+    """
+    Try Multiple category/affine combinations to load an SAE.
+
+    HuggingFace Gemma Scope repos sometimes use ``transcoder_all``
+    instead of ``transcoder``, or have checkpoints with and without
+    affine skip connections. This wrapper tries all combinations.
+
+    Args:
+        Same as :func:`load_sae`.
+    
+    Returns:
+        The first successfully loaded ``JumpReLUSAE``.
+    
+    Raises:
+        RuntimeError: If no combination succeeds.
+    """
+    _require_torch()
+    categories = [category, f"{category}_all"]
+    affine_options = [affine] if not affine else [True, False]
+
+    for cat in categories:
+        for aff in affine_options:
+            try:
+                return load_sae(
+                    cat, layer, width, l0,
+                    affine=aff, repo=repo, device=device,
+                )
+            except Exception:
+                continue
+    
+    msg = (
+        f"Could not load {category} layer {layer} "
+        f"width {width} l0 {l0}"
+    )
+    raise RuntimeError(msg)
+
+def load_sae_set(
+        category: str,
+        layers: list[int],
+        width: str = WIDTH_16K,
+        l0: str = L0,
+        *,
+        affine: bool = False,
+        repo: str = DEFAULT_SCOPE_REPO,
+        device: str | None = None,
+) -> dict[int, JumpReLUSAE]:
+    """
+    Load SAEs/Transcoders for multiple layers, skipping failures.
+
+    Args:
+        category: SAE category (e.g., 'resid_post', 'transcoder').
+        layers: List of layer indices to load.
+        width: Dictionary width string.
+        l0: Sparsity level string.
+        affine: Whether to request affine skip connection.
+        repo: HuggingFace repo ID.
+        device: Device for the loaded SAEs.
+    
+    Returns:
+        Dict mapping layer index -> loaded JumpReLUSAE.
+        Layers that fail to load are omitted (with a warning logged).
+    """
+    _require_torch()
+    loaded: dict[int, JumpReLUSAE] = {}
+    for layer in layers:
+        try:
+            loaded[layer] = load_sae_flexible(
+                category, layer, width, l0,
+                affine=affine, repo=repo, device=device,
+            )
+            logger.info("Loaded %s layer %d (%s)", category, layer, width)
+        except Exception:
+            logger.warning(
+                "Failed to load %s layer %d (%s)", category, layer, width
+            )
+    return loaded
+
+def analyze_width_mismatch(
+      feat_idx_16k: int,
+      tc_16k: JumpReLUSAE,
+      tc_wide: JumpReLUSAE,
+      k: int = 10,
+  ) -> dict[str, Any]:
+      """Measure decoder-direction overlap between a 16k and wide transcoder.
+
+      For a given 16k feature, finds the top-k most similar 262k features
+      by cosine similarity of their decoder directions. High overlap with
+      multiple 262k features indicates superposition risk.
+
+      Args:
+          feat_idx_16k: Feature index in the 16k transcoder.
+          tc_16k: The 16k-width transcoder.
+          tc_wide: The wide (e.g. 262k) transcoder.
+          k: Number of top matches to return.
+
+      Returns:
+          Dict with keys:
+              - ``top_indices``: list of matched 262k feature indices
+              - ``top_cosines``: list of cosine similarities
+              - ``n_high_overlap``: count of matches with |cos| > 0.3
+      """
+      _require_torch()
+      # decoder direction for the 16k feature
+      dec_16k = tc_16k.w_dec[feat_idx_16k].float()
+      dec_16k = dec_16k / dec_16k.norm()
+
+      # All decoder directions from the wide transcoder
+      dec_wide = tc_wide.w_dec.float()
+      norms = dec_wide.norm(dim=1, keepdim=True).clamp(min=1e-8)
+      dec_wide_normed = dec_wide / norms
+
+      cos_sims = dec_wide_normed @ dec_16k
+
+      topk = torch.topk(cos_sims.abs(), k=k)
+
+      return {
+          "top_indices": topk.indices.tolist(),
+          "top_cosines": [round(v, 4) for v in topk.values.tolist()],
+          "n_high_overlap": int((topk.values > 0.3).sum().item()),
+      }
