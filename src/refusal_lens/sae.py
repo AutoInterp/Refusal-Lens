@@ -19,13 +19,13 @@ try:
     from safetensors.torch import load_file
 
     HAS_TORCH = True
-except:
+except ImportError:
     HAS_TORCH = False
 
 def _require_torch() -> None:
     if not HAS_TORCH:
         msg = (
-            "torch, safetensors, and huggingface_hub are required for SAE Loading."
+            "torch, safetensors, and huggingface_hub are required for SAE Loading. "
             "Install with: pip install refusal-lens[steering]"
         )
         raise ImportError(msg)
@@ -42,7 +42,13 @@ L0 = "small"
 
 WIDE_LAYERS: list[int] = [16, 18]
 
-class JumpReLUSAE(nn.module):
+# When torch is not installed, use `object` as the base class so the
+# class is still importable.  _require_torch() in __init__ will raise
+# at runtime if someone tries to instantiate without torch.
+_base_class: type = nn.Module if HAS_TORCH else object  # type: ignore[assignment]
+
+
+class JumpReLUSAE(_base_class):  # type: ignore[misc]
     """
     JumpRelu SAE / Transcoder from Gemma Scope 2.
 
@@ -143,7 +149,7 @@ def load_sae(
     sae.load_state_dict(params)
 
     if device is None:
-        device = "cuda" if torch.cuda_is_available() else "cpu"
+        device = "cuda" if torch.cuda.is_available() else "cpu"
     return sae.to(device).eval()
 
 def load_sae_flexible(

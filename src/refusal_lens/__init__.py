@@ -50,6 +50,21 @@ from .refusal_detector import (
     RefusalDetector,
 )
 
+# SAE / Transcoder
+from .sae import (
+    JumpReLUSAE,
+    load_sae,
+    load_sae_flexible,
+    load_sae_set,
+    analyze_width_mismatch,
+    DEFAULT_SCOPE_REPO,
+    NEURONPEDIA_LAYERS,
+    ANALYSIS_LAYERS,
+    WIDTH_16K,
+    WIDTH_262K,
+    WIDE_LAYERS,
+)
+
 __all__ = (
     "ClassificationResult",
     "DetectionResult",
@@ -76,6 +91,18 @@ __all__ = (
     "load_model",
     "tokenize_prompt",
     "display_topk",
+    # SAE / Transcoder
+    "JumpReLUSAE",
+    "load_sae",
+    "load_sae_flexible",
+    "load_sae_set",
+    "analyze_width_mismatch",
+    "DEFAULT_SCOPE_REPO",
+    "NEURONPEDIA_LAYERS",
+    "ANALYSIS_LAYERS",
+    "WIDTH_16K",
+    "WIDTH_262K",
+    "WIDE_LAYERS",
 )
 
 try:
