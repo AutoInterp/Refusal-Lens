@@ -98,3 +98,48 @@ class JumpReLUSAE(nn.module):
     def affine_skip_connection(self) -> torch.nn.Parameter | None:
         """The affine skip-connection parameter, or None"""
         return self._affine_skip
+
+# utilities functions for loading
+def load_sae(
+        category: str,
+        layer: int,
+        width: str = WIDTH_16K,
+        l0: str = L0,
+        *,
+        affine: bool = False,
+        repo: str = DEFAULT_SCOPE_REPO,
+        device: str | None = None,
+) -> JumpReLUSAE:
+    """
+    Download and load a single SAE/Transcoder from Huggingface.
+
+    Args:
+        category: SAE category ('resid_post', 'transcoder', etc).
+        layer: Model Layer index.
+        width: Dictionary width string (e.g., '16k', '262k').
+        l0: Sparsity level string (e.g., 'small').
+        affine: Whether checkpoint has an affine skip connection.
+        repo: Huggingface Repo ID.
+        device: Device to plave the SAE on. Defaults to 'cuda' if available.
+    
+    Returns:
+        A ``JumpReLUSAE`` in eval mode on the requested device.
+    """
+    _require_torch()
+    affine_str = "_affine" if affine else ""
+    filename = (
+        f"{category}/layer_{layer}_width_{width}_l0_{l0}"
+        f"{affine_str}/params.safetensors"
+    )
+    logger.info("Downloading: %s", filename)
+
+    path = hf_hub_download(repo_id=repo, filename=filename)
+    params = load_file(path)
+
+    d_model, d_sae = params["w_enc"].shape
+    sae = JumpReLUSAE(d_model, d_sae, affine_skip_connection=affine)
+    sae.load_state_dict(params)
+
+    if device is None:
+        device = "cuda" if torch.cuda_is_available() else "cpu"
+    return sae.to(device).eval()
