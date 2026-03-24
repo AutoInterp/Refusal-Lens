@@ -11,7 +11,7 @@ Refusal-Lens is a package for analyzing refusal behavior.
 ## Installation
 
 ```bash
-python -m pip install ٍrefusal_lens
+python -m pip install refusal_lens
 ```
 
 From source:
@@ -34,9 +34,9 @@ Distributed under the terms of the [MIT license](LICENSE).
 
 
 <!-- prettier-ignore-start -->
-[actions-badge]:            https://github.com/AutoInterp/ٍrefusal-lens/workflows/CI/badge.svg
-[actions-link]:             https://github.com/AutoInterp/ٍRefusal-Lens/actions
-[pypi-link]:                https://pypi.org/project/ٍRefusal-Lens/
-[pypi-platforms]:           https://img.shields.io/pypi/pyversions/ٍRefusal-Lens
-[pypi-version]:             https://img.shields.io/pypi/v/ٍRefusal-Lens
+[actions-badge]:            https://github.com/AutoInterp/refusal-lens/workflows/CI/badge.svg
+[actions-link]:             https://github.com/AutoInterp/Refusal-Lens/actions
+[pypi-link]:                https://pypi.org/project/Refusal-Lens/
+[pypi-platforms]:           https://img.shields.io/pypi/pyversions/Refusal-Lens
+[pypi-version]:             https://img.shields.io/pypi/v/Refusal-Lens
 <!-- prettier-ignore-end -->

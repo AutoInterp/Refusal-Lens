@@ -13,6 +13,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+import torch
+
 from .prompt_template import PromptCategory, PromptTemplate, PromptTemplateLibrary
 from .refusal_classifier import ClassificationResult, RefusalCategory, RefusalClassifier
 
@@ -360,7 +362,7 @@ class RefusalDetector:
         device = next(self.model.parameters()).device
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
-        with self.model.generation_context():
+        with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=max_tokens,

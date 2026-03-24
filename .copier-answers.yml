@@ -7,8 +7,8 @@ full_name: Ruqiya
 license: MIT
 min_python_version: '3.10'
 org: AutoInterp
-project_name: ٍRefusa- Lens
-project_short_description: A great package for Refusal Lens
-python_name: ٍrefusal_lens
+project_name: Refusa- Lens
+project_short_description: Refusal-Lens is a package for analyzing refusal behavior.
+python_name: refusal_lens
 typing: strict
-url: https://github.com/AutoInterp/ٍRefusal-Lens
+url: https://github.com/AutoInterp/Refusal-Lens
