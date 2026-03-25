@@ -93,6 +93,20 @@ from .refusal_directions import (
     save_directions,
 )
 
+# Supernode / Neuronpedia
+from .supernode_analyzer import (
+    Feature,
+    NeuronPattern,
+    SupernodeAnalyzer,
+    SupernodeData,
+    NEURONPEDIA_GRAPH_URL,
+    ROLEPLAY_FEATURES,
+    REFUSAL_FEATURES,
+    parse_neuronpedia_url,
+    get_transcoder_for_feature,
+    supernodes_to_features,
+)
+
 __all__ = (
     "ClassificationResult",
     "DetectionResult",
@@ -152,6 +166,17 @@ __all__ = (
     "save_directions",
     # Configuration
     "config",
+    # Supernode Analyzer
+    "Feature",
+    "NeuronPattern",
+    "SupernodeAnalyzer",
+    "SupernodeData",
+    "NEURONPEDIA_GRAPH_URL",
+    "ROLEPLAY_FEATURES",
+    "REFUSAL_FEATURES",
+    "parse_neuronpedia_url",
+    "get_transcoder_for_feature",
+    "supernodes_to_features",
 )
 
 try:

@@ -7,12 +7,26 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# constants for testing
+NEURONPEDIA_GRAPH_URL: str = (
+    "https://www.neuronpedia.org/gemma-3-4b-it/graph?"
+    "slug=iamanfbiagentstu-1773058125916&pruningThreshold=0.8"
+    "&densityThreshold=0.99"
+    "&pinnedIds=35_19058_60%2C35_236777_60%2C19_5480_56%2C22_879_56%2C21_7608_56"
+    "%2C22_11662_59%2C20_6779_59%2C17_7356_59%2C18_10166_59%2C0_3393_58"
+    "%2C19_4137_59%2C18_3677_59%2C17_6638_59%2C18_84158_59%2C16_37041_59"
+    "%2C16_9947_59"
+    "&supernodes=%5B%5B%22Role+Playing+Features%22%2C%2218_84158_59%22%2C"
+    "%2216_37041_59%22%2C%2219_4137_59%22%2C%2218_3677_59%22%2C"
+    "%2217_6638_59%22%5D%2C%5B%22Refuse%22%2C%2216_9947_59%22%2C"
+    "%220_3393_58%22%2C%2218_10166_59%22%2C%2217_7356_59%22%5D%5D"
+)
 
 @dataclass
 class NeuronPattern:
@@ -33,6 +47,18 @@ class SupernodeData:
     steering_vector: np.ndarray | None = None
     activation_distribution: dict[str, float] | None = None
 
+class Feature(NamedTuple):
+    """
+    A single SAE/transcoder feature identified by its coordinates.
+
+    Attributes:
+        layer: the transformer layer index.
+        feature_idx: the feature index within the SAE/transcoder dictionary.
+        token_pos: the token position where this feature was identified.
+    """
+    layer: int
+    feature_idx: int
+    token_pos: int
 
 class SupernodeAnalyzer:
     """
@@ -242,3 +268,121 @@ class SupernodeAnalyzer:
             "average_neurons_per_supernode": avg_neurons,
             "supernode_ids": list(self.supernodes.keys()),
         }
+
+from urllib.parse import urlparse, parse_qs, unquote
+
+def parse_neuronpedia_url(url: str) -> dict[str, list[Feature]]:
+    """
+    Parse a Neuronpedia graph URL into a named groups of features.
+
+    The URL encodes supernodes as a JSON array in the ``supernodes`` query
+    parameter. Each supernode is ``[name, "layer_idx_pos", ...]```.
+
+    Args:
+        url: a full Neuronpedia graph URL with a ``supernodes`` query param.
+    
+    Returns:
+        Dictionary mapping supernode names to lists of Feature objects
+    
+    Raises:
+        ValueError: If the URL has no ``supernodes`` parameter or the JSON inside it cannot be decoded
+    """
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+    raw = params.get("supernodes", [None])[0]
+    if raw is None:
+        raise ValueError("URL has no 'supernodes' query parameter")
+    
+    supernodes_data = json.loads(unquote(raw))
+    result: dict[str, list[Feature]] = {}
+    for sn in supernodes_data:
+        name = sn[0]
+        features: list[Feature] = []
+        for node_id in sn[1:]:
+            parts = node_id.split("_")
+            features.append(Feature(
+                layer=int(parts[0]),
+                feature_idx=int(parts[1]),
+                token_pos=int(parts[2]),
+            ))
+        result[name] = features
+    return result
+
+def get_transcoder_for_feature(
+    feature: Feature,
+    transcoders_16k: dict[int, Any],
+    transcoders_wide: dict[int, Any],
+    wide_threshold: int = 16384,
+) -> tuple[Any, str | None]:
+    """
+    Look up the correct transcoder for a given Feature.
+
+    The notebook uses 262k-width transcoders for features with
+    ``feature_idx >= 16384`` on layers that have wide transcoders loaded,
+    falling back to 16k-width transcoders otherwise.
+
+    Args:
+        feature: The Feature to look up.
+        transcoders_16k: Mapping of layer index → 16k-width transcoder.
+        transcoders_wide: Mapping of layer index → 262k-width transcoder.
+        wide_threshold: Feature index threshold for wide transcoders (default 16384).
+
+    Returns:
+        ``(transcoder, width_label)`` where *width_label* is ``"262k"``,
+        ``"16k"``, or ``None`` if no matching transcoder was found.
+    """
+    layer = feature.layer
+    idx = feature.feature_idx
+
+    if idx >= wide_threshold and layer in transcoders_wide:
+        tc = transcoders_wide[layer]
+        if hasattr(tc, "d_sae") and idx < tc.d_sae:
+            return tc, "262k"
+
+    if layer in transcoders_16k:
+        tc = transcoders_16k[layer]
+        if hasattr(tc, "d_sae") and idx < tc.d_sae:
+            return tc, "16k"
+
+    return None, None
+
+ROLEPLAY_FEATURES: list[Feature] = [
+    Feature(layer=18, feature_idx=84158, token_pos=59),
+    Feature(layer=16, feature_idx=37041, token_pos=59),
+    Feature(layer=19, feature_idx=4137, token_pos=59),
+    Feature(layer=18, feature_idx=3677, token_pos=59),
+    Feature(layer=17, feature_idx=6638, token_pos=59),
+]
+
+REFUSAL_FEATURES: list[Feature] = [
+    Feature(layer=16, feature_idx=9947, token_pos=59),
+    Feature(layer=0, feature_idx=3393, token_pos=58),
+    Feature(layer=18, feature_idx=10166, token_pos=59),
+    Feature(layer=17, feature_idx=7356, token_pos=59),
+]
+
+def supernodes_to_features(supernodes: dict[int, SupernodeData]) -> list[Feature]:
+    """
+    Convert loaded SupernodeData neurons to Feature objects.
+
+    Maps each NeuronPattern in each supernode to a Feature using
+    ``neuron_id`` as ``feature_idx`` and the supernode_id as a proxy
+    for layer.  This is a best-effort bridge — the mapping is only
+    meaningful when NeuronPattern metadata contains layer information.
+
+    Args:
+        supernodes: Dictionary of SupernodeData objects (from load_supernode_data).
+
+    Returns:
+        Flat list of Feature objects.
+    """
+    features: list[Feature] = []
+    for sn in supernodes.values():
+        for neuron in sn.neurons:
+            layer = neuron.metadata.get("layer", sn.supernode_id)
+            features.append(Feature(
+                layer=int(layer),
+                feature_idx=neuron.neuron_id,
+                token_pos=neuron.metadata.get("token_pos", 0),
+            ))
+    return features
