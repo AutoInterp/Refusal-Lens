@@ -77,6 +77,19 @@ from .data_loader import (
     load_split,
 )
 
+# Refusal directions
+from .refusal_directions import (
+    RefusalDirectionResult,
+    RefusalDirectionSet,
+    collect_resid_acts_multipos,
+    compute_refusal_directions,
+    find_best_layer,
+    gather_residual_activations,
+    get_model_layers,
+    load_directions,
+    save_directions,
+)
+
 __all__ = (
     "ClassificationResult",
     "DetectionResult",
@@ -124,6 +137,16 @@ __all__ = (
     "list_available_splits",
     "load_processed",
     "load_split",
+    # Refusal directions
+    "RefusalDirectionResult",
+    "RefusalDirectionSet",
+    "collect_resid_acts_multipos",
+    "compute_refusal_directions",
+    "find_best_layer",
+    "gather_residual_activations",
+    "get_model_layers",
+    "load_directions",
+    "save_directions",
 )
 
 try:
