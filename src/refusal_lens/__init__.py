@@ -12,6 +12,9 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
+# configuration
+from . import config
+
 # Experiment Runner
 from .experiment_runner import (
     ExperimentConfig,
@@ -147,6 +150,8 @@ __all__ = (
     "get_model_layers",
     "load_directions",
     "save_directions",
+    # Configuration
+    "config",
 )
 
 try:
