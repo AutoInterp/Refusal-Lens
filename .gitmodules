@@ -1,0 +1,3 @@
+[submodule "vendor/circuit-tracer"]
+	path = vendor/circuit-tracer
+	url = https://github.com/safety-research/circuit-tracer.git
