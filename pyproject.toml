@@ -47,6 +47,10 @@ steering = [
   "einops",
 ]
 
+circuit-tracer = [
+    "circuit-tracer @ git+https://github.com/safety-research/circuit-tracer.git",
+]
+
 [project.urls]
 Homepage = "https://github.com/AutoInterp/refusal-lens"
 "Bug Tracker" = "https://github.com/AutoInterp/refusal-lens/issues"

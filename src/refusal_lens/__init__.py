@@ -107,6 +107,19 @@ from .supernode_analyzer import (
     supernodes_to_features,
 )
 
+# Circuit-tracer integration (CLT attribution)
+from .clt import (
+    HAS_CIRCUIT_TRACER,
+    DEFAULT_TRANSCODER_REPO,
+    DEFAULT_BACKEND,
+    load_replacement_model,
+    make_refusal_target,
+    attribute_to_refusal,
+    attribute_to_refusal_sweep,
+    prune_refusal_graph,
+    extract_top_features,
+)
+
 __all__ = (
     "ClassificationResult",
     "DetectionResult",
@@ -177,6 +190,16 @@ __all__ = (
     "parse_neuronpedia_url",
     "get_transcoder_for_feature",
     "supernodes_to_features",
+    # CLT Attribution
+    "HAS_CIRCUIT_TRACER",
+    "DEFAULT_TRANSCODER_REPO",
+    "DEFAULT_BACKEND",
+    "load_replacement_model",
+    "make_refusal_target",
+    "attribute_to_refusal",
+    "attribute_to_refusal_sweep",
+    "prune_refusal_graph",
+    "extract_top_features",
 )
 
 try:
