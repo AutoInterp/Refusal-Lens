@@ -7,8 +7,8 @@ Tests are split into two tiers:
 
 2. **circuit-tracer-required tests**: Use ``pytest.importorskip`` to skip
    when circuit-tracer is not available.  These test ``make_refusal_target``,
-   ``extract_top_features``, and the warning behavior of
-   ``attribute_to_refusal`` with intermediate layers.
+   ``extract_top_features``, and the delegation from ``attribute_to_refusal``
+   to ``attribute_to_direction`` (Step 8 replaced the old warning behavior).
 """
 from __future__ import annotations
 
@@ -283,49 +283,16 @@ class TestMakeRefusalTarget:
         assert target.vec.norm().item() > 1.0  # confirms non-unit is accepted
 
 
-class TestAttributeToRefusalWarning:
-    """Test that intermediate-layer parameters emit a warning."""
+class TestAttributeToRefusalDelegation:
+    """Test that attribute_to_refusal delegates to attribute_to_direction (Step 8).
 
-    def test_warns_on_layer_param(self):
-        torch = pytest.importorskip("torch")
-        pytest.importorskip("circuit_tracer")
-        from refusal_lens.clt import attribute_to_refusal
+    After Step 8, the old warning behavior was removed. attribute_to_refusal
+    now passes layer/position through to attribute_to_direction, which passes
+    them to the vendored circuit-tracer's attribute() function.
+    """
 
-        r_hat = torch.randn(256)
-        # We can't call attribute() without a real model, but we can test
-        # that the warning fires before the attribute() call by catching
-        # the warning and then the inevitable error from the None model.
-        with pytest.warns(UserWarning, match="Intermediate-layer attribution"):
-            try:
-                attribute_to_refusal("test", None, r_hat, layer=20)
-            except Exception:
-                pass  # expected — None model will fail
-
-    def test_warns_on_position_param(self):
-        torch = pytest.importorskip("torch")
-        pytest.importorskip("circuit_tracer")
-        from refusal_lens.clt import attribute_to_refusal
-
-        r_hat = torch.randn(256)
-        with pytest.warns(UserWarning, match="Intermediate-layer attribution"):
-            try:
-                attribute_to_refusal("test", None, r_hat, position=5)
-            except Exception:
-                pass
-
-    def test_warns_on_both_params(self):
-        torch = pytest.importorskip("torch")
-        pytest.importorskip("circuit_tracer")
-        from refusal_lens.clt import attribute_to_refusal
-
-        r_hat = torch.randn(256)
-        with pytest.warns(UserWarning, match="layer=20.*position=5"):
-            try:
-                attribute_to_refusal("test", None, r_hat, layer=20, position=5)
-            except Exception:
-                pass
-
-    def test_no_warning_when_both_none(self):
+    def test_no_warning_with_layer(self):
+        """Passing layer should NOT emit a warning after Step 8."""
         torch = pytest.importorskip("torch")
         pytest.importorskip("circuit_tracer")
         from refusal_lens.clt import attribute_to_refusal
@@ -335,13 +302,59 @@ class TestAttributeToRefusalWarning:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             try:
-                # This will fail on attribute() call (no real model),
-                # but should NOT emit our UserWarning first
+                attribute_to_refusal("test", None, r_hat, layer=20)
+            except UserWarning:
+                pytest.fail("Should no longer warn about intermediate-layer")
+            except (TypeError, AttributeError):
+                pass  # expected — None model
+
+    def test_no_warning_with_position(self):
+        torch = pytest.importorskip("torch")
+        pytest.importorskip("circuit_tracer")
+        from refusal_lens.clt import attribute_to_refusal
+        import warnings
+
+        r_hat = torch.randn(256)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            try:
+                attribute_to_refusal("test", None, r_hat, position=5)
+            except UserWarning:
+                pytest.fail("Should no longer warn about intermediate-layer")
+            except (TypeError, AttributeError):
+                pass
+
+    def test_no_warning_with_both(self):
+        torch = pytest.importorskip("torch")
+        pytest.importorskip("circuit_tracer")
+        from refusal_lens.clt import attribute_to_refusal
+        import warnings
+
+        r_hat = torch.randn(256)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            try:
+                attribute_to_refusal("test", None, r_hat, layer=20, position=5)
+            except UserWarning:
+                pytest.fail("Should no longer warn about intermediate-layer")
+            except (TypeError, AttributeError):
+                pass
+
+    def test_no_warning_with_defaults(self):
+        torch = pytest.importorskip("torch")
+        pytest.importorskip("circuit_tracer")
+        from refusal_lens.clt import attribute_to_refusal
+        import warnings
+
+        r_hat = torch.randn(256)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            try:
                 attribute_to_refusal("test", None, r_hat)
             except UserWarning:
-                pytest.fail("Should not warn when layer and position are None")
-            except Exception:
-                pass  # expected — None model will fail
+                pytest.fail("Should not warn with default params")
+            except (TypeError, AttributeError):
+                pass
 
 
 class TestExtractTopFeatures:

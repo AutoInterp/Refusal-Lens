@@ -15,6 +15,7 @@ try:
     from circuit_tracer import Graph, ReplacementModel, attribute
     from circuit_tracer.attribution.targets import CustomTarget
     from circuit_tracer.graph import prune_graph
+    from .attribution import attribute_to_direction
 
     HAS_CIRCUIT_TRACER = True
 except ImportError:
@@ -149,25 +150,16 @@ def attribute_to_refusal(
         A ``Graph`` containing the full attribution to the refusal direction.
     """
     _require_circuit_tracer()
-    target = make_refusal_target(refusal_direction)
-
-    if layer is not None or position is not None:
-        import warnings
-        warnings.warn(
-            f"Intermediate-layer attribution (layer={layer}, position={position}) "
-            "is not yet supported by circuit-tracer's public API. "
-            "Falling back to last-layer attribution. "
-            "A patch for _run_attribution will be added.",
-            stacklevel=2,
-        )
-
-    return attribute(
+    return attribute_to_direction(
         prompt=prompt,
         model=model,
-        attribution_targets=[target],
+        direction=refusal_direction,
+        measurement_layer=layer,
+        measurement_position=position,
+        label="refusal_direction",
         batch_size=batch_size,
         max_feature_nodes=max_feature_nodes,
-        verbose=verbose
+        verbose=verbose,
     )
 
 def attribute_to_refusal_sweep(

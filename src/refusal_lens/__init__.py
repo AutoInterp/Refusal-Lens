@@ -120,6 +120,12 @@ from .clt import (
     extract_top_features,
 )
 
+# Intermediate-layer attribution
+from .attribution import (
+    attribute_to_direction,
+    validate_measurement_point,
+)
+
 __all__ = (
     "ClassificationResult",
     "DetectionResult",
@@ -200,6 +206,9 @@ __all__ = (
     "attribute_to_refusal_sweep",
     "prune_refusal_graph",
     "extract_top_features",
+    # Intermediate-layer attribution
+    "attribute_to_direction",
+    "validate_measurement_point",
 )
 
 try:
