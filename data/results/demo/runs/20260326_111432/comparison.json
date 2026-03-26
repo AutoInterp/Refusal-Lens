@@ -1,0 +1,343 @@
+{
+  "n_harmful_top": 30,
+  "n_jailbreak_top": 30,
+  "n_shared": 12,
+  "n_harmful_only": 18,
+  "n_jailbreak_only": 18,
+  "shared_features": [
+    [
+      15,
+      12472
+    ],
+    [
+      17,
+      7988
+    ],
+    [
+      19,
+      4181
+    ],
+    [
+      20,
+      1587
+    ],
+    [
+      21,
+      2450
+    ],
+    [
+      24,
+      483
+    ],
+    [
+      24,
+      13277
+    ],
+    [
+      24,
+      13541
+    ],
+    [
+      24,
+      15043
+    ],
+    [
+      25,
+      2429
+    ],
+    [
+      25,
+      14744
+    ],
+    [
+      25,
+      15920
+    ]
+  ],
+  "harmful_only_features": [
+    [
+      0,
+      3591
+    ],
+    [
+      2,
+      1138
+    ],
+    [
+      7,
+      11532
+    ],
+    [
+      8,
+      10849
+    ],
+    [
+      13,
+      5675
+    ],
+    [
+      14,
+      8307
+    ],
+    [
+      15,
+      6818
+    ],
+    [
+      17,
+      2026
+    ],
+    [
+      18,
+      10942
+    ],
+    [
+      20,
+      7021
+    ],
+    [
+      20,
+      9375
+    ],
+    [
+      20,
+      10247
+    ],
+    [
+      20,
+      15390
+    ],
+    [
+      21,
+      11738
+    ],
+    [
+      23,
+      7515
+    ],
+    [
+      24,
+      1260
+    ],
+    [
+      24,
+      9242
+    ],
+    [
+      24,
+      10923
+    ]
+  ],
+  "jailbreak_only_features": [
+    [
+      15,
+      12748
+    ],
+    [
+      16,
+      4798
+    ],
+    [
+      16,
+      7043
+    ],
+    [
+      17,
+      2780
+    ],
+    [
+      18,
+      3740
+    ],
+    [
+      18,
+      10324
+    ],
+    [
+      19,
+      2597
+    ],
+    [
+      21,
+      431
+    ],
+    [
+      21,
+      2655
+    ],
+    [
+      21,
+      7397
+    ],
+    [
+      22,
+      6267
+    ],
+    [
+      23,
+      1188
+    ],
+    [
+      24,
+      205
+    ],
+    [
+      24,
+      5668
+    ],
+    [
+      25,
+      321
+    ],
+    [
+      25,
+      553
+    ],
+    [
+      25,
+      6803
+    ],
+    [
+      25,
+      12721
+    ]
+  ],
+  "sign_flipped": [],
+  "suppression_candidates": [
+    {
+      "layer": 24,
+      "feature_idx": 13541,
+      "position": 34,
+      "attribution": -0.6826171875,
+      "abs_attribution": 0.6826171875,
+      "activation": 76.625,
+      "n_prompts": 8
+    },
+    {
+      "layer": 25,
+      "feature_idx": 15920,
+      "position": 34,
+      "attribution": -0.615234375,
+      "abs_attribution": 0.615234375,
+      "activation": 90.75,
+      "n_prompts": 8
+    },
+    {
+      "layer": 25,
+      "feature_idx": 14744,
+      "position": 34,
+      "attribution": -0.3385009765625,
+      "abs_attribution": 0.3385009765625,
+      "activation": 69.40625,
+      "n_prompts": 8
+    },
+    {
+      "layer": 18,
+      "feature_idx": 10324,
+      "position": 27,
+      "attribution": -0.267578125,
+      "abs_attribution": 0.267578125,
+      "activation": 43.75,
+      "n_prompts": 1
+    },
+    {
+      "layer": 25,
+      "feature_idx": 2429,
+      "position": 34,
+      "attribution": -0.2543247767857143,
+      "abs_attribution": 0.2543247767857143,
+      "activation": 27.696428571428573,
+      "n_prompts": 7
+    },
+    {
+      "layer": 25,
+      "feature_idx": 321,
+      "position": 31,
+      "attribution": -0.244140625,
+      "abs_attribution": 0.244140625,
+      "activation": 21.375,
+      "n_prompts": 1
+    },
+    {
+      "layer": 23,
+      "feature_idx": 1188,
+      "position": 25,
+      "attribution": -0.2294921875,
+      "abs_attribution": 0.2294921875,
+      "activation": 36.0,
+      "n_prompts": 1
+    },
+    {
+      "layer": 18,
+      "feature_idx": 3740,
+      "position": 31,
+      "attribution": -0.224609375,
+      "abs_attribution": 0.224609375,
+      "activation": 47.75,
+      "n_prompts": 1
+    },
+    {
+      "layer": 21,
+      "feature_idx": 2655,
+      "position": 37,
+      "attribution": -0.21875,
+      "abs_attribution": 0.21875,
+      "activation": 31.375,
+      "n_prompts": 1
+    },
+    {
+      "layer": 25,
+      "feature_idx": 6803,
+      "position": 30,
+      "attribution": -0.205078125,
+      "abs_attribution": 0.205078125,
+      "activation": 18.75,
+      "n_prompts": 1
+    },
+    {
+      "layer": 16,
+      "feature_idx": 4798,
+      "position": 30,
+      "attribution": -0.2041015625,
+      "abs_attribution": 0.2041015625,
+      "activation": 15.5,
+      "n_prompts": 1
+    },
+    {
+      "layer": 21,
+      "feature_idx": 2450,
+      "position": 27,
+      "attribution": -0.20279947916666666,
+      "abs_attribution": 0.20279947916666666,
+      "activation": 22.583333333333332,
+      "n_prompts": 3
+    },
+    {
+      "layer": 21,
+      "feature_idx": 431,
+      "position": 25,
+      "attribution": -0.196533203125,
+      "abs_attribution": 0.196533203125,
+      "activation": 27.375,
+      "n_prompts": 4
+    },
+    {
+      "layer": 19,
+      "feature_idx": 2597,
+      "position": 34,
+      "attribution": -0.1943359375,
+      "abs_attribution": 0.1943359375,
+      "activation": 29.25,
+      "n_prompts": 1
+    },
+    {
+      "layer": 16,
+      "feature_idx": 7043,
+      "position": 34,
+      "attribution": -0.19417317708333334,
+      "abs_attribution": 0.19417317708333334,
+      "activation": 19.125,
+      "n_prompts": 3
+    }
+  ]
+}

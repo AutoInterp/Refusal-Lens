@@ -1,0 +1,272 @@
+[
+  {
+    "layer": 24,
+    "feature_idx": 483,
+    "position": 9,
+    "attribution": 1.01953125,
+    "abs_attribution": 1.01953125,
+    "activation": 87.0625,
+    "n_prompts": 8
+  },
+  {
+    "layer": 24,
+    "feature_idx": 13541,
+    "position": 9,
+    "attribution": -0.6484375,
+    "abs_attribution": 0.6484375,
+    "activation": 72.6875,
+    "n_prompts": 8
+  },
+  {
+    "layer": 24,
+    "feature_idx": 13277,
+    "position": 9,
+    "attribution": 0.63330078125,
+    "abs_attribution": 0.63330078125,
+    "activation": 38.9375,
+    "n_prompts": 8
+  },
+  {
+    "layer": 25,
+    "feature_idx": 15920,
+    "position": 9,
+    "attribution": -0.5263671875,
+    "abs_attribution": 0.5263671875,
+    "activation": 81.375,
+    "n_prompts": 8
+  },
+  {
+    "layer": 15,
+    "feature_idx": 6818,
+    "position": 6,
+    "attribution": 0.4296875,
+    "abs_attribution": 0.4296875,
+    "activation": 7.96875,
+    "n_prompts": 1
+  },
+  {
+    "layer": 17,
+    "feature_idx": 2026,
+    "position": 13,
+    "attribution": 0.380859375,
+    "abs_attribution": 0.380859375,
+    "activation": 49.75,
+    "n_prompts": 1
+  },
+  {
+    "layer": 20,
+    "feature_idx": 15390,
+    "position": 13,
+    "attribution": 0.373046875,
+    "abs_attribution": 0.373046875,
+    "activation": 45.25,
+    "n_prompts": 1
+  },
+  {
+    "layer": 15,
+    "feature_idx": 12472,
+    "position": 9,
+    "attribution": 0.356689453125,
+    "abs_attribution": 0.356689453125,
+    "activation": 34.171875,
+    "n_prompts": 8
+  },
+  {
+    "layer": 20,
+    "feature_idx": 9375,
+    "position": 10,
+    "attribution": 0.3359375,
+    "abs_attribution": 0.3359375,
+    "activation": 55.5,
+    "n_prompts": 1
+  },
+  {
+    "layer": 25,
+    "feature_idx": 14744,
+    "position": 9,
+    "attribution": -0.313232421875,
+    "abs_attribution": 0.313232421875,
+    "activation": 68.25,
+    "n_prompts": 8
+  },
+  {
+    "layer": 20,
+    "feature_idx": 10247,
+    "position": 11,
+    "attribution": -0.29345703125,
+    "abs_attribution": 0.29345703125,
+    "activation": 43.375,
+    "n_prompts": 2
+  },
+  {
+    "layer": 25,
+    "feature_idx": 2429,
+    "position": 13,
+    "attribution": -0.25380859375,
+    "abs_attribution": 0.25380859375,
+    "activation": 28.825,
+    "n_prompts": 5
+  },
+  {
+    "layer": 0,
+    "feature_idx": 3591,
+    "position": 3,
+    "attribution": 0.2412109375,
+    "abs_attribution": 0.2412109375,
+    "activation": 22.375,
+    "n_prompts": 1
+  },
+  {
+    "layer": 19,
+    "feature_idx": 4181,
+    "position": 9,
+    "attribution": 0.240234375,
+    "abs_attribution": 0.240234375,
+    "activation": 34.35,
+    "n_prompts": 5
+  },
+  {
+    "layer": 24,
+    "feature_idx": 15043,
+    "position": 9,
+    "attribution": 0.2353515625,
+    "abs_attribution": 0.2353515625,
+    "activation": 37.041666666666664,
+    "n_prompts": 6
+  },
+  {
+    "layer": 24,
+    "feature_idx": 9242,
+    "position": 6,
+    "attribution": -0.2251953125,
+    "abs_attribution": 0.2251953125,
+    "activation": 23.0125,
+    "n_prompts": 5
+  },
+  {
+    "layer": 7,
+    "feature_idx": 11532,
+    "position": 3,
+    "attribution": 0.21875,
+    "abs_attribution": 0.21875,
+    "activation": 24.375,
+    "n_prompts": 2
+  },
+  {
+    "layer": 20,
+    "feature_idx": 1587,
+    "position": 6,
+    "attribution": 0.2177734375,
+    "abs_attribution": 0.2177734375,
+    "activation": 38.25,
+    "n_prompts": 1
+  },
+  {
+    "layer": 2,
+    "feature_idx": 1138,
+    "position": 7,
+    "attribution": 0.216796875,
+    "abs_attribution": 0.216796875,
+    "activation": 18.25,
+    "n_prompts": 1
+  },
+  {
+    "layer": 20,
+    "feature_idx": 7021,
+    "position": 10,
+    "attribution": -0.216796875,
+    "abs_attribution": 0.216796875,
+    "activation": 47.75,
+    "n_prompts": 1
+  },
+  {
+    "layer": 17,
+    "feature_idx": 7988,
+    "position": 6,
+    "attribution": 0.2099609375,
+    "abs_attribution": 0.2099609375,
+    "activation": 9.5,
+    "n_prompts": 1
+  },
+  {
+    "layer": 24,
+    "feature_idx": 10923,
+    "position": 6,
+    "attribution": 0.205078125,
+    "abs_attribution": 0.205078125,
+    "activation": 17.75,
+    "n_prompts": 1
+  },
+  {
+    "layer": 8,
+    "feature_idx": 10849,
+    "position": 4,
+    "attribution": 0.1962890625,
+    "abs_attribution": 0.1962890625,
+    "activation": 29.25,
+    "n_prompts": 1
+  },
+  {
+    "layer": 23,
+    "feature_idx": 7515,
+    "position": 13,
+    "attribution": -0.1943359375,
+    "abs_attribution": 0.1943359375,
+    "activation": 19.875,
+    "n_prompts": 1
+  },
+  {
+    "layer": 24,
+    "feature_idx": 1260,
+    "position": 6,
+    "attribution": 0.193359375,
+    "abs_attribution": 0.193359375,
+    "activation": 17.625,
+    "n_prompts": 1
+  },
+  {
+    "layer": 21,
+    "feature_idx": 2450,
+    "position": 13,
+    "attribution": -0.19270833333333334,
+    "abs_attribution": 0.19270833333333334,
+    "activation": 22.489583333333332,
+    "n_prompts": 6
+  },
+  {
+    "layer": 13,
+    "feature_idx": 5675,
+    "position": 6,
+    "attribution": 0.1923828125,
+    "abs_attribution": 0.1923828125,
+    "activation": 10.75,
+    "n_prompts": 1
+  },
+  {
+    "layer": 21,
+    "feature_idx": 11738,
+    "position": 13,
+    "attribution": 0.19140625,
+    "abs_attribution": 0.19140625,
+    "activation": 32.0,
+    "n_prompts": 1
+  },
+  {
+    "layer": 14,
+    "feature_idx": 8307,
+    "position": 10,
+    "attribution": 0.1865234375,
+    "abs_attribution": 0.1865234375,
+    "activation": 29.125,
+    "n_prompts": 1
+  },
+  {
+    "layer": 18,
+    "feature_idx": 10942,
+    "position": 11,
+    "attribution": -0.183837890625,
+    "abs_attribution": 0.183837890625,
+    "activation": 35.875,
+    "n_prompts": 2
+  }
+]

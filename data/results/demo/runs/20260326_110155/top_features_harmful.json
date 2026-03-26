@@ -1,0 +1,142 @@
+[
+  {
+    "layer": 24,
+    "position": 13,
+    "feature_idx": 483,
+    "attribution": 1.5,
+    "activation": 86.5
+  },
+  {
+    "layer": 24,
+    "position": 13,
+    "feature_idx": 13541,
+    "attribution": -0.9609375,
+    "activation": 75.5
+  },
+  {
+    "layer": 25,
+    "position": 13,
+    "feature_idx": 4717,
+    "attribution": -0.66015625,
+    "activation": 204.0
+  },
+  {
+    "layer": 25,
+    "position": 13,
+    "feature_idx": 15920,
+    "attribution": -0.609375,
+    "activation": 95.0
+  },
+  {
+    "layer": 24,
+    "position": 13,
+    "feature_idx": 13277,
+    "attribution": 0.3828125,
+    "activation": 32.75
+  },
+  {
+    "layer": 25,
+    "position": 13,
+    "feature_idx": 3204,
+    "attribution": 0.3359375,
+    "activation": 49.75
+  },
+  {
+    "layer": 25,
+    "position": 13,
+    "feature_idx": 14744,
+    "attribution": -0.333984375,
+    "activation": 66.5
+  },
+  {
+    "layer": 21,
+    "position": 13,
+    "feature_idx": 4181,
+    "attribution": 0.318359375,
+    "activation": 28.125
+  },
+  {
+    "layer": 22,
+    "position": 13,
+    "feature_idx": 14873,
+    "attribution": 0.28515625,
+    "activation": 29.625
+  },
+  {
+    "layer": 24,
+    "position": 13,
+    "feature_idx": 15454,
+    "attribution": -0.2734375,
+    "activation": 36.25
+  },
+  {
+    "layer": 15,
+    "position": 13,
+    "feature_idx": 12472,
+    "attribution": -0.255859375,
+    "activation": 30.375
+  },
+  {
+    "layer": 18,
+    "position": 13,
+    "feature_idx": 13647,
+    "attribution": 0.251953125,
+    "activation": 47.75
+  },
+  {
+    "layer": 18,
+    "position": 13,
+    "feature_idx": 4903,
+    "attribution": 0.234375,
+    "activation": 23.375
+  },
+  {
+    "layer": 24,
+    "position": 13,
+    "feature_idx": 15043,
+    "attribution": 0.2275390625,
+    "activation": 48.5
+  },
+  {
+    "layer": 24,
+    "position": 13,
+    "feature_idx": 9242,
+    "attribution": -0.2119140625,
+    "activation": 28.375
+  },
+  {
+    "layer": 23,
+    "position": 13,
+    "feature_idx": 13382,
+    "attribution": 0.197265625,
+    "activation": 57.75
+  },
+  {
+    "layer": 17,
+    "position": 13,
+    "feature_idx": 7627,
+    "attribution": 0.1953125,
+    "activation": 29.375
+  },
+  {
+    "layer": 20,
+    "position": 13,
+    "feature_idx": 6005,
+    "attribution": 0.17578125,
+    "activation": 31.625
+  },
+  {
+    "layer": 22,
+    "position": 13,
+    "feature_idx": 2192,
+    "attribution": 0.169921875,
+    "activation": 40.5
+  },
+  {
+    "layer": 21,
+    "position": 13,
+    "feature_idx": 431,
+    "attribution": 0.16796875,
+    "activation": 13.0
+  }
+]
