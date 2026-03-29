@@ -9,6 +9,7 @@ Builds on:
 - ``clt.py``: ``attribute_to_refusal``, ``extract_top_features``, ``prune_refusal_graph``
 - ``attribution.py``: ``attribute_to_direction``, ``validate_measurement_point``
 """
+
 from __future__ import annotations
 
 import json
@@ -30,12 +31,14 @@ try:
 except ImportError:
     pass
 
+
 def _require_circuit_tracer() -> None:
     if not HAS_CIRCUIT_TRACER:
         raise ImportError(
             "circuit-tracer is required. "
             "Install via: pip install git+https://github.com/safety-research/circuit-tracer.git"
         )
+
 
 @dataclass
 class RefusalGraph:
@@ -45,4 +48,3 @@ class RefusalGraph:
     Wraps a circuit-tracer ``Graph`` with the prompt, measurement point,
     and extracted top features so results are self-describing.
     """
-    pass
