@@ -1,5 +1,0 @@
-KEY FINDING: Two classes of jailbreaks identified.
-1. Refusal-direction-mediated (RP/locksmith): steering restores refusal at L10-15
-2. Refusal-direction-independent (fiction/educational): immune to steering even at alpha=200
-Implication: Arditi et al. refusal direction only captures shallow jailbreaks.
-Deep jailbreaks (fiction wrapping) operate through a different mechanism entirely.
