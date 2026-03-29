@@ -30,6 +30,7 @@ This roadmap implements the 4-week research plan for understanding how language 
 - [x] **RefusalDetector** - Step 4 jailbreak testing
 - [x] **Gemma-3 support** - All scripts work with Gemma-3-4B model
 - [x] **explore_supernodes.py** - New script for Step 3
+- [x] **visualize_figures.py** - Visualization script for generating publication-ready figures
 
 ### 🔄 Remaining
 
@@ -211,7 +212,8 @@ refusal-lens/
 │   ├── compute_directions.py    # ✅ Step 1 script
 │   ├── compute_circuits.py      # ✅ Step 2 script
 │   ├── explore_supernodes.py    # ✅ Step 3 script
-│   └── test_jailbreaks.py       # ✅ Step 4 script
+│   ├── test_jailbreaks.py       # ✅ Step 4 script
+│   └── visualize_figures.py     # ✅ Visualization script
 ├── dataset/
 │   └── refusal_direction_dataset/
 │       └── splits/
@@ -261,6 +263,38 @@ python scripts/explore_supernodes.py
 ```bash
 python scripts/test_jailbreaks.py
 ```
+
+### Run Visualization (Generate Figures)
+
+```bash
+python scripts/visualize_figures.py
+```
+
+#### Options
+
+```bash
+# Custom output directory
+python scripts/visualize_figures.py --output-dir images/my_figures
+
+# Different format (png, pdf, svg)
+python scripts/visualize_figures.py --format pdf
+
+# Custom data directory
+python scripts/visualize_figures.py --data-dir path/to/results
+```
+
+#### Generated Figures
+
+The script generates 8 publication-ready figures:
+
+1. **direction_separation.png** - Separation scores across layers
+2. **token_attributions_sample.png** - Token-level attribution patterns
+3. **top_features_sample.png** - Top features by attribution score
+4. **supernode_activations.png** - Neuron activations per supernode
+5. **feature_distributions.png** - Feature distribution across supernodes
+6. **steering_vector_stats.png** - Steering vector statistics
+7. **summary_dashboard.png** - Comprehensive analysis dashboard
+8. **circuit_comparison.png** - Comparison across different prompts
 
 ---
 
