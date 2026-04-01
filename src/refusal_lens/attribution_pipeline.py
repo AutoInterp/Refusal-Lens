@@ -48,3 +48,5 @@ class RefusalGraph:
     Wraps a circuit-tracer ``Graph`` with the prompt, measurement point,
     and extracted top features so results are self-describing.
     """
+    pass
+
