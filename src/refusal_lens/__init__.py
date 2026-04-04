@@ -85,35 +85,26 @@ from .utils import (
 __all__ = (
     "AttributionGraph",
     "AttributionResult",
-    # Refusal Classification
     "ClassificationResult",
-    # Config
     "Config",
-    # Refusal Detection
     "DetectionResult",
     "DetectionStatus",
-    # Experiment Runner
     "ExperimentConfig",
     "ExperimentResult",
     "ExperimentRunner",
     "JailbreakTestResult",
-    # Prompt Templates
+    "NeuronPattern",
     "PromptCategory",
     "PromptTemplate",
     "PromptTemplateLibrary",
     "RefusalCategory",
     "RefusalClassifier",
     "RefusalDetector",
-    # Supernode Analysis
-    "NeuronPattern",
-    "SupernodeAnalyzer",
-    "SupernodeData",
-    # Circuits
     "RefusalDirectionComputer",
     "RefusalDirectionResult",
-    # Jailbreaks
+    "SupernodeAnalyzer",
+    "SupernodeData",
     "SystematicVariationGenerator",
-    # Version
     "__version__",
     "analyze_circuit",
     "attribute_to_direction",
@@ -122,7 +113,6 @@ __all__ = (
     "get_device",
     "load_dataset_split",
     "load_directions",
-    # Utils
     "load_json",
     "load_prompts_from_json",
     "save_attributions",
