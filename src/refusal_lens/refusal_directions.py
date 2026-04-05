@@ -102,33 +102,25 @@ def gather_residual_activations(
     input_ids: torch.Tensor,
 ) -> torch.Tensor:
     """
-    Capture residual-stream activatioins at a single layer via forward hook.
+    Capture residual-stream activations at a single layer.
+
+    Uses ``output_hidden_states=True`` instead of forward hooks to avoid
+    architecture-specific issues (e.g., Gemma-3 layer-33 RMSNorm mismatch).
 
     Args:
         model: A huggingface CausalLM model.
-        layer_idx: Index of the transformer block to hook.
+        layer_idx: Index of the transformer block (0-indexed).
         input_ids: Tokenized input, shape ``(1, seq_len)``
-    
+
     Returns:
         Tensor of shape ``(1, seq_len, d_model)`` - the layer's output hidden
         state (detached, on the same device as the model).
     """
     _require_torch()
-    layers = get_model_layers(model)
-    target = layers[layer_idx]
-    captured: dict[str, torch.Tensor] = {}
-
-    def hook(mod: Any, inputs: Any, outputs: Any) -> None:
-        hidden = outputs[0] if isinstance(outputs, tuple) else outputs
-        captured["value"] = hidden.detach()
-    
-    handle = target.register_forward_hook(hook)
-    try:
-        with torch.no_grad():
-            model(input_ids)
-    finally:
-        handle.remove()
-    return captured["value"]
+    with torch.no_grad():
+        out = model(input_ids, output_hidden_states=True)
+    # hidden_states[0] = embeddings, hidden_states[i+1] = output of layer i
+    return out.hidden_states[layer_idx + 1].detach()
 
 def collect_resid_acts_multipos(
     model: Any,
