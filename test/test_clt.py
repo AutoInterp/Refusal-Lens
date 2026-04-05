@@ -188,7 +188,7 @@ class TestConfigIntegration:
     def test_sweep_default_layers_come_from_config(self):
         """attribute_to_refusal_sweep defaults to config.REFUSAL_LAYERS."""
         from refusal_lens import config
-        assert config.REFUSAL_LAYERS == list(range(8, 24))
+        assert config.REFUSAL_LAYERS == list(range(0, 35))
 
     def test_load_model_defaults_come_from_config(self):
         from refusal_lens import config
@@ -632,8 +632,8 @@ class TestAttributeToRefusalSweepLogic:
     def test_default_layers_from_config(self):
         """Verify that REFUSAL_LAYERS has the expected range."""
         from refusal_lens import config
-        assert config.REFUSAL_LAYERS == list(range(8, 24))
-        assert len(config.REFUSAL_LAYERS) == 16
+        assert config.REFUSAL_LAYERS == list(range(0, 35))
+        assert len(config.REFUSAL_LAYERS) == 35
 
     def test_sweep_requires_circuit_tracer(self):
         from refusal_lens.clt import HAS_CIRCUIT_TRACER, attribute_to_refusal_sweep

@@ -74,6 +74,7 @@ def load_model(
     logger.info("Loading model: %s", config.model_name)
 
     tokenizer = AutoTokenizer.from_pretrained(config.model_name)
+    tokenizer.padding_side = "left"
     model = AutoModelForCausalLM.from_pretrained(
         config.model_name,
         dtype=config.torch_dtype,

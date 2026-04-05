@@ -175,7 +175,7 @@ def collect_resid_acts_multipos(
         
         for l in layers:
             resid = gather_residual_activations(model, l, input_ids)
-            pos_acts = [resid[0, p, :].float().cpu() for p in pos_indices]
+            pos_acts = [resid[0, p, :].double().cpu() for p in pos_indices]
             acts[l].append(torch.stack(pos_acts))
     
     logger.info("  Done: %d prompts.", len(prompts))
@@ -204,8 +204,8 @@ def compute_refusal_directions(
     results: dict[int, RefusalDirectionResult] = {}
 
     for l in harmful_acts:
-        h_mean = harmful_acts[l].mean(dim=(0, 1))
-        s_mean = harmless_acts[l].mean(dim=(0, 1))
+        h_mean = harmful_acts[l].double().mean(dim=(0, 1))
+        s_mean = harmless_acts[l].double().mean(dim=(0, 1))
         diff = h_mean - s_mean
         separation = diff.norm().item()
 

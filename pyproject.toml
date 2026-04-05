@@ -45,10 +45,25 @@ steering = [
   "safetensors",
   "huggingface_hub",
   "einops",
+  "nnsight >= 0.6.1",
+  "matplotlib",
 ]
 
 circuit-tracer = [
-    "circuit-tracer @ git+https://github.com/safety-research/circuit-tracer.git",
+    "circuit-tracer @ git+https://github.com/AutoInterp/circuit-tracer.git@refusal-lens-measurement-patch",
+]
+
+runpod = [
+  "torch >= 2.0",
+  "transformers == 4.57.3",
+  "huggingface-hub == 0.36.2",
+  "accelerate",
+  "nnsight == 0.6.1",
+  "torchvision == 0.26.0",
+  "matplotlib",
+  "safetensors",
+  "einops",
+  "circuit-tracer @ git+https://github.com/AutoInterp/circuit-tracer.git@refusal-lens-measurement-patch",
 ]
 
 [project.urls]
@@ -87,7 +102,7 @@ strict = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 
 [[tool.mypy.overrides]]
-module = ["numpy.*", "torch.*", "transformers.*", "accelerate.*", "safetensors.*", "huggingface_hub.*", "einops.*"]
+module = ["numpy.*", "torch.*", "transformers.*", "accelerate.*", "safetensors.*", "huggingface_hub.*", "einops.*", "nnsight.*", "circuit_tracer.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

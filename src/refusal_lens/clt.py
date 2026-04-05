@@ -27,13 +27,13 @@ def _require_circuit_tracer() -> None:
     if not HAS_CIRCUIT_TRACER:
         raise ImportError(
             "circuit-tracer is required for attribution. "
-            "Install via: pip install git+https://github.com/safety-research/circuit-tracer.git"
+            "Install via: pip install git+https://github.com/AutoInterp/circuit-tracer.git@refusal-lens-measurement-patch"
         )
 
 
 # Default transcoder repo for Gemma 3 4B IT (circuit-tracer compatible)
 DEFAULT_TRANSCODER_REPO: str = (
-    "mwhanna/gemma-scope-2-4b-it/transcoder_all/width_16k_l0_small"
+    "mwhanna/gemma-scope-2-4b-it/transcoder_all/width_16k_l0_small_affine"
 )
 
 DEFAULT_BACKEND: str = "nnsight"
@@ -44,6 +44,7 @@ def load_replacement_model(
     *,
     backend: str | None = None,
     dtype: Any = None,
+    lazy_encoder: bool = True,
 ) -> ReplacementModel:
     """Load a circuit-tracer ReplacementModel with transcoders.
 
@@ -57,6 +58,8 @@ def load_replacement_model(
         backend: ``"nnsight"`` or ``"transformerlens"``.
             Defaults to ``DEFAULT_BACKEND``.
         dtype: Torch dtype. Defaults to ``torch.bfloat16``.
+        lazy_encoder: If True, defer encoder loading to save memory.
+            Defaults to True.
 
     Returns:
         A configured ReplacementModel ready for attribution.
@@ -73,6 +76,7 @@ def load_replacement_model(
         transcoder_repo,
         backend=backend,
         dtype=dtype,
+        lazy_encoder=lazy_encoder,
     )
 
 def make_refusal_target(
