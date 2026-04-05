@@ -1,0 +1,141 @@
+{
+  "best_layer": 33,
+  "layers": {
+    "0": {
+      "method": "mean",
+      "separation": 8.434818
+    },
+    "1": {
+      "method": "mean",
+      "separation": 14.969784
+    },
+    "2": {
+      "method": "mean",
+      "separation": 22.318816
+    },
+    "3": {
+      "method": "mean",
+      "separation": 23.924161
+    },
+    "4": {
+      "method": "mean",
+      "separation": 33.79291
+    },
+    "5": {
+      "method": "mean",
+      "separation": 71.885375
+    },
+    "6": {
+      "method": "mean",
+      "separation": 124.212451
+    },
+    "7": {
+      "method": "mean",
+      "separation": 232.643086
+    },
+    "8": {
+      "method": "mean",
+      "separation": 379.219146
+    },
+    "9": {
+      "method": "mean",
+      "separation": 607.273017
+    },
+    "10": {
+      "method": "mean",
+      "separation": 1269.319093
+    },
+    "11": {
+      "method": "mean",
+      "separation": 1278.988739
+    },
+    "12": {
+      "method": "mean",
+      "separation": 928.409238
+    },
+    "13": {
+      "method": "mean",
+      "separation": 753.596699
+    },
+    "14": {
+      "method": "mean",
+      "separation": 2461.847492
+    },
+    "15": {
+      "method": "mean",
+      "separation": 3160.299685
+    },
+    "16": {
+      "method": "mean",
+      "separation": 3730.493657
+    },
+    "17": {
+      "method": "mean",
+      "separation": 2637.432813
+    },
+    "18": {
+      "method": "mean",
+      "separation": 3061.23961
+    },
+    "19": {
+      "method": "mean",
+      "separation": 3529.63108
+    },
+    "20": {
+      "method": "mean",
+      "separation": 4080.506422
+    },
+    "21": {
+      "method": "mean",
+      "separation": 4731.332306
+    },
+    "22": {
+      "method": "mean",
+      "separation": 6295.742853
+    },
+    "23": {
+      "method": "mean",
+      "separation": 7445.402476
+    },
+    "24": {
+      "method": "mean",
+      "separation": 9252.635458
+    },
+    "25": {
+      "method": "mean",
+      "separation": 10745.388743
+    },
+    "26": {
+      "method": "mean",
+      "separation": 13095.424572
+    },
+    "27": {
+      "method": "mean",
+      "separation": 14313.280836
+    },
+    "28": {
+      "method": "mean",
+      "separation": 16483.376608
+    },
+    "29": {
+      "method": "mean",
+      "separation": 18541.937645
+    },
+    "30": {
+      "method": "mean",
+      "separation": 18566.439277
+    },
+    "31": {
+      "method": "mean",
+      "separation": 18864.077171
+    },
+    "32": {
+      "method": "mean",
+      "separation": 20648.377171
+    },
+    "33": {
+      "method": "mean",
+      "separation": 29647.340397
+    }
+  }
+}

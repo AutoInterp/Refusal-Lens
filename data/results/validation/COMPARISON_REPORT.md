@@ -14,8 +14,8 @@ Both approaches use difference-in-means (Arditi et al. 2024) with corrected para
 
 | Metric | Tejas (v2) | Foundation | Match? |
 |--------|-----------|------------|--------|
-| Best layer | 32 | N/A (not yet run) | CHECK (N/A (not yet run) vs 32) |
-| Separation | 20,788 | N/A | See analysis |
+| Best layer | 32 | 33 | CHECK (33 vs 32) |
+| Separation | 20,788 | 29647.3 | See analysis |
 | Best position | -2 | -2 | YES |
 | Dtype | float64 | float64 | YES |
 | Padding | left | left | YES |
@@ -34,10 +34,10 @@ Mode A uses `measurement_layer=None` (last layer), matching Tejas's unpatched ci
 
 | Metric | Tejas (v2) | Foundation (Mode A) | Delta |
 |--------|-----------|---------------------|-------|
-| Bare mean | 75.5 | *Not yet run* | |
-| JB mean | 56.7 | *Not yet run* | |
-| Mean diff | -18.7 | *Not yet run* | |
-| JB lower | 9/10 | *Not yet run* | |
+| Bare mean | 75.5 | 50.0 | -25.5 |
+| JB mean | 56.7 | 36.9 | -19.8 |
+| Mean diff | -18.7 | -13.0 | +5.7 |
+| JB lower | 9/10 | 9/10 | |
 
 ### Interpretation
 
@@ -45,6 +45,21 @@ Mode A uses `measurement_layer=None` (last layer), matching Tejas's unpatched ci
 - Exact matches are unlikely due to nondeterminism in GPU float operations.
 - The key signal is: **does JB consistently have lower net attribution than bare?**
   This confirms the RP-suppresses-refusal hypothesis at the MLP level.
+
+### Per-Pair Comparison
+
+| Pair | Tejas Bare | Foundation Bare | Tejas JB | Foundation JB |
+|------|-----------|----------------|---------|--------------|
+| 1 | 75.3 | 49.2 | 56.1 | 35.3 |
+| 2 | 76.7 | 51.1 | 74.6 | 48.8 |
+| 3 | 79.2 | 52.5 | 54.1 | 36.5 |
+| 4 | 76.0 | 50.5 | 58.3 | 37.5 |
+| 5 | 92.6 | 62.5 | 91.5 | 61.9 |
+| 6 | 69.7 | 45.4 | 60.1 | 38.9 |
+| 7 | 87.3 | 58.0 | 69.8 | 45.4 |
+| 8 | 74.1 | 49.4 | 48.3 | 32.0 |
+| 9 | 74.6 | 50.8 | 86.2 | 58.1 |
+| 10 | 49.0 | 30.1 | -31.4 | -25.2 |
 
 ## 3. Intermediate-Layer Attribution (Mode B) -- New
 
@@ -55,7 +70,12 @@ This measures R = <x^(l*, c*), r_hat> at the best refusal layer rather than the 
 traces only the upstream computation that *builds* the refusal signal, which is more
 informative for understanding how the model decides to refuse.
 
-*Mode B results not yet available. Run `scripts/validate_tejas_replication.py` first.*
+| Metric | Mode A (last-layer) | Mode B (intermediate) | Delta |
+|--------|--------------------|-----------------------|-------|
+| Bare mean | 50.0 | 21.0 | -29.0 |
+| JB mean | 36.9 | 16.8 | -20.1 |
+| Mean diff | -13.0 | -4.2 | +8.9 |
+| JB lower | 9/10 | 7/10 | |
 
 ### Analysis
 
@@ -84,7 +104,17 @@ Same 9 prompts (3 topics x 3 jailbreak types) as Tejas's script 11 Task 4.
 
 ### Foundation Results
 
-*Not yet available. Run `scripts/validate_tejas_replication.py` first.*
+| Prompt | Net | Positive | Negative | N Features |
+|--------|-----|----------|----------|------------|
+| bare_lock | -1.3 | 66.1 | -67.3 | 8374 |
+| rp_lock | -43.5 | 42.2 | -85.7 | 14024 |
+| fiction_lock | -21.9 | 44.4 | -66.3 | 25024 |
+| bare_hack | +35.5 | 82.3 | -46.8 | 9825 |
+| rp_hack | -37.5 | 30.8 | -68.4 | 17552 |
+| fiction_hack | -25.8 | 51.2 | -77.0 | 26141 |
+| bare_phish | +40.8 | 83.3 | -42.5 | 8878 |
+| rp_phish | -50.9 | 43.0 | -93.9 | 21676 |
+| fiction_phish | -21.4 | 53.2 | -74.6 | 21237 |
 
 ### Mechanism Classification
 
