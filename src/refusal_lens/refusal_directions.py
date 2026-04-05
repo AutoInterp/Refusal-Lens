@@ -67,20 +67,31 @@ def get_model_layers(model: Any) -> Any:
         ValueError: if the architecture is not recognized
     """
     _require_torch()
-    # gemma / llama style
+    # gemma-2 / llama style
     if hasattr(model, "model") and hasattr(model.model, "layers"):
         return model.model.layers
-    
+
+    # gemma-3 style (language_model wrapper)
+    if hasattr(model, "language_model") and hasattr(model.language_model, "layers"):
+        return model.language_model.layers
+
+    # gemma-3 nested (model.language_model.model.layers)
+    if (hasattr(model, "language_model")
+            and hasattr(model.language_model, "model")
+            and hasattr(model.language_model.model, "layers")):
+        return model.language_model.model.layers
+
     # gpt-2 style
     if hasattr(model, "transformer") and hasattr(model.transformer, "h"):
         return model.transformer.h
-    
+
     # gpt-neox style
     if hasattr(model, "gpt_neox") and hasattr(model.gpt_neox, "layers"):
         return model.gpt_neox.layers
     msg = (
         "Cannot find transformer blocks. "
-        "Supported: model.model.layers, model.transformer.h, model.gpt_neox.layers"
+        "Supported: model.model.layers, model.language_model.layers, "
+        "model.transformer.h, model.gpt_neox.layers"
     )
     raise ValueError(msg)
 

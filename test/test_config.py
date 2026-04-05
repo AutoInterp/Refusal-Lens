@@ -87,7 +87,7 @@ class TestSAE:
 
 class TestRefusalDirection:
     def test_refusal_layers_range(self):
-        assert config.REFUSAL_LAYERS == list(range(0, 35))
+        assert config.REFUSAL_LAYERS == list(range(0, 34))
 
     def test_refusal_position(self):
         assert config.REFUSAL_POSITION == "last_k"

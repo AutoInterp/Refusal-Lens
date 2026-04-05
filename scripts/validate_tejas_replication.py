@@ -114,7 +114,7 @@ def compute_direction(args: argparse.Namespace) -> dict:
 
     # Compute directions at all layers with position -2
     # Using positions=[-2] to match Tejas's corrected best position
-    layers = list(range(0, 35))
+    layers = list(range(0, 34))  # Gemma-3-4B has 34 layers (0-33)
     positions = [config.BEST_REFUSAL_POSITION]  # [-2]
     print(f"  Computing directions at {len(layers)} layers, positions={positions}")
 
