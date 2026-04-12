@@ -364,6 +364,95 @@ Tejas's 6 scripts and results are in `data/tejas_experiments/` on his branch. To
 
 ---
 
+## Conference Experiment Procedure (April 2026)
+
+Refactoring is paused at Step 9. Focus shifts to experiment results for a conference submission. The existing scripts (`run_meeting_experiments.py`, `validate_tejas_replication.py`) serve as the infrastructure. Once experiments are complete, these scripts inform the refactoring of Steps 9–15 (the pipeline code will formalize patterns proven in the experiment scripts).
+
+### Priority 1: Scale the Dataset
+
+**Goal**: Move from 5–10 prompts per jailbreak class to 30–50 for statistical power.
+
+| Task | Status | Notes |
+|------|--------|-------|
+| P1.1: Curate 50 diverse harmful prompts across topic categories (cybercrime, weapons, fraud, social engineering, etc.) | NOT DONE | Draw from `harmful_train.json` (260 available), ensure topic diversity |
+| P1.2: Write 5+ jailbreak prefix variants per class (RP, fiction, analytical, completion + any new classes) | NOT DONE | Current script has 1 prefix per class in `JB_CLASSES` dict |
+| P1.3: Add jailbreak classes from literature (DAN, few-shot, encoding, multi-turn) if feasible | NOT DONE | Check if single-turn prefixes can capture these; multi-turn may need different infra |
+| P1.4: Run full attribution on 50 prompts × 5 classes = 250 attribution graphs | NOT DONE | ~5 min per graph on A40 → ~21 hours. May need to batch across RunPod sessions |
+| P1.5: Compute per-class statistics with confidence intervals | NOT DONE | Bootstrap CI on mean net attribution per class |
+| P1.6: Paired statistical tests (Wilcoxon signed-rank or paired t-test) per class vs bare | NOT DONE | Need p-values for each class's effect |
+
+**Script**: Extend `run_meeting_experiments.py` Phase 5, or create `scripts/run_scaled_experiments.py`
+**Refactoring link**: Results inform `attribution_pipeline.py` (`batch_attribute`, `aggregate_features`) and `feature_discovery.py` design
+
+### Priority 2: Causal Intervention (Experiment B from report)
+
+**Goal**: Confirm that top features are *causally necessary* for refusal, not just correlated.
+
+| Task | Status | Notes |
+|------|--------|-------|
+| P2.1: Implement feature activation clamping via forward hooks on the ReplacementModel or IT model | NOT DONE | Hook `model.language_model.layers[L]` to clamp specific transcoder feature activations |
+| P2.2: For top 5 pro-refusal features (L29:F1066, L28:F305, L29:F6752, L31:F498, L25:F963), clamp activation to 0 on bare harmful prompt → measure if refusal decreases | NOT DONE | Single-feature ablation |
+| P2.3: For top 5 features, clamp activation to bare-harmful value during jailbreak prompt → measure if refusal is restored | NOT DONE | Activation patching: force jailbreak to use bare activations |
+| P2.4: Multi-feature ablation: clamp top-5 simultaneously → stronger effect? | NOT DONE | Test necessity of the set, not just individuals |
+| P2.5: Measure effect via both (a) refusal direction projection change and (b) generation-based refusal detection | NOT DONE | Need both metrics — projection is internal, generation is behavioral |
+| P2.6: Report effect sizes and compare to baseline (no intervention) | NOT DONE | |
+
+**Script**: Create `scripts/run_causal_intervention.py`
+**Refactoring link**: Results inform `intervention.py` (Step 14) and `validation_experiments.py` (Step 15) design. Tejas's `steer_and_generate()` hook pattern is the starting point.
+
+### Priority 3: Feature Interpretation (Experiment E from report)
+
+**Goal**: Label top features with human-readable descriptions so the paper tells a mechanistic story.
+
+| Task | Status | Notes |
+|------|--------|-------|
+| P3.1: Generate Neuronpedia URLs for top-20 features from Phase 3 results | NOT DONE | Use `get_transcoder_for_feature()` from `supernode_analyzer.py` to build dashboard links |
+| P3.2: Look up max-activating examples on Neuronpedia for each feature | NOT DONE | May need to check if Gemma-3-4b-it features are indexed on Neuronpedia |
+| P3.3: If not on Neuronpedia, compute max-activating examples from our dataset | NOT DONE | Run all 260 harmful prompts, record which features fire most strongly |
+| P3.4: Write human-readable labels for top-20 features (e.g., "harmful content detector", "role-play frame detector") | NOT DONE | Manual labeling based on max-activating examples |
+| P3.5: Create a feature reference table for the paper | NOT DONE | Feature ID, layer, mean attribution, label, example activating prompt |
+
+**Script**: Create `scripts/lookup_features.py`
+**Refactoring link**: Results inform `feature_discovery.py` (Step 10) design
+
+### Secondary Priorities (after P1–P3)
+
+#### S1: Statistical Rigor Addition
+- Add p-values (paired Wilcoxon) to existing Phase 5 results
+- Bootstrap 95% CI on all class means
+- Compute Cohen's d effect sizes per jailbreak class vs bare
+- Add to existing experiment report or generate supplementary stats table
+
+#### S2: Completion Paradox Deep-Dive
+- Compare full feature activation profiles of completion-framed vs bare prompts
+- Identify features uniquely recruited by "Complete this manual entry:" framing
+- Investigate if the model has a "jailbreak detection" circuit that completion triggers
+- Could be a standalone finding for the paper
+
+#### S3: Attention Head Attribution
+- Extract attention head edges from existing graphs (already in adjacency matrix, just not analyzed)
+- Quantify attention vs MLP contribution to refusal per layer
+- Determine if jailbreaks primarily affect attention or MLP pathways
+- Addresses the "0.4% MLP" caveat
+
+#### S4: Cross-Model Generalization
+- Run pipeline on Gemma-3-12B-IT or another model with CLT transcoders
+- Compare feature-level findings across model sizes
+- Deferred until after first paper draft
+
+### Experiment Results Tracking
+
+| Run | Date | Script | Config | Output Dir | Key Result |
+|-----|------|--------|--------|-----------|-----------|
+| Demo (gemma-2-2b-it) | 2026-03-26 | `demo_attribution.py` | 16 pairs, layers 7-15 | `data/results/demo/runs/20260326_110155` | Pipeline works e2e |
+| Demo comprehensive | 2026-03-26 | `demo_attribution.py` | 64 dir, 8 pairs, layers 7-15 | `data/results/demo/runs/20260326_111432` | 15 suppression candidates |
+| Tejas validation | 2026-04-03 | `validate_tejas_replication.py` | 10 pairs, layer 32 | `data/results/meeting_experiments` | Matches Tejas exactly |
+| Meeting experiments | 2026-04-05 | `run_meeting_experiments.py` | 10 pairs, 5 classes, layer 32 | `data/results/meeting_experiments` | Fiction -59.8%, Completion +11.4% |
+| Scaled run | TBD | `run_scaled_experiments.py` | 50 prompts × 5 classes | TBD | Pending P1 |
+| Causal intervention | TBD | `run_causal_intervention.py` | Top-5 features | TBD | Pending P2 |
+
+---
+
 ## Overlap Reconciliation
 
 | Concern | Notebook | Mentor's PDF | Resolution |
