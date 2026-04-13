@@ -1,0 +1,252 @@
+{
+  "roleplay": {
+    "n_shared": {
+      "mean": 1402.3,
+      "std": 333.6,
+      "min": 943,
+      "max": 1725
+    },
+    "n_bare_only": {
+      "mean": 1063.3,
+      "std": 358.5,
+      "min": 723,
+      "max": 1559
+    },
+    "n_cls_only": {
+      "mean": 1087.7,
+      "std": 325.2,
+      "min": 755,
+      "max": 1529
+    },
+    "n_sign_flipped": {
+      "mean": 110.3,
+      "std": 12.5,
+      "min": 97,
+      "max": 127
+    },
+    "n_dampened": {
+      "mean": 118.0,
+      "std": 32.3,
+      "min": 78,
+      "max": 157
+    },
+    "n_amplified_anti": {
+      "mean": 111.7,
+      "std": 13.1,
+      "min": 100,
+      "max": 130
+    },
+    "n_bare": {
+      "mean": 2465.7,
+      "std": 25.7,
+      "min": 2447,
+      "max": 2502
+    },
+    "n_cls": {
+      "mean": 2490.0,
+      "std": 20.1,
+      "min": 2472,
+      "max": 2518
+    }
+  },
+  "fiction": {
+    "n_shared": {
+      "mean": 966.3,
+      "std": 61.5,
+      "min": 882,
+      "max": 1027
+    },
+    "n_bare_only": {
+      "mean": 1499.3,
+      "std": 86.6,
+      "min": 1421,
+      "max": 1620
+    },
+    "n_cls_only": {
+      "mean": 1566.3,
+      "std": 63.4,
+      "min": 1491,
+      "max": 1646
+    },
+    "n_sign_flipped": {
+      "mean": 141.3,
+      "std": 5.6,
+      "min": 136,
+      "max": 149
+    },
+    "n_dampened": {
+      "mean": 93.0,
+      "std": 22.7,
+      "min": 61,
+      "max": 111
+    },
+    "n_amplified_anti": {
+      "mean": 90.3,
+      "std": 12.5,
+      "min": 77,
+      "max": 107
+    },
+    "n_bare": {
+      "mean": 2465.7,
+      "std": 25.7,
+      "min": 2447,
+      "max": 2502
+    },
+    "n_cls": {
+      "mean": 2532.7,
+      "std": 14.3,
+      "min": 2518,
+      "max": 2552
+    }
+  },
+  "analytical": {
+    "n_shared": {
+      "mean": 1127.7,
+      "std": 121.6,
+      "min": 989,
+      "max": 1285
+    },
+    "n_bare_only": {
+      "mean": 1338.0,
+      "std": 126.6,
+      "min": 1163,
+      "max": 1458
+    },
+    "n_cls_only": {
+      "mean": 1466.7,
+      "std": 148.3,
+      "min": 1267,
+      "max": 1622
+    },
+    "n_sign_flipped": {
+      "mean": 142.0,
+      "std": 15.0,
+      "min": 121,
+      "max": 155
+    },
+    "n_dampened": {
+      "mean": 104.7,
+      "std": 9.6,
+      "min": 96,
+      "max": 118
+    },
+    "n_amplified_anti": {
+      "mean": 136.7,
+      "std": 7.4,
+      "min": 128,
+      "max": 146
+    },
+    "n_bare": {
+      "mean": 2465.7,
+      "std": 25.7,
+      "min": 2447,
+      "max": 2502
+    },
+    "n_cls": {
+      "mean": 2594.3,
+      "std": 30.2,
+      "min": 2552,
+      "max": 2620
+    }
+  },
+  "completion": {
+    "n_shared": {
+      "mean": 1420.0,
+      "std": 158.1,
+      "min": 1206,
+      "max": 1583
+    },
+    "n_bare_only": {
+      "mean": 1045.7,
+      "std": 154.7,
+      "min": 864,
+      "max": 1242
+    },
+    "n_cls_only": {
+      "mean": 1105.0,
+      "std": 173.6,
+      "min": 906,
+      "max": 1329
+    },
+    "n_sign_flipped": {
+      "mean": 112.7,
+      "std": 12.5,
+      "min": 101,
+      "max": 130
+    },
+    "n_dampened": {
+      "mean": 123.3,
+      "std": 17.2,
+      "min": 99,
+      "max": 137
+    },
+    "n_amplified_anti": {
+      "mean": 139.0,
+      "std": 2.2,
+      "min": 136,
+      "max": 141
+    },
+    "n_bare": {
+      "mean": 2465.7,
+      "std": 25.7,
+      "min": 2447,
+      "max": 2502
+    },
+    "n_cls": {
+      "mean": 2525.0,
+      "std": 26.3,
+      "min": 2489,
+      "max": 2551
+    }
+  },
+  "cognitive_reframe": {
+    "n_shared": {
+      "mean": 1315.0,
+      "std": 176.8,
+      "min": 1076,
+      "max": 1498
+    },
+    "n_bare_only": {
+      "mean": 1150.7,
+      "std": 201.6,
+      "min": 949,
+      "max": 1426
+    },
+    "n_cls_only": {
+      "mean": 1233.7,
+      "std": 217.2,
+      "min": 1008,
+      "max": 1527
+    },
+    "n_sign_flipped": {
+      "mean": 127.0,
+      "std": 7.0,
+      "min": 119,
+      "max": 136
+    },
+    "n_dampened": {
+      "mean": 162.3,
+      "std": 50.1,
+      "min": 116,
+      "max": 232
+    },
+    "n_amplified_anti": {
+      "mean": 95.7,
+      "std": 29.5,
+      "min": 55,
+      "max": 124
+    },
+    "n_bare": {
+      "mean": 2465.7,
+      "std": 25.7,
+      "min": 2447,
+      "max": 2502
+    },
+    "n_cls": {
+      "mean": 2548.7,
+      "std": 40.5,
+      "min": 2506,
+      "max": 2603
+    }
+  }
+}

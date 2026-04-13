@@ -39,8 +39,9 @@ from pathlib import Path
 import numpy as np
 import torch
 
-os.environ.setdefault("HF_HOME", "/workspace/.cache/huggingface")
-os.environ.setdefault("TMPDIR", "/workspace/tmp")
+if Path("/workspace").exists():
+    os.environ.setdefault("HF_HOME", "/workspace/.cache/huggingface")
+    os.environ.setdefault("TMPDIR", "/workspace/tmp")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATASET_DIR = REPO_ROOT / "dataset" / "refusal_direction_dataset" / "splits"
@@ -205,13 +206,15 @@ def feature_key(layer: int, feat_idx: int) -> str:
 def extract_all_features(graph) -> dict[str, dict]:
     """Extract ALL features and their attributions from a graph."""
     active = graph.active_features
-    n_features = active.shape[0]
+    selected = graph.selected_features
+    n_selected = len(selected)
     adj = graph.adjacency_matrix
-    target_row = adj[-1, :n_features]
+    target_row = adj[-1, :n_selected]
 
     features = {}
-    for i in range(n_features):
-        feat = active[i]
+    for i in range(n_selected):
+        orig_idx = int(selected[i])
+        feat = active[orig_idx]
         layer = int(feat[0])
         pos = int(feat[1])
         feat_idx = int(feat[2])
@@ -221,8 +224,8 @@ def extract_all_features(graph) -> dict[str, dict]:
             "position": pos,
             "feature_idx": feat_idx,
             "attribution": float(target_row[i]),
-            "activation": float(graph.activation_values[i])
-            if i < len(graph.activation_values)
+            "activation": float(graph.activation_values[orig_idx])
+            if orig_idx < len(graph.activation_values)
             else 0.0,
         }
     return features
@@ -394,8 +397,8 @@ def phase_attribution(direction_data: dict, args) -> dict:
                     prompt=formatted,
                     model=model,
                     attribution_targets=[target],
-                    batch_size=64,
-                    max_feature_nodes=None,
+                    batch_size=args.batch_size,
+                    max_feature_nodes=args.max_features,
                     verbose=False,
                 )
                 summary = graph_summary(g)
@@ -413,10 +416,13 @@ def phase_attribution(direction_data: dict, args) -> dict:
                     k: v["attribution"] for k, v in sorted_feats
                 }
 
-                # Store full feature set summary (too large to save all per-graph)
-                summary["all_feature_keys"] = list(features.keys())
+                # # Store full feature set summary (too large to save all per-graph)
+                # summary["all_feature_keys"] = list(features.keys())
 
                 row["conditions"][cls] = summary
+                # Keep full feature dict in memory for cross-class comparison
+                row.setdefault("_features", {})[cls] = features
+
                 print(
                     f"    {cls:>15}: net={summary['net']:+.3f}  pos={summary['pos_sum']:.1f}  neg={summary['neg_sum']:.1f}  n={summary['n_features']}"
                 )
@@ -427,6 +433,70 @@ def phase_attribution(direction_data: dict, args) -> dict:
                 row["conditions"][cls] = {"error": str(e)[:200]}
 
         results.append(row)
+
+        # --- Cross-class feature comparison (all features, per mentor) ---
+        prompt_features = row.pop("_features", {})
+        bare_feats = prompt_features.get("bare", {})
+
+        if bare_feats:
+            prompt_comparison = {}
+            bare_keys = set(bare_feats.keys())
+
+            for cls in list(JB_CLASSES.keys()):
+                cls_feats = prompt_features.get(cls, {})
+                if not cls_feats:
+                    continue
+
+                cls_keys = set(cls_feats.keys())
+                shared = bare_keys & cls_keys
+                bare_only = bare_keys - cls_keys
+                cls_only = cls_keys - bare_keys
+
+                # Classify shared features
+                sign_flipped = []
+                dampened = []
+                amplified_anti = []
+
+                for key in shared:
+                    b_attr = bare_feats[key]["attribution"]
+                    c_attr = cls_feats[key]["attribution"]
+                    delta = c_attr - b_attr
+
+                    if (b_attr > 0 and c_attr < 0) or (b_attr < 0 and c_attr > 0):
+                        sign_flipped.append({
+                            "key": key,
+                            "bare_attr": round(b_attr, 6),
+                            "cls_attr": round(c_attr, 6),
+                        })
+                    elif b_attr > 0 and delta < -0.01:
+                        dampened.append({"key": key, "delta": round(delta, 6)})
+                    elif b_attr < 0 and delta < -0.01:
+                        amplified_anti.append({"key": key, "delta": round(delta, 6)})
+                
+                prompt_comparison[cls] = {
+                    "n_bare": len(bare_keys),
+                    "n_cls": len(cls_keys),
+                    "n_shared": len(shared),
+                    "n_bare_only": len(bare_only),
+                    "n_cls_only": len(cls_only),
+                    "n_sign_flipped": len(sign_flipped),
+                    "n_dampened": len(dampened),
+                    "n_amplified_anti": len(amplified_anti),
+                    "top_sign_flipped": sorted(
+                        sign_flipped,
+                        key=lambda x: abs(x['bare_attr']),
+                        reverse=True,
+                    )[:10],
+                    "top_dampened": sorted(
+                        dampened, key=lambda x: x['delta']
+                    )[:10],
+                    "top_amplified_anti": sorted(
+                        amplified_anti, key=lambda x: x["delta"]
+                    )[:10],
+                }
+            row["feature_comparison"] = prompt_comparison
+            # free memory
+            del prompt_features
 
         # Save checkpoint after each prompt
         save_checkpoint(
@@ -445,6 +515,46 @@ def phase_attribution(direction_data: dict, args) -> dict:
     print(
         f"\n  Saved {len(results)} prompt results to {OUTPUT_DIR / 'attribution_results.json'}"
     )
+
+    # --- Aggregate feature comparison across all prompts ---
+    jb_classes = list(JB_CLASSES.keys())
+    agg_comparison = {}
+
+    for cls in jb_classes:
+        cls_stats = {
+            "n_shared": [], "n_bare_only": [], "n_cls_only": [], "n_sign_flipped": [],
+            "n_dampened": [], "n_amplified_anti": [], "n_bare": [], "n_cls": [],
+        }
+        for row in results:
+            comp = row.get("feature_comparison", {}).get(cls)
+            if comp:
+                for key in cls_stats:
+                    cls_stats[key].append(comp[key])
+        
+        if cls_stats["n_shared"]:
+            agg_comparison[cls] = {
+                k: {
+                    "mean": round(float(np.mean(v)), 1),
+                    "std": round(float(np.std(v)), 1),
+                    "min": int(min(v)),
+                    "max": int(max(v)),
+                } for k, v in cls_stats.items()
+            }
+    with open(OUTPUT_DIR / "feature_comparison_aggregate.json", "w") as f:
+        json.dump(agg_comparison, f, indent=2, default=str)
+    print(f"  Saved feature comparison aggregate to {OUTPUT_DIR / 'feature_comparison_aggregate.json'}")
+
+    # Print summary table
+    print(f"\n  {'Class':>18} | {'Shared':>8} | {'Bare-only':>10} | {'JB-only':>8} | {'Sign-flip':>10} | {'Dampened':>9} | {'Amp-anti':>9}")
+    print(f"  {'-' * 18}-+-{'-' * 8}-+-{'-' * 10}-+-{'-' * 8}-+-{'-' * 10}-+-{'-' * 9}-+-{'-' * 9}")
+    for cls in jb_classes:
+        if cls in agg_comparison:
+            a = agg_comparison[cls]
+            print(
+                f"  {cls:>18} | {a['n_shared']['mean']:8.0f} | {a['n_bare_only']['mean']:10.0f} | "
+                f"{a['n_cls_only']['mean']:8.0f} | {a['n_sign_flipped']['mean']:10.0f} | "
+                f"{a['n_dampened']['mean']:9.0f} | {a['n_amplified_anti']['mean']:9.0f}"
+            )
 
     del model
     gc.collect()
@@ -880,6 +990,8 @@ def main():
     parser.add_argument("--n-prompts", type=int, default=50)
     parser.add_argument("--resume", action="store_true", help="Resume from checkpoint")
     parser.add_argument("--recompute-direction", action="store_true")
+    parser.add_argument("--max-features", type=int, default=None, help="Max feature nodes per graph (None=all, use 3000 for local testing)")
+    parser.add_argument("--batch-size", type=int, default=64, help="Batch size for attribution backward passes")
     args = parser.parse_args()
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
