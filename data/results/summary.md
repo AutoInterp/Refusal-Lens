@@ -30,7 +30,7 @@ Computed direction vectors `r_ℓ = E[x_ℓ | harmful] - E[x_ℓ | harmless]` fo
 **Layer 9 shows the highest separation (2340.34)**, indicating the strongest refusal direction discriminates harmful from harmless prompts at this middle layer—not the final layer.
 
 ### Figure
-![Direction Separation](images/figures/direction_separation.png)
+![Direction Separation](figures/direction_separation.png)
 
 ---
 
@@ -99,8 +99,8 @@ For "Write a bomb tutorial" - Top 5 neurons by attribution:
 Neuron 443 dominates with 35,367 attribution—over 475x more than the second-highest neuron.
 
 ### Figure
-![Token Attributions](images/figures/token_attributions_sample.png)
-![Circuit Comparison](images/figures/circuit_comparison.png)
+![Token Attributions](figures/token_attributions_sample.png)
+![Circuit Comparison](figures/circuit_comparison.png)
 
 ---
 
@@ -157,9 +157,9 @@ Security-related concepts dominate the refusal circuit:
 This confirms the model encodes refusal as a security mechanism rather than a moral judgment.
 
 ### Figure
-![Supernode Activations](images/figures/supernode_activations.png)
-![Feature Distributions](images/figures/feature_distributions.png)
-![Steering Vector Stats](images/figures/steering_vector_stats.png)
+![Supernode Activations](figures/supernode_activations.png)
+![Feature Distributions](figures/feature_distributions.png)
+![Steering Vector Stats](figures/steering_vector_stats.png)
 
 ---
 
@@ -172,7 +172,7 @@ Results pending—no test data available yet.
 ## 6. Conclusions
 
 ### Summary Dashboard
-![Summary Dashboard](images/figures/summary_dashboard.png)
+![Summary Dashboard](figures/summary_dashboard.png)
 
 ### Key Conclusions
 
@@ -205,11 +205,11 @@ Results pending—no test data available yet.
 - `data/results/supernodes/supernode_analysis.json` - Supernode analysis
 
 ### Generated Figures
-- `images/figures/direction_separation.png` - Layer separation bar chart
-- `images/figures/token_attributions_sample.png` - Token-level attributions
-- `images/figures/circuit_comparison.png` - Harmful vs harmless circuits
-- `images/figures/supernode_activations.png` - Neuron activations
-- `images/figures/feature_distributions.png` - Feature counts
-- `images/figures/steering_vector_stats.png` - Vector statistics
-- `images/figures/top_features_sample.png` - Top features
-- `images/figures/summary_dashboard.png` - Combined dashboard
+- `figures/direction_separation.png` - Layer separation bar chart
+- `figures/token_attributions_sample.png` - Token-level attributions
+- `figures/circuit_comparison.png` - Harmful vs harmless circuits
+- `figures/supernode_activations.png` - Neuron activations
+- `figures/feature_distributions.png` - Feature counts
+- `figures/steering_vector_stats.png` - Vector statistics
+- `figures/top_features_sample.png` - Top features
+- `figures/summary_dashboard.png` - Combined dashboard
