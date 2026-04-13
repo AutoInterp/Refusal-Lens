@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260413_005019",
+  "n_prompts": 50,
+  "classes": [
+    "roleplay",
+    "fiction",
+    "analytical",
+    "completion",
+    "cognitive_reframe"
+  ],
+  "prefixes_per_class": {
+    "roleplay": 5,
+    "fiction": 5,
+    "analytical": 5,
+    "completion": 5,
+    "cognitive_reframe": 5
+  },
+  "phase": "all"
+}
