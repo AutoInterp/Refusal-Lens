@@ -6,6 +6,8 @@ different categories: Direct Harm, Contextual/Educational, Roleplay, and
 Hypothetical/Fictional.
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
@@ -41,18 +43,6 @@ class PromptTemplate:
     template: str
     harmful_keywords: list[str] = field(default_factory=list)
     expected_outcome: str = ""
-
-    def format(self, **kwargs: str) -> str:
-        """
-        Format the template with given keyword arguments.
-
-        Args:
-            **kwargs: Arguments to format the template with.
-
-        Returns:
-            Formatted prompt string.
-        """
-        return self.template.format(**kwargs)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""

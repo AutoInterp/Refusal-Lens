@@ -108,21 +108,25 @@ def plot_direction_separation(directions_summary: dict, output_path: str) -> Non
 def plot_token_attributions(circuit_data: dict, prompt: str, output_path: str) -> None:
     """Plot token-level attributions for a single prompt.
 
+    Skips the first token (BOS) which carries inflated attribution
+    due to aggregated context, not meaningful refusal signal.
+
     Args:
         circuit_data: Circuit analysis data for a prompt
         prompt: The prompt text
         output_path: Path to save the figure
     """
-    token_attributions = circuit_data["token_attributions"]
+    all_attributions = circuit_data["token_attributions"]
+
+    # Skip BOS token (position 0) — its score is an artifact
+    token_attributions = all_attributions[1:]
+    bos_score = all_attributions[0]
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), height_ratios=[2, 1])
 
-    # Top plot: Attribution values
-    x = range(len(token_attributions))
-    colors = [
-        "red" if attr > np.mean(token_attributions) else "blue"
-        for attr in token_attributions
-    ]
+    # Top plot: Attribution values (signed — red=positive, blue=negative)
+    x = range(1, len(token_attributions) + 1)
+    colors = ["red" if attr > 0 else "blue" for attr in token_attributions]
 
     ax1.bar(
         x, token_attributions, color=colors, alpha=0.7, edgecolor="black", linewidth=0.5
@@ -137,16 +141,25 @@ def plot_token_attributions(circuit_data: dict, prompt: str, output_path: str) -
         linewidth=1.5,
         label=f"Mean: {np.mean(token_attributions):.2f}",
     )
+    ax1.axhline(y=0, color="black", linewidth=0.5)
     ax1.legend()
     ax1.grid(axis="y", alpha=0.3)
+    ax1.annotate(
+        f"BOS token (excluded): {bos_score:.0f}",
+        xy=(0.02, 0.95),
+        xycoords="axes fraction",
+        fontsize=9,
+        color="gray",
+        verticalalignment="top",
+    )
 
-    # Bottom plot: Cumulative attribution
+    # Bottom plot: Cumulative attribution (excluding BOS)
     cumulative = np.cumsum(token_attributions)
     ax2.fill_between(x, cumulative, alpha=0.3, color="purple")
     ax2.plot(x, cumulative, color="purple", linewidth=2)
     ax2.set_xlabel("Token Position", fontweight="bold")
     ax2.set_ylabel("Cumulative Attribution", fontweight="bold")
-    ax2.set_title("Cumulative Attribution Across Tokens", fontweight="bold", pad=15)
+    ax2.set_title("Cumulative Attribution Across Tokens (excl. BOS)", fontweight="bold", pad=15)
     ax2.grid(axis="y", alpha=0.3)
 
     plt.tight_layout()
@@ -172,12 +185,12 @@ def plot_top_features(
 
     fig, ax = plt.subplots(figsize=(12, 8))
 
-    # Create horizontal bar plot
+    # Create horizontal bar plot — red for positive (pro-refusal), blue for negative
     y_pos = np.arange(len(feature_ids))
-    colors = plt.cm.Reds(np.linspace(0.3, 0.9, len(feature_ids)))
+    colors = ["red" if s > 0 else "blue" for s in feature_scores]
 
     bars = ax.barh(
-        y_pos, feature_scores, color=colors, edgecolor="black", linewidth=0.5
+        y_pos, feature_scores, color=colors, alpha=0.7, edgecolor="black", linewidth=0.5
     )
 
     # Customize

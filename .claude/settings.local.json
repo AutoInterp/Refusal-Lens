@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ruff format:*)"
+      "Bash(ruff format:*)",
+      "Bash(wc -l /Users/algoversemechinterp/Documents/Algovers/Refusal-Lens/src/refusal_lens/circuits/*.py)",
+      "Bash(wc -l /Users/algoversemechinterp/Documents/Algovers/Refusal-Lens/src/refusal_lens/*.py)"
     ]
   }
 }

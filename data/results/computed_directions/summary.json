@@ -1,17 +1,7 @@
 {
-  "8": {
-    "separation": 1377.3935546875,
-    "direction_norm": 0.9999994039535522,
-    "d_model": 2560
-  },
-  "9": {
-    "separation": 2340.34375,
-    "direction_norm": 1.0000007152557373,
-    "d_model": 2560
-  },
-  "10": {
-    "separation": 1732.4521484375,
-    "direction_norm": 1.0,
+  "15": {
+    "separation": 1983.9140625,
+    "direction_norm": 0.9999999403953552,
     "d_model": 2560
   }
 }

@@ -31,13 +31,6 @@ from .circuits import (
 # Configuration
 from .config import Config, config
 
-# Experiment Runner
-from .experiment_runner import (
-    ExperimentConfig,
-    ExperimentResult,
-    ExperimentRunner,
-)
-
 # Jailbreaks (Step 4)
 from .jailbreaks import (
     JailbreakTestResult,
@@ -89,9 +82,6 @@ __all__ = (
     "Config",
     "DetectionResult",
     "DetectionStatus",
-    "ExperimentConfig",
-    "ExperimentResult",
-    "ExperimentRunner",
     "JailbreakTestResult",
     "NeuronPattern",
     "PromptCategory",

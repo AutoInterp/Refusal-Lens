@@ -1,4 +1,180 @@
 {
+  "supernode_1": {
+    "top_neurons": [
+      {
+        "neuron_id": 101,
+        "activation_strength": 0.95,
+        "features": [
+          "harmful",
+          "dangerous"
+        ]
+      },
+      {
+        "neuron_id": 102,
+        "activation_strength": 0.87,
+        "features": [
+          "illegal",
+          "prohibited"
+        ]
+      },
+      {
+        "neuron_id": 103,
+        "activation_strength": 0.82,
+        "features": [
+          "harmful"
+        ]
+      },
+      {
+        "neuron_id": 104,
+        "activation_strength": 0.75,
+        "features": [
+          "dangerous",
+          "unsafe"
+        ]
+      },
+      {
+        "neuron_id": 105,
+        "activation_strength": 0.68,
+        "features": [
+          "prohibited"
+        ]
+      },
+      {
+        "neuron_id": 106,
+        "activation_strength": 0.55,
+        "features": [
+          "harmful",
+          "illegal"
+        ]
+      },
+      {
+        "neuron_id": 107,
+        "activation_strength": 0.42,
+        "features": [
+          "unsafe"
+        ]
+      },
+      {
+        "neuron_id": 108,
+        "activation_strength": 0.31,
+        "features": [
+          "dangerous"
+        ]
+      }
+    ],
+    "steering_vector_stats": {
+      "magnitude": 1.8874586088176875,
+      "mean": 0.5833333333333334,
+      "std": 0.23570226039551584,
+      "min": 0.2,
+      "max": 0.9,
+      "dimension": 9
+    },
+    "feature_distribution": {
+      "harmful": 3,
+      "dangerous": 3,
+      "illegal": 2,
+      "prohibited": 2,
+      "unsafe": 2
+    }
+  },
+  "supernode_2": {
+    "top_neurons": [
+      {
+        "neuron_id": 201,
+        "activation_strength": 0.92,
+        "features": [
+          "helpful",
+          "safe"
+        ]
+      },
+      {
+        "neuron_id": 202,
+        "activation_strength": 0.88,
+        "features": [
+          "positive",
+          "constructive"
+        ]
+      },
+      {
+        "neuron_id": 203,
+        "activation_strength": 0.79,
+        "features": [
+          "helpful"
+        ]
+      },
+      {
+        "neuron_id": 204,
+        "activation_strength": 0.71,
+        "features": [
+          "safe",
+          "secure"
+        ]
+      },
+      {
+        "neuron_id": 205,
+        "activation_strength": 0.63,
+        "features": [
+          "constructive"
+        ]
+      }
+    ],
+    "steering_vector_stats": {
+      "magnitude": 1.6733200530681511,
+      "mean": 0.5999999999999999,
+      "std": 0.2,
+      "min": 0.3,
+      "max": 0.9,
+      "dimension": 7
+    },
+    "feature_distribution": {
+      "helpful": 2,
+      "safe": 2,
+      "constructive": 2,
+      "positive": 1,
+      "secure": 1
+    }
+  },
+  "supernode_3": {
+    "top_neurons": [
+      {
+        "neuron_id": 301,
+        "activation_strength": 0.78,
+        "features": [
+          "refusal",
+          "denial"
+        ]
+      },
+      {
+        "neuron_id": 302,
+        "activation_strength": 0.65,
+        "features": [
+          "refusal"
+        ]
+      },
+      {
+        "neuron_id": 303,
+        "activation_strength": 0.54,
+        "features": [
+          "denial",
+          "rejection"
+        ]
+      },
+      {
+        "neuron_id": 304,
+        "activation_strength": 0.45,
+        "features": [
+          "rejection"
+        ]
+      }
+    ],
+    "steering_vector_stats": null,
+    "feature_distribution": {
+      "refusal": 2,
+      "denial": 2,
+      "rejection": 2
+    }
+  },
   "supernode_4": {
     "top_neurons": [
       {

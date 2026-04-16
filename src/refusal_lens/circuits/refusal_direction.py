@@ -315,14 +315,22 @@ class RefusalDirectionComputer:
         # Normalize to unit vector
         direction = direction / (direction.norm() + 1e-8)
 
-        # Compute separation score
-        # How well does the direction separate the two classes?
-        harmful_proj = (harmful_acts_tensor @ direction).mean().item()
-        harmless_proj = (harmless_acts_tensor @ direction).mean().item()
-        separation = harmful_proj - harmless_proj
+        # Compute separation score on the normalized direction
+        # Projecting onto a unit vector gives comparable scores across layers
+        harmful_proj = harmful_acts_tensor @ direction  # (n_harmful,)
+        harmless_proj = harmless_acts_tensor @ direction  # (n_harmless,)
+        separation = harmful_proj.mean().item() - harmless_proj.mean().item()
+
+        # Compute standard error for statistical significance
+        pooled_var = (harmful_proj.var().item() + harmless_proj.var().item()) / 2
+        n_total = len(harmful_acts) + len(harmless_acts)
+        separation_se = (pooled_var / (n_total / 2)) ** 0.5 if n_total > 0 else 0.0
 
         if show_progress:
-            print(f"  Layer {layer}: separation = {separation:.4f}")
+            print(
+                f"  Layer {layer}: separation = {separation:.4f}"
+                f" (SE = {separation_se:.4f})"
+            )
 
         return RefusalDirectionResult(
             layer=layer,

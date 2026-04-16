@@ -184,18 +184,21 @@ class AttributionGraph:
         token_attributions = scores.cpu().tolist()
 
         # Compute feature-level attributions (per-dimension)
-        # For each dimension, compute contribution to refusal
+        # Each dimension's signed contribution to the refusal dot-product.
         # activations: (seq_len, d_model), refusal_dir: (d_model,)
-        # Result: (d_model,) - how much each dimension contributes
+        # Result: (d_model,) - signed contribution of each dimension
         mean_activations = activations.mean(0)  # (d_model,)
-        feature_attributions = torch.abs(mean_activations * refusal_dir)
+        feature_attributions = mean_activations * refusal_dir  # signed contribution
         feature_scores = feature_attributions.cpu()
 
-        # Get top features
+        # Get top features by absolute contribution (but keep signed scores)
         top_k = 50
-        top_indices = torch.topk(feature_scores, min(top_k, len(feature_scores)))
+        abs_scores = torch.abs(feature_scores)
+        top_indices = torch.topk(abs_scores, min(top_k, len(abs_scores)))
+        # Store signed scores for the top features (ranked by |score|)
+        signed_top_scores = feature_scores[top_indices.indices].tolist()
         top_features = list(
-            zip(top_indices.indices.tolist(), top_indices.values.tolist(), strict=False)
+            zip(top_indices.indices.tolist(), signed_top_scores, strict=False)
         )
 
         return AttributionResult(
