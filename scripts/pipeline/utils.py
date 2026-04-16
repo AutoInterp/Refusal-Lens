@@ -9,7 +9,7 @@ import random
 from datetime import datetime
 from pathlib import Path
 
-from . import config
+import config
 
 
 def create_run_dir(base: Path | None = None) -> Path:
@@ -104,3 +104,28 @@ def select_diverse_prompts(all_prompts: list[dict], n: int = 50, seed: int = 42)
         selected.append(remaining.pop())
 
     return selected[:n]
+
+def load_experiment_dataset(                                                                                                                              
+    n_prompts: int = 50,
+    seed: int = 42,
+    dataset_path: Path | None = None,
+  ) -> list[dict]:                                                                                                                                          
+    """                                                                                                                                                   
+    Load harmful prompts for experiments.                                                                                                                 
+                                                                                                                                                        
+    If dataset_path is provided, loads a curated dataset JSON directly.
+    Otherwise, falls back to random diverse selection from the training split.                                                                            
+    
+    The curated dataset JSON should be a list of dicts with at minimum                                                                                    
+    an "instruction" key per entry.                                                                                                                       
+    """                                                                                                                                                   
+    if dataset_path is not None and dataset_path.exists():                                                                                                
+        with open(dataset_path) as f:                                                                                                                     
+            data = json.load(f)
+        print(f"  Loaded curated dataset: {len(data)} prompts from {dataset_path}")                                                                       
+        return data[:n_prompts]
+                                                                                                                                                        
+    # Fall back to diverse random selection
+    with open(config.DATASET_DIR / "harmful_train.json") as f:                                                                                            
+        all_prompts = json.load(f)                                                                                                                        
+    return select_diverse_prompts(all_prompts, n=n_prompts, seed=seed)

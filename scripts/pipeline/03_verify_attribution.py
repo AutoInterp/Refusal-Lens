@@ -79,13 +79,19 @@ def main():
             sys.exit(1)
         attr_path = sorted(attr_path)[-1]  # Most recent
         print(f"  Using fallback: {attr_path}")
-    attr_data = load_json(attr_path)
+    raw = load_json(attr_path)
+
+    # handle both old format (raw list) and new format (dict with "results" key)
+    if isinstance(raw, list):
+        results_list = raw # Old format from run_scaled_experiments.py
+    else:
+        results_list = raw["results"] # New pipeline format
 
     # Extract bare prompts and their saved net attributions
     prompts_and_nets = []
-    for entry in attr_data["results"]:
+    for entry in results_list:
         prompt = entry["prompt"]
-        bare_net = entry["bare"]["net"]
+        bare_net = entry["conditions"]["bare"]["net"]
         prompts_and_nets.append({"prompt": prompt, "attr_net": bare_net})
     print(f"  Found {len(prompts_and_nets)} prompts with attribution data")
 
@@ -99,7 +105,7 @@ def main():
     tokenizer.padding_side = "left"
 
     model = AutoModelForCausalLM.from_pretrained(
-        config.MODEL_NAME, torch_dtype=torch.float32, device_map="auto"
+        config.MODEL_NAME, dtype=torch.float32, device_map="auto"
     )
     model.eval()
     r_hat_dev = r_hat.to(model.device)

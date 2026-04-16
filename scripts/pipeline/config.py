@@ -11,7 +11,7 @@ from pathlib import Path
 # ============================================================
 MODEL_NAME = "google/gemma-3-4b-it"
 N_LAYERS = 34
-D_MODEL = 2304
+D_MODEL = 2560
 MEASUREMENT_LAYER = 32    # Best separation for attribution
 MEASUREMENT_POSITION = -2 # "model" token in Gemma-3 chat template
 CAUSAL_LAYER = 15         # Best causal effectiveness (Tejas Script 16)
@@ -27,6 +27,16 @@ TRANSCODER_PATH = "mwhanna/gemma-scope-2-4b-it/transcoder_all/width_16k_l0_small
 N_DIRECTION_SAMPLES = 64  # Harmful + harmless prompts for diff-in-means
 DIRECTION_POSITION = -2
 DIRECTION_DTYPE = "float64"  # Accumulation precision
+
+# ============================================================
+# Direction computation — per-layer (Tejas's fix)                                                                                                         
+# ============================================================
+# Directions must be computed at EVERY layer, not just L32.                                                                                               
+# The direction rotates across layers (L15-L32 cosine sim = 0.938).
+# Causal intervention at layer L must use r computed at layer L.                                                                                          
+DIRECTION_LAYERS = list(range(N_LAYERS))  # All 34 layers                                                                                                 
+BEST_SEPARATION_LAYER = 32   # Highest separation (for attribution target)                                                                                
+BEST_CAUSAL_LAYER = 15       # Highest causal effectiveness (for intervention)
 
 # ============================================================
 # Attribution
