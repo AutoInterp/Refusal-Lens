@@ -163,30 +163,67 @@ def extract_label(data: dict, n_examples: int = 3, n_logits: int = 10) -> dict:
     return label                                                                                                                                          
                                         
                                                                                                                                                         
+def _parse_feature_key(key: str) -> tuple[int, int]:
+    """Parse 'L29:F1066' into (29, 1066)."""
+    parts = key.split(":")
+    return int(parts[0][1:]), int(parts[1][1:])
+
+
+def _ensure_feature(features: dict, key: str, attr_val: float = 0.0) -> None:
+    """Add a feature to the dict if not already present."""
+    if key not in features:
+        layer, feat_idx = _parse_feature_key(key)
+        features[key] = {
+            "layer": layer,
+            "feature_idx": feat_idx,
+            "max_abs_attribution": abs(attr_val),
+            "conditions_seen": set(),
+        }
+
+
 def collect_all_features(results: list[dict]) -> dict[str, dict]:
-    """Collect ALL unique features from top50 across all prompts/conditions."""                                                                           
-    features = {}                                                                                                                                         
+    """
+    Collect ALL unique features from both top50 attribution data AND
+    feature comparison data (sign-flipped, dampened, amplified-anti).
+
+    This ensures features that appear in comparisons but aren't in the
+    top-50 by attribution magnitude still get labeled.
+    """
+    features = {}
+
     for row in results:
-        conds = row.get("conditions", row)                                                                                                                
+        # Source 1: top50_features per condition
+        conds = row.get("conditions", row)
         for cls_name, cond in conds.items():
-            if isinstance(cond, dict) and "error" not in cond:                                                                                            
+            if isinstance(cond, dict) and "error" not in cond:
                 top50 = cond.get("top50_features", {})
-                for key, attr_val in top50.items():                                                                                                       
-                    if key not in features:
-                        parts = key.split(":")                                                                                                            
-                        layer = int(parts[0][1:])
-                        feat_idx = int(parts[1][1:])                                                                                                      
-                        features[key] = {
-                            "layer": layer,                                                                                                               
-                            "feature_idx": feat_idx,
-                            "max_abs_attribution": abs(attr_val),                                                                                         
-                            "conditions_seen": set(),                                                                                                     
-                        }
-                    features[key]["max_abs_attribution"] = max(                                                                                           
-                        features[key]["max_abs_attribution"], abs(attr_val)                                                                               
+                for key, attr_val in top50.items():
+                    _ensure_feature(features, key, attr_val)
+                    features[key]["max_abs_attribution"] = max(
+                        features[key]["max_abs_attribution"], abs(attr_val)
                     )
-                    features[key]["conditions_seen"].add(cls_name)                                                                                        
-                                        
+                    features[key]["conditions_seen"].add(cls_name)
+
+        # Source 2: feature comparison data (sign-flipped, dampened, amplified-anti)
+        comp = row.get("feature_comparison", {})
+        for cls_name, cls_comp in comp.items():
+            for feat in cls_comp.get("top_sign_flipped", []):
+                key = feat["key"]
+                attr_val = max(abs(feat.get("bare_attr", 0)), abs(feat.get("cls_attr", 0)))
+                _ensure_feature(features, key, attr_val)
+                features[key]["max_abs_attribution"] = max(
+                    features[key]["max_abs_attribution"], attr_val
+                )
+                features[key]["conditions_seen"].add(cls_name)
+            for feat in cls_comp.get("top_dampened", []):
+                key = feat["key"]
+                _ensure_feature(features, key)
+                features[key]["conditions_seen"].add(cls_name)
+            for feat in cls_comp.get("top_amplified_anti", []):
+                key = feat["key"]
+                _ensure_feature(features, key)
+                features[key]["conditions_seen"].add(cls_name)
+
     for key in features:
         features[key]["conditions_seen"] = sorted(features[key]["conditions_seen"])
     return features                                                                                                                                       
