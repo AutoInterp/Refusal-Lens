@@ -145,7 +145,7 @@ Labels come from `mwhanna/gemma-scope-2-4b-it` (byte-range HTTP against the dash
 
 ## Mechanistic story so far
 
-A running narrative of what the pipeline has taught us about Gemma-3-4b-it's refusal circuit. This section grows as new stages and analyses land — last revised 2026-04-17 after A3 + A4 + A5 + A6 visualizations.
+A running narrative of what the pipeline has taught us about Gemma-3-4b-it's refusal circuit. This section grows as new stages and analyses land — last revised 2026-04-17 after A3 + A4 + A5 + A6 + A8 visualizations.
 
 Plot paths below are relative to repo root; each was produced by the most recent pipeline run (`data/results/pipeline_runs/run_20260417_010035/`).
 
@@ -310,6 +310,36 @@ Two independent views converge on this:
 
 Both views suggest there's a specific set of features being *recruited* by the completion framing. Identifying which ones is `A2` — next in the analysis plan.
 
+### 7. JB-affected features concentrate in the late regime (L24–L32)
+
+Counting where each comparison bucket's features live by layer reveals a strikingly consistent spatial signature across all three mechanisms:
+
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/04_labels/features_by_layer.png" alt="Three-row histogram of feature counts by layer for sign-flipped, dampened, and amplified-anti buckets, with the L24–L32 band shaded" width="900">
+<figcaption><em><strong>Figure 9.</strong> Feature counts by layer for the three comparison buckets. Shaded band (<code>L24–L32</code>) is the predicted peak window. All three bucket totals match <code>label_coverage.json</code> exactly (<code>603 / 115 / 117</code>).</em></figcaption>
+</figure>
+
+<table>
+<thead>
+<tr><th>Bucket</th><th align="right">Total</th><th align="right">% in L24–L32</th><th align="right">% in L0–L14</th><th>Peak layer</th><th>Top 3 layers</th></tr>
+</thead>
+<tbody>
+<tr><td>Sign-flipped</td><td align="right"><code>603</code></td><td align="right"><code><strong>83.1%</strong></code></td><td align="right"><code>3.3%</code></td><td><code>L30 (89)</code></td><td><code>L30, L31, L32</code></td></tr>
+<tr><td>Dampened</td><td align="right"><code>115</code></td><td align="right"><code><strong>80.0%</strong></code></td><td align="right"><code>0.0%</code></td><td><code>L30 (16)</code></td><td><code>L30, L31, L29</code></td></tr>
+<tr><td>Amplified-anti</td><td align="right"><code>117</code></td><td align="right"><code><strong>70.9%</strong></code></td><td align="right"><code>1.7%</code></td><td><code>L27 (15)</code></td><td><code>L27, L29, L25</code></td></tr>
+</tbody>
+</table>
+
+Key observations:
+
+- **~`80%` of all JB-affected features live in the `L24–L32` peak band.** Not just "late layers" — a specific 9-layer window ending at the measurement layer. This **exactly matches** the "late wave" signal-assembly band from #2 (`L23–L32`), and the Regime C cluster from the cosine heatmap in #1.
+- **Dampening is a pure late-layer phenomenon.** Zero dampened features below `L15`. Pro-refusal features only *exist* in the late readout regime, so there's nothing to weaken earlier.
+- **Amplified-anti peaks earlier** (`L27`) than sign-flipped and dampened (both `L30`). Anti-refusal recruitment happens slightly further from the measurement layer — a candidate for subcircuit decomposition in Stage 07.
+- **Sign-flipping follows the regime pivot.** Only `3.3%` of sign-flipped features live in `L0–L14`; the ramp starts at `L15` (coincident with Pivot 1 from #1's cosine matrix) and accelerates through `L24–L32`. Flipping a feature's sign only becomes meaningful once the direction has rotated into Regime C.
+- **Amplified-anti leaks into `L33`** (`9.4%`) vs `0%` sign-flipped and `3.5%` dampened. This is an open thread: some anti-refusal activations survive the RMSNorm magnitude collapse, unlike the other two mechanisms. Suggests anti-refusal recruitment happens partly in attention/embeddings at the last layer.
+
+The takeaway: **every JB mechanism we've catalogued exploits the same `L24–L32` band where refusal is actively assembled**. If we want to intervene on the circuit rather than steer the direction, targeted interventions in this window should be substantially more effective than broad-layer interventions.
+
 ---
 
 ## Gaps & open questions
@@ -323,7 +353,6 @@ Items flagged for future pipeline stages or deeper analysis.
 <tbody>
 <tr><td>Does the model actually refuse bare prompts / comply under JB?</td><td>Not measured</td><td><code>A1</code> · Stage 02c — coherence + refusal classification</td></tr>
 <tr><td>Which specific features are recruited by completion?</td><td>Not identified</td><td><code>A2</code> · Stage 02b extension — top <code>Δattribution</code> under completion</td></tr>
-<tr><td>Where do sign-flipped / dampened / amplified-anti features live by layer?</td><td>Not binned</td><td><code>A8</code> · layer histogram per bucket</td></tr>
 <tr><td>Class overlap — which features appear in all 5 classes vs one?</td><td>Table only</td><td><code>A7</code> · UpSet plot</td></tr>
 <tr><td>What does <code>L20</code> do? Why is it the only negative-contribution layer?</td><td>Open</td><td>Dedicated follow-up (not in current plan)</td></tr>
 <tr><td>What features live in Regime A (<code>L5–L13</code>) vs Regime C (<code>L18–L33</code>)? They're weakly anti-correlated</td><td>Open</td><td>Stage 07 subcircuit identification</td></tr>
@@ -451,6 +480,8 @@ data/results/pipeline_runs/run_YYYYMMDD_HHMMSS/
     ├── feature_labels_cache.json      # raw HF payload cache (survives re-runs)
     ├── feature_comparison_labeled.json
     ├── label_coverage.json
+    ├── layer_histogram.json           # A8 per-bucket layer counts
+    ├── features_by_layer.png          # A8 histogram plot
     └── top_features_report.md
 ```
 
