@@ -610,6 +610,101 @@ def test_stage_03():
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
+def find_latest_pipeline_run() -> Path | None:
+    """Return newest run_dir under pipeline_runs/ that has Stage 01+02 outputs."""
+    base = config.REPO_ROOT / "data" / "results" / "pipeline_runs"
+    if not base.exists():
+        return None
+    candidates = sorted(base.glob("run_*"))
+    for r in reversed(candidates):
+        if (r / "01_direction" / "direction_metadata.json").exists() and \
+           (r / "02_attribution" / "attribution_results.json").exists():
+            return r
+    return None
+
+
+def test_stage_02b():
+    print("\n" + "=" * 60)
+    print("STAGE 02b TESTS (statistical_analysis + plots)")
+    print("=" * 60)
+
+    run_dir = find_latest_pipeline_run()
+    if run_dir is None:
+        log_skip("T-A3: Stage 02b", "no pipeline run with Stage 01+02 outputs found")
+        return
+    print(f"  Using run: {run_dir}")
+
+    try:
+        from scipy import stats as _  # noqa: F401
+    except ImportError:
+        log_skip("T-A3: Stage 02b", "scipy not installed locally")
+        return
+
+    # Regression guard: snapshot existing outputs before re-running
+    stats_json = run_dir / "02b_stats" / "statistical_analysis.json"
+    pre_stats = json.loads(stats_json.read_text()) if stats_json.exists() else None
+
+    # Re-run Stage 02b against the existing run_dir
+    import importlib
+    stage02b = importlib.import_module("02b_statistical_analysis")
+
+    class MockArgs:
+        run_dir = None
+        n_bootstrap = 10000
+
+    mock_args = MockArgs()
+    mock_args.run_dir = run_dir
+    original_parse = stage02b.parse_args
+    stage02b.parse_args = lambda: mock_args
+    try:
+        stage02b.main()
+    finally:
+        stage02b.parse_args = original_parse
+
+    # T-A3a: new plot exists
+    plot = run_dir / "02b_stats" / "separation_by_layer.png"
+    log_test(
+        "T-A3a: separation_by_layer.png exists",
+        plot.exists(),
+        str(plot.relative_to(run_dir)) if plot.exists() else "missing",
+    )
+    if plot.exists():
+        size = plot.stat().st_size
+        log_test(
+            "T-A3b: separation_by_layer.png non-trivial (>5KB)",
+            size > 5_000,
+            f"size={size} bytes",
+        )
+
+    # T-A3c: existing stats numerically unchanged (regression guard)
+    # Tolerance-based rather than byte-identity because scipy/BLAS versions
+    # can shift p-values in their last few sig figs across machines.
+    if pre_stats is not None and stats_json.exists():
+        post_stats = json.loads(stats_json.read_text())
+        mismatches = []
+        for cls in pre_stats:
+            if cls not in post_stats:
+                mismatches.append(f"class '{cls}' missing post-run")
+                continue
+            for key, pre_val in pre_stats[cls].items():
+                post_val = post_stats[cls].get(key)
+                if post_val is None:
+                    mismatches.append(f"{cls}.{key} missing")
+                    continue
+                if isinstance(pre_val, float) and isinstance(post_val, float):
+                    if pre_val == 0 and abs(post_val) > 1e-10:
+                        mismatches.append(f"{cls}.{key}: {pre_val} -> {post_val}")
+                    elif pre_val != 0:
+                        rel = abs(post_val - pre_val) / abs(pre_val)
+                        if rel > 1e-6:
+                            mismatches.append(f"{cls}.{key}: {pre_val} -> {post_val} (rel={rel:.2e})")
+                elif pre_val != post_val:
+                    mismatches.append(f"{cls}.{key}: {pre_val!r} -> {post_val!r}")
+        log_test(
+            "T-A3c: statistical_analysis.json numerically stable (rel_tol 1e-6)",
+            len(mismatches) == 0,
+            "; ".join(mismatches[:3]) if mismatches else f"{sum(len(v) for v in pre_stats.values())} values match",
+        )
 
 # ============================================================
 # Main
@@ -618,7 +713,7 @@ def test_stage_03():
 def main():
     parser = argparse.ArgumentParser(description="Local pipeline validation tests")
     parser.add_argument(
-        "--stage", choices=["01", "03", "utils", "all"], default="all",
+        "--stage", choices=["01", "02b", "03", "utils", "all"], default="all",
         help="Which stage to test (default: all)",
     )
     parser.add_argument(
@@ -640,6 +735,7 @@ def main():
         test_utils()
     elif args.stage == "all":
         test_utils()
+        test_stage_02b()
         if check_gpu():
             test_stage_01()
             test_stage_03()
@@ -651,6 +747,8 @@ def main():
             test_stage_01()
         else:
             log_skip("Stage 01 tests", "no GPU available")
+    elif args.stage == "02b":
+        test_stage_02b()
     elif args.stage == "03":
         if check_gpu():
             test_stage_03()

@@ -66,7 +66,11 @@ def main():
 
     # Load feature comparison aggregate if available                                                                                                      
     feat_agg_path = attr_path.parent / "feature_comparison_aggregate.json"
-    feat_agg = load_json(feat_agg_path) if feat_agg_path.exists() else {}                                                                                 
+    feat_agg = load_json(feat_agg_path) if feat_agg_path.exists() else {}
+
+    # load direction metadata (for separation-vs-layer plot)
+    direction_meta_path = run_dir / "01_direction" / "direction_metadata.json"
+    direction_meta = load_json(direction_meta_path) if direction_meta_path.exists() else None                                                                                 
                                                                                                                                                         
     classes = list(config.JB_CLASSES.keys())                                                                                                              
                                                                                                                                                         
@@ -331,6 +335,40 @@ def main():
         plt.savefig(out_dir / "feature_comparison_summary.png", dpi=150)                                                                                  
         plt.close()                                                                                                                                       
         print("    Saved feature_comparison_summary.png")
+
+    if direction_meta and "layers" in direction_meta:
+        fig, ax = plt.subplots(figsize=(12, 6))
+        layers_dict = direction_meta["layers"]
+        layer_ids = sorted(int(k) for k in layers_dict.keys())
+        separations = [layers_dict[str(lid)]["separation"] for lid in layer_ids]
+
+        ax.plot(layer_ids, separations, marker="o", linewidth=2, color="#2c3e50", label="Separation")
+
+        best_sep = direction_meta.get("best_separation_layer")
+        best_causal = direction_meta.get("best_causal_layer")
+        if best_sep is not None:
+            ax.axvline(best_sep, color="#d9534f", linestyle="--", alpha=0.7, label=f"Best separation (L{best_sep})")
+        if best_causal is not None:
+            ax.axvline(best_causal, color="#5cb85c", linestyle="--", alpha=0.7, label=f"Best causal (L{best_causal})")
+        
+        if 33 in layer_ids and layers_dict.get("33", {}).get("separation", 0) < 1000:
+            ax.annotate(
+                "L33: pre-RMSNorm artifact",
+                xy=(33, layers_dict["33"]["separation"]),
+                xytext=(27, max(separations) * 0.35),
+                arrowprops=dict(arrowstyle="->", color="gray"),
+                fontsize=9, color="gray",
+            )
+        
+        ax.set_xlabel("Layer index")
+        ax.set_ylabel("Separation  (|μ(harmful) − μ(harmless)|)")
+        ax.set_title("Refusal Direction Separation by Layer")
+        ax.legend(loc="upper left")
+        ax.grid(alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(out_dir / "separation_by_layer.png", dpi=150)
+        plt.close()
+        print("    Saved separation_by_layer.png")
                                                                                                                                                         
     # ============================================================
     # Summary report
