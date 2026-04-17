@@ -1,8 +1,0 @@
-{
-  "n_prompts": 50,
-  "n_samples": 64,
-  "skip_stages": [],
-  "resume": false,
-  "started": "2026-04-17T13:45:13.056785",
-  "gpu": "unknown"
-}
