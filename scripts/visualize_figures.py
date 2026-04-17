@@ -107,8 +107,11 @@ def plot_direction_separation(
             fontweight="bold",
         )
 
-    ax.set_xlabel("Layer", fontweight="bold")
-    ax.set_ylabel("Separation Score", fontweight="bold")
+    ax.set_xlabel("Transformer Layer Index", fontweight="bold")
+    ax.set_ylabel(
+        "Separation Score\n(mean harmful projection - mean harmless projection)",
+        fontweight="bold",
+    )
     ax.set_title(
         "Refusal Direction Separation Across Layers", fontweight="bold", pad=20
     )
@@ -126,6 +129,18 @@ def plot_direction_separation(
         label=f"Average: {avg_sep:.1f}",
     )
     ax.legend(loc="upper right")
+
+    # Add subtitle explaining the metric
+    ax.text(
+        0.5,
+        -0.12,
+        "Higher score = better discrimination between harmful and harmless prompts at that layer",
+        ha="center",
+        transform=ax.transAxes,
+        fontsize=9,
+        color="gray",
+        style="italic",
+    )
 
     plt.tight_layout()
     plt.savefig(output_path, bbox_inches="tight", dpi=300)
@@ -154,26 +169,40 @@ def plot_token_attributions(circuit_data: dict, prompt: str, output_path: str) -
 
     # Top plot: Attribution values (signed — red=positive, blue=negative)
     x = range(1, len(token_attributions) + 1)
-    colors = ["red" if attr > 0 else "blue" for attr in token_attributions]
+    colors = ["#e63946" if attr > 0 else "#4361ee" for attr in token_attributions]
 
     ax1.bar(
         x, token_attributions, color=colors, alpha=0.7, edgecolor="black", linewidth=0.5
     )
-    ax1.set_xlabel("Token Position", fontweight="bold")
-    ax1.set_ylabel("Attribution Score", fontweight="bold")
+    ax1.set_xlabel("Token Position (0 = BOS excluded)", fontweight="bold")
+    ax1.set_ylabel(
+        "Attribution Score\n(dot product with refusal direction)", fontweight="bold"
+    )
     ax1.set_title(f'Token Attributions: "{prompt[:50]}..."', fontweight="bold", pad=15)
+    mean_val = np.mean(token_attributions)
     ax1.axhline(
-        y=np.mean(token_attributions),
+        y=mean_val,
         color="green",
         linestyle="--",
         linewidth=1.5,
-        label=f"Mean: {np.mean(token_attributions):.2f}",
+        label=f"Mean: {mean_val:.2f}",
     )
     ax1.axhline(y=0, color="black", linewidth=0.5)
-    ax1.legend()
+
+    # Add color legend
+    from matplotlib.patches import Patch
+
+    legend_elements = [
+        Patch(facecolor="#e63946", alpha=0.7, label="Pro-refusal (+)"),
+        Patch(facecolor="#4361ee", alpha=0.7, label="Anti-refusal (-)"),
+        plt.Line2D(
+            [0], [0], color="green", linestyle="--", label=f"Mean: {mean_val:.2f}"
+        ),
+    ]
+    ax1.legend(handles=legend_elements, loc="upper right", fontsize=9)
     ax1.grid(axis="y", alpha=0.3)
     ax1.annotate(
-        f"BOS token (excluded): {bos_score:.0f}",
+        f"BOS token (excluded): {bos_score:.0f} (constant across all prompts)",
         xy=(0.02, 0.95),
         xycoords="axes fraction",
         fontsize=9,
@@ -185,12 +214,22 @@ def plot_token_attributions(circuit_data: dict, prompt: str, output_path: str) -
     cumulative = np.cumsum(token_attributions)
     ax2.fill_between(x, cumulative, alpha=0.3, color="purple")
     ax2.plot(x, cumulative, color="purple", linewidth=2)
-    ax2.set_xlabel("Token Position", fontweight="bold")
-    ax2.set_ylabel("Cumulative Attribution", fontweight="bold")
+    ax2.set_xlabel("Token Position (0 = BOS excluded)", fontweight="bold")
+    ax2.set_ylabel("Cumulative Sum of\nAttribution Scores", fontweight="bold")
     ax2.set_title(
         "Cumulative Attribution Across Tokens (excl. BOS)", fontweight="bold", pad=15
     )
     ax2.grid(axis="y", alpha=0.3)
+    ax2.text(
+        0.5,
+        -0.18,
+        "A steep rise at a token position means that token contributes heavily to the refusal signal",
+        ha="center",
+        transform=ax2.transAxes,
+        fontsize=9,
+        color="gray",
+        style="italic",
+    )
 
     plt.tight_layout()
     plt.savefig(output_path, bbox_inches="tight", dpi=300)
@@ -217,7 +256,7 @@ def plot_top_features(
 
     # Create horizontal bar plot — red for positive (pro-refusal), blue for negative
     y_pos = np.arange(len(feature_ids))
-    colors = ["red" if s > 0 else "blue" for s in feature_scores]
+    colors = ["#e63946" if s > 0 else "#4361ee" for s in feature_scores]
 
     bars = ax.barh(
         y_pos, feature_scores, color=colors, alpha=0.7, edgecolor="black", linewidth=0.5
@@ -225,25 +264,55 @@ def plot_top_features(
 
     # Customize
     ax.set_yticks(y_pos)
-    ax.set_yticklabels([f"Feature {fid}" for fid in feature_ids])
+    ax.set_yticklabels([f"Dim {fid}" for fid in feature_ids])
     ax.invert_yaxis()  # Top feature at top
-    ax.set_xlabel("Attribution Score", fontweight="bold")
-    ax.set_ylabel("Feature ID", fontweight="bold")
-    ax.set_title(f'Top {top_n} Features: "{prompt[:40]}..."', fontweight="bold", pad=15)
+    ax.set_xlabel(
+        "Attribution Score (mean_activation[i] * refusal_direction[i])",
+        fontweight="bold",
+    )
+    ax.set_ylabel("Hidden State Dimension Index", fontweight="bold")
+    ax.set_title(
+        f'Top {top_n} Dimensions by Attribution: "{prompt[:40]}..."',
+        fontweight="bold",
+        pad=15,
+    )
+    ax.axvline(x=0, color="black", linewidth=0.8)
     ax.grid(axis="x", alpha=0.3)
+
+    # Add color legend
+    from matplotlib.patches import Patch
+
+    legend_elements = [
+        Patch(facecolor="#e63946", alpha=0.7, label="Pro-refusal (positive score)"),
+        Patch(facecolor="#4361ee", alpha=0.7, label="Anti-refusal (negative score)"),
+    ]
+    ax.legend(handles=legend_elements, loc="lower right", fontsize=10)
 
     # Add value labels
     for bar, score in zip(bars, feature_scores, strict=False):
         width = bar.get_width()
+        ha = "left" if width >= 0 else "right"
         ax.text(
             width,
             bar.get_y() + bar.get_height() / 2.0,
             f"{score:.2f}",
-            ha="left",
+            ha=ha,
             va="center",
             fontsize=9,
             fontweight="bold",
         )
+
+    # Add explanatory note
+    ax.text(
+        0.5,
+        -0.08,
+        "Each bar = one dimension's signed contribution to the dot product with the refusal direction. Ranked by |score|.",
+        ha="center",
+        transform=ax.transAxes,
+        fontsize=9,
+        color="gray",
+        style="italic",
+    )
 
     plt.tight_layout()
     plt.savefig(output_path, bbox_inches="tight", dpi=300)
@@ -260,6 +329,14 @@ def plot_supernode_activations(supernode_data: dict, output_path: str) -> None:
     """
     fig, axes = plt.subplots(2, 2, figsize=(14, 12))
     axes = axes.flatten()
+
+    # Map supernode names to readable descriptions
+    supernode_labels = {
+        "supernode_1": "Supernode 1: Harm Detection\n(harmful, dangerous, illegal)",
+        "supernode_2": "Supernode 2: Safety Assessment\n(helpful, safe, constructive)",
+        "supernode_3": "Supernode 3: Refusal Execution\n(refusal, denial, rejection)",
+        "supernode_4": "Supernode 4: Security Mechanism\n(jailbreak, bypass, exploit)",
+    }
 
     for idx, (supernode_name, data) in enumerate(supernode_data.items()):
         if idx >= 4:  # Only plot first 4 supernodes
@@ -282,11 +359,15 @@ def plot_supernode_activations(supernode_data: dict, output_path: str) -> None:
         )
 
         # Customize
-        ax.set_xlabel("Neuron Rank", fontweight="bold")
-        ax.set_ylabel("Activation Strength", fontweight="bold")
-        ax.set_title(f"{supernode_name.replace('_', ' ').title()}", fontweight="bold")
+        label = supernode_labels.get(
+            supernode_name, supernode_name.replace("_", " ").title()
+        )
+        ax.set_xlabel("Neuron ID (sorted by activation)", fontweight="bold")
+        ax.set_ylabel("Activation Strength (0-1)", fontweight="bold")
+        ax.set_title(label, fontweight="bold", fontsize=11)
         ax.set_xticks(range(len(neuron_ids)))
         ax.set_xticklabels([f"N{nid}" for nid in neuron_ids], rotation=45, ha="right")
+        ax.set_ylim(0, 1.1)
         ax.grid(axis="y", alpha=0.3)
 
         # Add value labels
@@ -356,13 +437,29 @@ def plot_feature_distributions(supernode_data: dict, output_path: str) -> None:
         bottom += data_matrix[:, j]
 
     # Customize
-    ax.set_xlabel("Feature", fontweight="bold")
-    ax.set_ylabel("Count", fontweight="bold")
+    ax.set_xlabel("Semantic Feature Label (from Neuronpedia)", fontweight="bold")
+    ax.set_ylabel("Number of Neurons\nAssociated with Feature", fontweight="bold")
     ax.set_title("Feature Distribution Across Supernodes", fontweight="bold", pad=20)
     ax.set_xticks(x)
     ax.set_xticklabels(features, rotation=45, ha="right")
     ax.legend(loc="upper right", bbox_to_anchor=(1.15, 1))
     ax.grid(axis="y", alpha=0.3)
+
+    # Force integer ticks on y-axis
+    ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
+
+    # Add explanatory note
+    ax.text(
+        0.5,
+        -0.18,
+        "Each bar = how many neurons in that supernode are tagged with the given semantic feature. "
+        "Security features (jailbreak, bypass, exploit) dominate.",
+        ha="center",
+        transform=ax.transAxes,
+        fontsize=9,
+        color="gray",
+        style="italic",
+    )
 
     plt.tight_layout()
     plt.savefig(output_path, bbox_inches="tight", dpi=300)
@@ -400,8 +497,11 @@ def plot_steering_vector_stats(supernode_data: dict, output_path: str) -> None:
 
     colors = plt.cm.viridis(np.linspace(0.3, 0.9, len(names)))
     bars = ax1.bar(names, magnitudes, color=colors, edgecolor="black", linewidth=0.5)
-    ax1.set_ylabel("Magnitude", fontweight="bold")
-    ax1.set_title("Steering Vector Magnitude", fontweight="bold")
+    ax1.set_ylabel("L2 Norm (Magnitude)", fontweight="bold")
+    ax1.set_title(
+        "Steering Vector Magnitude\n(higher = stronger intervention potential)",
+        fontweight="bold",
+    )
     ax1.grid(axis="y", alpha=0.3)
 
     for bar, mag in zip(bars, magnitudes, strict=False):
@@ -426,9 +526,12 @@ def plot_steering_vector_stats(supernode_data: dict, output_path: str) -> None:
     ]
 
     ax2.scatter(means, stds, s=200, c=colors, edgecolor="black", linewidth=1)
-    ax2.set_xlabel("Mean", fontweight="bold")
-    ax2.set_ylabel("Standard Deviation", fontweight="bold")
-    ax2.set_title("Mean vs Standard Deviation", fontweight="bold")
+    ax2.set_xlabel("Mean of Steering Vector Components", fontweight="bold")
+    ax2.set_ylabel("Std Dev of Steering Vector Components", fontweight="bold")
+    ax2.set_title(
+        "Component Distribution\n(high std = more concentrated steering)",
+        fontweight="bold",
+    )
     ax2.grid(alpha=0.3)
 
     # Add labels
@@ -453,15 +556,28 @@ def plot_steering_vector_stats(supernode_data: dict, output_path: str) -> None:
 
     x_pos = np.arange(len(names))
     ax3.bar(
-        x_pos, maxs, color="lightcoral", label="Max", edgecolor="black", linewidth=0.5
+        x_pos,
+        maxs,
+        color="lightcoral",
+        label="Max component",
+        edgecolor="black",
+        linewidth=0.5,
     )
     ax3.bar(
-        x_pos, mins, color="lightblue", label="Min", edgecolor="black", linewidth=0.5
+        x_pos,
+        mins,
+        color="lightblue",
+        label="Min component",
+        edgecolor="black",
+        linewidth=0.5,
     )
     ax3.set_xticks(x_pos)
     ax3.set_xticklabels(names, rotation=45, ha="right")
-    ax3.set_ylabel("Value", fontweight="bold")
-    ax3.set_title("Min-Max Range", fontweight="bold")
+    ax3.set_ylabel("Steering Vector Component Value", fontweight="bold")
+    ax3.set_title(
+        "Min-Max Range of Components\n(range shows directional spread)",
+        fontweight="bold",
+    )
     ax3.legend()
     ax3.grid(axis="y", alpha=0.3)
 
@@ -473,9 +589,13 @@ def plot_steering_vector_stats(supernode_data: dict, output_path: str) -> None:
     ]
 
     bars = ax4.bar(names, dimensions, color=colors, edgecolor="black", linewidth=0.5)
-    ax4.set_ylabel("Dimension", fontweight="bold")
-    ax4.set_title("Steering Vector Dimension", fontweight="bold")
+    ax4.set_ylabel("Number of Components", fontweight="bold")
+    ax4.set_title(
+        "Steering Vector Size\n(number of active dimensions)",
+        fontweight="bold",
+    )
     ax4.grid(axis="y", alpha=0.3)
+    ax4.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
     for bar, dim in zip(bars, dimensions, strict=False):
         height = bar.get_height()
@@ -514,11 +634,34 @@ def plot_circuit_comparison(circuits_dir: str, output_path: str) -> None:
         print("  ⚠ No circuit files found for comparison")
         return
 
+    # Known harmful prompt keywords for color classification
+    harmful_keywords = [
+        "hack",
+        "bomb",
+        "steal",
+        "corrupt",
+        "exploit",
+        "synthesiz",
+        "jailbreak",
+        "bypass",
+        "convincing argument for women",
+        "compromise",
+        "BSL-4",
+        "download torrents",
+        "extract safr",
+        "glorif",
+    ]
+
+    def is_harmful_prompt(prompt_text: str) -> bool:
+        prompt_lower = prompt_text.lower()
+        return any(kw in prompt_lower for kw in harmful_keywords)
+
     # Load data
     prompts = []
     avg_attributions = []
-    max_attributions = []
+    max_attributions_excl_bos = []
     n_tokens = []
+    prompt_types = []  # "harmful" or "harmless"
 
     for filepath in circuit_files[:10]:  # Limit to first 10 for readability
         data = load_json(str(filepath))
@@ -526,42 +669,68 @@ def plot_circuit_comparison(circuits_dir: str, output_path: str) -> None:
         attributions = data["token_attributions"]
 
         prompts.append(prompt[:30] + "..." if len(prompt) > 30 else prompt)
-        avg_attributions.append(np.mean(attributions))
-        max_attributions.append(np.max(attributions))
-        n_tokens.append(len(attributions))
+        # Exclude BOS (position 0) from averages and max
+        non_bos = attributions[1:] if len(attributions) > 1 else attributions
+        avg_attributions.append(np.mean(non_bos))
+        max_attributions_excl_bos.append(np.max(non_bos))
+        n_tokens.append(len(non_bos))
+        prompt_types.append("harmful" if is_harmful_prompt(prompt) else "harmless")
 
-    fig, axes = plt.subplots(3, 1, figsize=(14, 12))
+    fig, axes = plt.subplots(3, 1, figsize=(14, 14))
 
-    # Plot 1: Average attribution
-    ax1 = axes[0]
     x = np.arange(len(prompts))
-    colors = plt.cm.Reds(np.linspace(0.3, 0.9, len(prompts)))
-    ax1.bar(x, avg_attributions, color=colors, edgecolor="black", linewidth=0.5)
+    # Color by harmful (red) vs harmless (blue)
+    bar_colors = ["#e63946" if t == "harmful" else "#4361ee" for t in prompt_types]
+
+    # Plot 1: Average attribution (excl. BOS)
+    ax1 = axes[0]
+    ax1.bar(x, avg_attributions, color=bar_colors, edgecolor="black", linewidth=0.5)
     ax1.set_xticks(x)
     ax1.set_xticklabels(prompts, rotation=45, ha="right", fontsize=8)
-    ax1.set_ylabel("Average Attribution", fontweight="bold")
-    ax1.set_title("Average Token Attribution by Prompt", fontweight="bold")
+    ax1.set_ylabel("Mean Attribution\n(excl. BOS)", fontweight="bold")
+    ax1.set_title(
+        "Average Token Attribution by Prompt (BOS excluded)", fontweight="bold"
+    )
     ax1.grid(axis="y", alpha=0.3)
 
-    # Plot 2: Maximum attribution
+    # Plot 2: Maximum attribution (excl. BOS)
     ax2 = axes[1]
-    ax2.bar(x, max_attributions, color=colors, edgecolor="black", linewidth=0.5)
+    ax2.bar(
+        x, max_attributions_excl_bos, color=bar_colors, edgecolor="black", linewidth=0.5
+    )
     ax2.set_xticks(x)
     ax2.set_xticklabels(prompts, rotation=45, ha="right", fontsize=8)
-    ax2.set_ylabel("Maximum Attribution", fontweight="bold")
-    ax2.set_title("Maximum Token Attribution by Prompt", fontweight="bold")
+    ax2.set_ylabel("Max Attribution\n(excl. BOS)", fontweight="bold")
+    ax2.set_title(
+        "Maximum Token Attribution by Prompt (BOS excluded)", fontweight="bold"
+    )
     ax2.grid(axis="y", alpha=0.3)
 
     # Plot 3: Number of tokens
     ax3 = axes[2]
-    ax3.bar(x, n_tokens, color=colors, edgecolor="black", linewidth=0.5)
+    ax3.bar(x, n_tokens, color=bar_colors, edgecolor="black", linewidth=0.5)
     ax3.set_xticks(x)
     ax3.set_xticklabels(prompts, rotation=45, ha="right", fontsize=8)
-    ax3.set_ylabel("Number of Tokens", fontweight="bold")
+    ax3.set_ylabel("Number of Tokens\n(excl. BOS)", fontweight="bold")
     ax3.set_title("Token Count by Prompt", fontweight="bold")
     ax3.grid(axis="y", alpha=0.3)
+    ax3.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
-    plt.suptitle("Circuit Analysis Comparison", fontsize=16, fontweight="bold", y=1.02)
+    # Add shared legend
+    from matplotlib.patches import Patch
+
+    legend_elements = [
+        Patch(facecolor="#e63946", edgecolor="black", label="Harmful prompt"),
+        Patch(facecolor="#4361ee", edgecolor="black", label="Harmless prompt"),
+    ]
+    axes[0].legend(handles=legend_elements, loc="upper right", fontsize=10)
+
+    plt.suptitle(
+        "Circuit Analysis Comparison (BOS excluded)",
+        fontsize=16,
+        fontweight="bold",
+        y=1.02,
+    )
     plt.tight_layout()
     plt.savefig(output_path, bbox_inches="tight", dpi=300)
     plt.close()
@@ -604,24 +773,32 @@ def create_summary_dashboard(
     ax1 = fig.add_subplot(gs[0, :2])
     colors = plt.cm.viridis(np.linspace(0.3, 0.9, len(layers)))
     ax1.bar(layers, separations, color=colors, edgecolor="black", linewidth=0.5)
-    ax1.set_xlabel("Layer")
+    ax1.set_xlabel("Transformer Layer")
     ax1.set_ylabel("Separation Score")
-    ax1.set_title("Refusal Direction Separation", fontweight="bold")
+    ax1.set_title(
+        "Refusal Direction Separation\n(higher = better harmful/harmless discrimination)",
+        fontweight="bold",
+        fontsize=11,
+    )
     ax1.set_xticks(layers)
     ax1.grid(axis="y", alpha=0.3)
 
-    # Panel 2: Supernode feature distribution
+    # Panel 2: Supernode feature distribution — use horizontal bar instead of pie
     ax2 = fig.add_subplot(gs[0, 2:])
     all_features = {}
     for data in supernode_data.values():
         for feature, count in data["feature_distribution"].items():
             all_features[feature] = all_features.get(feature, 0) + count
 
-    features = sorted(all_features.keys())
+    features = sorted(all_features.keys(), key=lambda f: all_features[f])
     counts = [all_features[f] for f in features]
-    colors = plt.cm.Set3(np.linspace(0, 1, len(features)))
-    ax2.pie(counts, labels=features, colors=colors, autopct="%1.1f%%", startangle=90)
-    ax2.set_title("Feature Distribution (All Supernodes)", fontweight="bold")
+    bar_colors = plt.cm.Set3(np.linspace(0, 1, len(features)))
+    ax2.barh(features, counts, color=bar_colors, edgecolor="black", linewidth=0.5)
+    ax2.set_xlabel("Total Occurrences Across Supernodes")
+    ax2.set_title(
+        "Feature Distribution (All Supernodes)", fontweight="bold", fontsize=11
+    )
+    ax2.grid(axis="x", alpha=0.3)
 
     # Panel 3: Supernode activation strengths
     ax3 = fig.add_subplot(gs[1, :2])
@@ -638,8 +815,10 @@ def create_summary_dashboard(
     bars = ax3.bar(
         supernode_names, avg_activations, color=colors, edgecolor="black", linewidth=0.5
     )
-    ax3.set_ylabel("Average Activation")
-    ax3.set_title("Average Neuron Activation by Supernode", fontweight="bold")
+    ax3.set_ylabel("Average Activation (0-1)")
+    ax3.set_title(
+        "Average Neuron Activation by Supernode", fontweight="bold", fontsize=11
+    )
     ax3.grid(axis="y", alpha=0.3)
 
     for bar, act in zip(bars, avg_activations, strict=False):
@@ -669,8 +848,12 @@ def create_summary_dashboard(
         bars = ax4.bar(
             sv_names, sv_magnitudes, color=colors, edgecolor="black", linewidth=0.5
         )
-        ax4.set_ylabel("Magnitude")
-        ax4.set_title("Steering Vector Magnitude", fontweight="bold")
+        ax4.set_ylabel("L2 Norm (Magnitude)")
+        ax4.set_title(
+            "Steering Vector Magnitude\n(higher = stronger intervention)",
+            fontweight="bold",
+            fontsize=11,
+        )
         ax4.grid(axis="y", alpha=0.3)
 
         for bar, mag in zip(bars, sv_magnitudes, strict=False):
