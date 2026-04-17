@@ -28,7 +28,7 @@ import time
 from datetime import datetime
 from pathlib import Path                                                                                                                                  
 
-PIPELINE_DIR = Path(__file__).resolve().parent                                                                                                            
+PIPELINE_DIR = Path(__file__).resolve().parent.parent                                                                                                            
 REPO_ROOT = PIPELINE_DIR.parent.parent 
                                                                                                                                                         
 
