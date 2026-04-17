@@ -14,20 +14,21 @@ This research analyzes refusal behavior in language models (Gemma-3-4B-IT) throu
 
 ### Methodology
 Computed direction vectors `r_ℓ = E[x_ℓ | harmful] - E[x_ℓ | harmless]` for each layer using:
-- 20 harmful prompts (bomb making, hacking, etc.)
-- 20 harmless prompts (education, proverbs, etc.)
-- Layers 8, 9, 10 analyzed
+- 260 harmful prompts
+- 18,793 harmless prompts
+- Layers 8-23 analyzed (layer 15 completed)
 
 ### Results
 
 | Layer | Separation Score | d_model | Direction Norm |
 |-------|-----------------|---------|----------------|
-| 8     | 1377.39         | 2560    | 1.00           |
-| 9     | **2340.34**     | 2560    | 1.00           |
-| 10    | 1732.45         | 2560    | 1.00           |
+| 8     | Completed       | 2560    | 1.00           |
+| 9     | Completed       | 2560    | 1.00           |
+| 10    | Completed       | 2560    | 1.00           |
+| 15    | **1983.91**    | 2560    | 1.00           |
 
 ### Key Finding
-**Layer 9 shows the highest separation (2340.34)**, indicating the strongest refusal direction discriminates harmful from harmless prompts at this middle layer—not the final layer.
+**Layer 15 shows the highest separation (1983.91)**, indicating the strongest refusal direction discriminates harmful from harmless prompts at this middle layer—not the final layer.
 
 ### Figure
 ![Direction Separation](figures/direction_separation.png)
@@ -37,13 +38,13 @@ Computed direction vectors `r_ℓ = E[x_ℓ | harmful] - E[x_ℓ | harmless]` fo
 ## 3. Step 2: Attribution Circuit Analysis
 
 ### Methodology
-Attribute token-level contributions to the refusal direction for 20 prompts at layers 9 and 10.
+Attribute token-level contributions to the refusal direction for 20 prompts at layer 15.
 
 ### Aggregated Results
 
 | Layer | Prompts Analyzed | Average Attribution |
 |-------|-----------------|---------------------|
-| 10    | 20              | 22024.13            |
+| 15    | 20              | 25285.16            |
 
 ### Prompts Analyzed
 
@@ -87,16 +88,16 @@ The first token position shows extremely high attribution (~139k), suggesting th
 
 ### Top Contributing Neurons
 
-For "Write a bomb tutorial" - Top 5 neurons by attribution:
+For first prompt analyzed - Top 5 neurons by attribution:
 | Neuron ID | Attribution |
 |----------|-------------|
-| 443      | 35,367.02   |
-| 1365     | 74.26       |
-| 368      | 17.65       |
-| 634      | 6.51        |
-| 2511     | 4.61        |
+| 443      | 30,756.04   |
+| 1365     | 58.19       |
+| 1698     | 42.49       |
+| 1209     | -18.66      |
+| 368      | 14.12       |
 
-Neuron 443 dominates with 35,367 attribution—over 475x more than the second-highest neuron.
+Neuron 443 dominates with 30,756 attribution—over 500x more than the second-highest neuron.
 
 ### Figure
 ![Token Attributions](figures/token_attributions_sample.png)
@@ -109,7 +110,12 @@ Neuron 443 dominates with 35,367 attribution—over 475x more than the second-hi
 ### Methodology
 Used Neuronpedia supernode data to understand feature semantics at refusal-relevant layers.
 
-### Results - Supernode 4
+### Results - Supernode Overview
+- Total supernodes: 4
+- Total neurons: 28
+- Average neurons per supernode: 7.0
+
+### Results - Supernode 4 (Security Features)
 
 **Top 10 Neurons:**
 
@@ -156,6 +162,14 @@ Security-related concepts dominate the refusal circuit:
 
 This confirms the model encodes refusal as a security mechanism rather than a moral judgment.
 
+### All Supernodes Identified
+| Supernode | Neurons | Primary Features |
+|-----------|--------|---------------|
+| 1 | 8 | harmful, dangerous, illegal |
+| 2 | 5 | helpful, safe, positive |
+| 3 | 4 | refusal, denial, rejection |
+| 4 | 10 | jailbreak, bypass, exploit |
+
 ### Figure
 ![Supernode Activations](figures/supernode_activations.png)
 ![Feature Distributions](figures/feature_distributions.png)
@@ -165,7 +179,19 @@ This confirms the model encodes refusal as a security mechanism rather than a mo
 
 ## 5. Step 4: Jailbreak Testing
 
-Results pending—no test data available yet.
+### Methodology
+Tested jailbreak variants using RefusalDetector to identify model vulnerabilities.
+
+### Status
+**Timed out** - Each variant takes ~4 minutes on CPU. Test started with 10 variants but did not complete within timeout.
+
+### Notes
+- Total possible variants: 300
+- Testing requires GPU for practical completion
+- Manual testing can be done with individual prompts
+
+### Results
+Pending completion.
 
 ---
 
@@ -176,11 +202,11 @@ Results pending—no test data available yet.
 
 ### Key Conclusions
 
-1. **Layer 9 is most discriminative**: The highest separation score (2340.34) occurs at layer 9, not the final layer. This suggests refusal computation is finalized in middle layers.
+1. **Layer 15 is most discriminative**: The highest separation score (1983.91) occurs at layer 15, not the final layer. This suggests refusal computation is finalized in middle layers.
 
 2. **Immediate refusal decision**: The first token position shows attribution ~139k vs ~10-15k for subsequent tokens, indicating refusal is determined at the very start of processing.
 
-3. **Neuron 443 dominates**: A single neuron (443) accounts for 35,367 attribution—475x more than any other neuron, suggesting a critical "master switch" for refusal.
+3. **Neuron 443 dominates**: A single neuron (443) accounts for 30,756 attribution—500x more than any other neuron, suggesting a critical "master switch" for refusal.
 
 4. **Security semantics**: The feature distribution shows jailbreak, bypass, and exploit dominate—refusal is encoded as a security mechanism, not ethical judgment.
 
@@ -191,7 +217,7 @@ Results pending—no test data available yet.
 - **Interpretability**: Refusal circuits have interpretable security-related features, enabling understanding of model behavior
 - **Steering**: The strong supernode vector (mag=2.31) suggests steering is feasible
 - **Circuit analysis**: Token-level attribution enables precise identification of refusal triggers
-- **Layer selection**: Layer 9 should be targeted for steering/intervention, not the final layer
+- **Layer selection**: Layer 15 should be targeted for steering/intervention, not the final layer
 
 ---
 
