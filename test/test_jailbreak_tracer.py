@@ -6,6 +6,8 @@ including tests for loading data, querying attempts and traces, and
 performing analysis.
 """
 
+from __future__ import annotations
+
 import json
 import tempfile
 from pathlib import Path

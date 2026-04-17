@@ -5,6 +5,8 @@ Provides functionality for running refusal detection experiments with
 progress tracking, error handling, and result persistence.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import time

@@ -5,6 +5,8 @@ Combines prompt generation and response classification to detect and analyze
 model refusal behavior in a consistent manner.
 """
 
+from __future__ import annotations
+
 import logging
 from collections import defaultdict
 from collections.abc import Callable

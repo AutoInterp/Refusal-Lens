@@ -3,6 +3,8 @@ Supernode Steering and Neuronpedia Analysis Module
 Analyzes supernodes and neural patterns from Neuronpedia data.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from dataclasses import dataclass

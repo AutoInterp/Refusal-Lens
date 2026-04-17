@@ -50,15 +50,43 @@ def load_json(filepath: str) -> Any:
         return json.load(f)
 
 
-def plot_direction_separation(directions_summary: dict, output_path: str) -> None:
+def compute_separation_from_pt(pt_file: str) -> tuple:
+    """Compute (layer, separation) from a direction .pt file."""
+    import torch
+
+    data = torch.load(pt_file)
+    if isinstance(data, dict):
+        layer = data.get("layer")
+        separation = data.get("separation")
+        if layer is not None and separation is not None:
+            return int(layer), float(separation)
+    return None, None
+
+
+def plot_direction_separation(
+    directions_summary: dict, output_path: str, data_dir: Path | None = None
+) -> None:
     """Plot separation scores across layers.
 
     Args:
         directions_summary: Dictionary with layer separation data
         output_path: Path to save the figure
+        data_dir: Optional directory to load additional layer data
     """
-    layers = sorted([int(k) for k in directions_summary])
-    separations = [directions_summary[str(layer)]["separation"] for layer in layers]
+    layer_sep = {}
+    for layer, data in directions_summary.items():
+        layer_sep[int(layer)] = data["separation"]
+
+    if data_dir is not None:
+        pt_dir = data_dir / "computed_directions"
+        if pt_dir.exists():
+            for pt_file in sorted(pt_dir.glob("layer_*.pt")):
+                layer_num, sep = compute_separation_from_pt(str(pt_file))
+                if layer_num is not None and sep > 0:
+                    layer_sep[layer_num] = sep
+
+    layers = sorted(layer_sep.keys())
+    separations = [layer_sep[layer] for layer in layers]
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -159,7 +187,9 @@ def plot_token_attributions(circuit_data: dict, prompt: str, output_path: str) -
     ax2.plot(x, cumulative, color="purple", linewidth=2)
     ax2.set_xlabel("Token Position", fontweight="bold")
     ax2.set_ylabel("Cumulative Attribution", fontweight="bold")
-    ax2.set_title("Cumulative Attribution Across Tokens (excl. BOS)", fontweight="bold", pad=15)
+    ax2.set_title(
+        "Cumulative Attribution Across Tokens (excl. BOS)", fontweight="bold", pad=15
+    )
     ax2.grid(axis="y", alpha=0.3)
 
     plt.tight_layout()
@@ -254,7 +284,7 @@ def plot_supernode_activations(supernode_data: dict, output_path: str) -> None:
         # Customize
         ax.set_xlabel("Neuron Rank", fontweight="bold")
         ax.set_ylabel("Activation Strength", fontweight="bold")
-        ax.set_title(f'{supernode_name.replace("_", " ").title()}', fontweight="bold")
+        ax.set_title(f"{supernode_name.replace('_', ' ').title()}", fontweight="bold")
         ax.set_xticks(range(len(neuron_ids)))
         ax.set_xticklabels([f"N{nid}" for nid in neuron_ids], rotation=45, ha="right")
         ax.grid(axis="y", alpha=0.3)
@@ -539,7 +569,10 @@ def plot_circuit_comparison(circuits_dir: str, output_path: str) -> None:
 
 
 def create_summary_dashboard(
-    directions_summary: dict, supernode_data: dict, output_path: str
+    directions_summary: dict,
+    supernode_data: dict,
+    output_path: str,
+    data_dir: Path | None = None,
 ) -> None:
     """Create a comprehensive summary dashboard.
 
@@ -547,14 +580,28 @@ def create_summary_dashboard(
         directions_summary: Direction separation data
         supernode_data: Supernode analysis data
         output_path: Path to save the figure
+        data_dir: Optional directory to load additional layer data
     """
+    layer_sep = {}
+    for layer, data in directions_summary.items():
+        layer_sep[int(layer)] = data["separation"]
+
+    if data_dir is not None:
+        pt_dir = data_dir / "computed_directions"
+        if pt_dir.exists():
+            for pt_file in sorted(pt_dir.glob("layer_*.pt")):
+                layer_num, sep = compute_separation_from_pt(str(pt_file))
+                if layer_num is not None and sep > 0:
+                    layer_sep[layer_num] = sep
+
+    layers = sorted(layer_sep.keys())
+    separations = [layer_sep[layer] for layer in layers]
+
     fig = plt.figure(figsize=(20, 12))
     gs = GridSpec(3, 4, figure=fig, hspace=0.3, wspace=0.3)
 
     # Panel 1: Direction separation
     ax1 = fig.add_subplot(gs[0, :2])
-    layers = sorted([int(k) for k in directions_summary])
-    separations = [directions_summary[str(layer)]["separation"] for layer in layers]
     colors = plt.cm.viridis(np.linspace(0.3, 0.9, len(layers)))
     ax1.bar(layers, separations, color=colors, edgecolor="black", linewidth=0.5)
     ax1.set_xlabel("Layer")
@@ -719,7 +766,9 @@ def main():
     if directions_file.exists():
         directions_summary = load_json(str(directions_file))
         plot_direction_separation(
-            directions_summary, str(output_dir / f"direction_separation.{args.format}")
+            directions_summary,
+            str(output_dir / f"direction_separation.{args.format}"),
+            data_dir,
         )
     else:
         print("  ⚠ Directions summary not found")
@@ -784,6 +833,7 @@ def main():
             directions_summary,
             supernode_data,
             str(output_dir / f"summary_dashboard.{args.format}"),
+            data_dir,
         )
 
     # Circuit comparison

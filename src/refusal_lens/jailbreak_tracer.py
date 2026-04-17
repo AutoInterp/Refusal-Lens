@@ -3,6 +3,8 @@ Jailbreak Behavior Tracing Module
 Traces and analyzes jailbreak attempts and behaviors in neural network models.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from collections import Counter

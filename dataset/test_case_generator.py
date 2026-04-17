@@ -5,6 +5,8 @@ Generates 400 systematic test cases by selecting 20 base prompts from the datase
 and creating 20 variations for each base prompt.
 """
 
+from __future__ import annotations
+
 import csv
 import json
 import logging

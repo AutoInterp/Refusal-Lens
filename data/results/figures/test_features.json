@@ -1,0 +1,730 @@
+{
+  "layer_8": [
+    {
+      "index": 0,
+      "pos_str": [
+        "Cyfeiriadau",
+        "\u2581przecie\u017c",
+        "\u2581muualla",
+        "\u2581Schlie\u00dflich",
+        "\u0414\u0435\u0440\u0435\u043a\u043a\u04e9\u0437\u0434\u0435\u0440"
+      ],
+      "neg_str": [
+        "SourceChecksum",
+        "\u2581\u0643\u0648\u0645\u0648\u0646\u0632",
+        "\u2581\u0441\u0442\u0430\u043d\u043e\u0432\u043d\u0438\u043a\u0430",
+        "\u0627\u0644\u0635\u0641\u062d\u0647",
+        "CppMethod"
+      ],
+      "max_act": 24.835
+    },
+    {
+      "index": 1,
+      "pos_str": [
+        "arXiv",
+        "\u2581calendriers",
+        "Distribuzione",
+        "\u2581conference",
+        "Conference"
+      ],
+      "neg_str": [
+        "tvguidetime",
+        "\u2581ModelExpression",
+        "'):\r",
+        ";';",
+        "()}>"
+      ],
+      "max_act": 40.184
+    },
+    {
+      "index": 2,
+      "pos_str": [
+        "\u2581persuasion",
+        "\u2581persuading",
+        "\u2581persu",
+        "\u2581persuade",
+        "\u2581convencer"
+      ],
+      "neg_str": [
+        "rcParams",
+        "Carriera",
+        "pshots",
+        "of\u00fcr",
+        "itures"
+      ],
+      "max_act": 33.381
+    },
+    {
+      "index": 3,
+      "pos_str": [
+        "\u2581nickname",
+        "\u2581owes",
+        "\u2581r\u00e9putation",
+        "\u2581moniker",
+        "\u2581owe"
+      ],
+      "neg_str": [
+        "\u2581\u0644\u0644\u0627\u0633\u0645\u0627\u0621",
+        "\u2581\u0938\u092e\u0940\u0915\u094d\u0937\u0915",
+        "UnsafeEnabled",
+        "CloseOperation",
+        "AtIndexPath"
+      ],
+      "max_act": 42.964
+    },
+    {
+      "index": 4,
+      "pos_str": [
+        "\u2581autorytatywna",
+        "Portail",
+        "\u2581\u043d\u0435\u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430",
+        "Enlla\u00e7os",
+        "Personensuche"
+      ],
+      "neg_str": [
+        "RegistryLite",
+        "tisgarh",
+        "HasForeignKey",
+        "principalTable",
+        "hoeddwyd"
+      ],
+      "max_act": 49.209
+    },
+    {
+      "index": 5,
+      "pos_str": [
+        "\u2581RENE",
+        "\u2581Renew",
+        "Renew",
+        "\u2581renewal",
+        "\u2581Renewal"
+      ],
+      "neg_str": [
+        "verwijspagina",
+        "\u2581Saar",
+        "\u2581utafitiHapana",
+        "\u2581Andaman",
+        "\u2581RTE"
+      ],
+      "max_act": 27.742
+    },
+    {
+      "index": 6,
+      "pos_str": [
+        "#+#",
+        ":+:",
+        "\u811a\u6ce8\u306e\u4f7f\u3044\u65b9",
+        "\u0414\u0435\u043c\u043e\u0433\u0440\u0430\u0444\u0456\u044f",
+        "UnusedPrivate"
+      ],
+      "neg_str": [
+        "\u2581(",
+        "(",
+        "\u2581as",
+        "\u2581EventArgs",
+        "\u2581A"
+      ],
+      "max_act": 52.448
+    },
+    {
+      "index": 7,
+      "pos_str": [
+        "\u539f\u59cb\u5185\u5bb9\u5b58\u6863\u4e8e",
+        "Notae",
+        "\u0631\u0634\u0641",
+        "\u811a\u6ce8\u306e\u4f7f\u3044\u65b9",
+        "\u2581Diakses"
+      ],
+      "neg_str": [
+        "\u2581EconPapers",
+        "\u2581invitamos",
+        "salario",
+        "ppelin",
+        "\u2581jointly"
+      ],
+      "max_act": 29.137
+    },
+    {
+      "index": 8,
+      "pos_str": [
+        "\u2581canvas",
+        "\u2581\u0938\u092e\u0940\u0915\u094d\u0937\u0915",
+        "GEBURTS",
+        "ymce",
+        "canvas"
+      ],
+      "neg_str": [
+        "yip",
+        "key",
+        "\u2581[*]",
+        "Key",
+        "\u30e9\u30a4\u30ba"
+      ],
+      "max_act": 29.835
+    },
+    {
+      "index": 9,
+      "pos_str": [
+        "styleUrls",
+        "\u2581AssemblyVersion",
+        "InputTagHelper",
+        "\u2581aveug",
+        "\u2581An\u017f"
+      ],
+      "neg_str": [
+        "findpost",
+        "jspx",
+        "\u24e7",
+        "\u2581kasarigan",
+        "Personensuche"
+      ],
+      "max_act": 40.844
+    }
+  ],
+  "layer_9": [
+    {
+      "index": 0,
+      "pos_str": [
+        "\u672c",
+        "\u2581procedure",
+        "\u0f18",
+        "ufc",
+        "\u093f\u092f\u093e"
+      ],
+      "neg_str": [
+        "bootstrapcdn",
+        "LookAnd",
+        "\u062f\u0627\u0646\u0634\u0646\u0627\u0645\u0647\u0654",
+        "IndentedString",
+        "\u5b58\u4e8e\u4e92\u8054\u7f51\u6863\u6848\u9986"
+      ],
+      "max_act": 18.457
+    },
+    {
+      "index": 1,
+      "pos_str": [
+        "\u2581strengths",
+        "\u2581propOrder",
+        "kloped",
+        "\u2581Strengths",
+        "ScopeManager"
+      ],
+      "neg_str": [
+        "MENAFN",
+        "\u2581'\\\\;'",
+        "<bos>",
+        "riwal",
+        "\u2581contin\u00faas"
+      ],
+      "max_act": 34.613
+    },
+    {
+      "index": 2,
+      "pos_str": [
+        "parsedMessage",
+        "DockStyle",
+        "\u2581R\u00e9ponses",
+        "HomeAsUpEnabled",
+        "IUrlHelper"
+      ],
+      "neg_str": [
+        "eip",
+        "\u2581parall",
+        "\u0418\u0441\u043a\u04d9\u0440\u043c\u04d9\u043b\u04d9\u0440",
+        "memberof",
+        "FontOfSize"
+      ],
+      "max_act": 39.833
+    },
+    {
+      "index": 3,
+      "pos_str": [
+        "rungsseite",
+        "\u2581correlate",
+        "verwijspagina",
+        "\u2581correlates",
+        "\u2581correlation"
+      ],
+      "neg_str": [
+        "\u00f6rs",
+        "\u017eiu",
+        "\u7fa4",
+        "\u2581Gae",
+        "\u2581brightest"
+      ],
+      "max_act": 41.989
+    },
+    {
+      "index": 4,
+      "pos_str": [
+        "\u2581notice",
+        "\u2581Notice",
+        "\u2581announcement",
+        "Announcements",
+        "Notice"
+      ],
+      "neg_str": [
+        "TargetException",
+        "\u2581\u043d\u0435\u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430",
+        "\u51fa\u7248\u5e74",
+        "\u2581BoxFit",
+        "IVEREF"
+      ],
+      "max_act": 20.95
+    },
+    {
+      "index": 5,
+      "pos_str": [
+        "\u2581<>\",",
+        "\u2581segment",
+        "\u2581Acho",
+        "\u2581interviewing",
+        "\u2581show"
+      ],
+      "neg_str": [
+        "DeleteBehavior",
+        "tagHelper",
+        "IANGLES",
+        "KommentareTeilen",
+        "WindowConstants"
+      ],
+      "max_act": 37.335
+    },
+    {
+      "index": 6,
+      "pos_str": [
+        "\u2581\"..\\..\\",
+        "\u2581\"..\\..\\..\\",
+        "\u044f\u0437",
+        "\u2581Joh",
+        "phorbia"
+      ],
+      "neg_str": [
+        "contentLoaded",
+        "parseFrom",
+        "WithMany",
+        "\u2581preuves",
+        "RestTemplate"
+      ],
+      "max_act": 23.118
+    },
+    {
+      "index": 7,
+      "pos_str": [
+        "\"]];",
+        ">*/",
+        "\u2581Paglinawan",
+        "\u2581setCode",
+        "});*/"
+      ],
+      "neg_str": [
+        "\u2581Klon",
+        "\u2581guys",
+        "runApp",
+        "\u2581Huns",
+        "\u2581\u0628\u0631\u0627\u0646\u064a\u0647"
+      ],
+      "max_act": 17.151
+    },
+    {
+      "index": 8,
+      "pos_str": [
+        "\u2581best",
+        "\u2581rest",
+        "undy",
+        "\u2581digital",
+        "\u2581most"
+      ],
+      "neg_str": [
+        "\u2581engra\u00e7adas",
+        "SourceChecksum",
+        "findpost",
+        "ChildScrollView",
+        "\u0902\u0926\u0940\u0916\u0930\u0940\u0926\u093e\u0930\u0940"
+      ],
+      "max_act": 23.577
+    },
+    {
+      "index": 9,
+      "pos_str": [
+        "<eos>",
+        "</tbody>",
+        "__()",
+        "(\"\")]",
+        "</td>"
+      ],
+      "neg_str": [
+        "\u2581<=\",",
+        "Hentet",
+        "\u062f\u0627\u0646\u0634\u0646\u0627\u0645\u0647\u0654",
+        "mybatisplus",
+        "\u2581photolibrary"
+      ],
+      "max_act": 22.214
+    }
+  ],
+  "layer_10": [
+    {
+      "index": 0,
+      "pos_str": [
+        "\u2581yell",
+        "\u2581scream",
+        "\u2581shouts",
+        "\u2581shout",
+        "\u2581yells"
+      ],
+      "neg_str": [
+        "\u2581HttpNotFound",
+        "\"\");",
+        "\uad00",
+        ")}\r",
+        "eability"
+      ],
+      "max_act": 44.724
+    },
+    {
+      "index": 1,
+      "pos_str": [
+        "utilisons",
+        "WriteBarrier",
+        "\u2581\u0635\u0648\u062a\u064a\u0647",
+        "rungsseite",
+        "\u2581scholars"
+      ],
+      "neg_str": [
+        "\u2581Jefus",
+        "Kanpo",
+        "\u2581iconFacebook",
+        "\u2581depositphotos",
+        "\u2581exp\u00e9ri"
+      ],
+      "max_act": 32.631
+    },
+    {
+      "index": 2,
+      "pos_str": [
+        "__*/",
+        "\u2581AssemblyCulture",
+        "\u306a\u3044\u3088\u3046\u306b",
+        "\ue315",
+        "AndEndTag"
+      ],
+      "neg_str": [
+        "\u2581huiles",
+        "\u2581mergeFrom",
+        "\u0916",
+        "\u2581accept\u00e9",
+        "\u0d47"
+      ],
+      "max_act": 44.324
+    },
+    {
+      "index": 3,
+      "pos_str": [
+        "\u2581\u0644\u0644\u0645\u0639\u0627\u0631\u0641",
+        "contentLoaded",
+        "printStackTrace",
+        "ArgsConstructor",
+        "\u2581BorderSide"
+      ],
+      "neg_str": [
+        "\u2581ch\u00e8",
+        "\u2581Sultan",
+        "\u2581smoo",
+        "]!='",
+        "]),\r"
+      ],
+      "max_act": 42.583
+    },
+    {
+      "index": 4,
+      "pos_str": [
+        "\u2581OFDb",
+        "contentLoaded",
+        "bewerken",
+        "########.",
+        "\u044c\u0430\u0436"
+      ],
+      "neg_str": [
+        "\u2581duele",
+        "mac",
+        "\u2581ongles",
+        "GOTREF",
+        "\u2581pou"
+      ],
+      "max_act": 35.862
+    },
+    {
+      "index": 5,
+      "pos_str": [
+        "si\u0105\u017c",
+        "\u2581bevor",
+        "WEBPACK",
+        "mern",
+        "\u2581Offisielt"
+      ],
+      "neg_str": [
+        "expandindo",
+        "principalTable",
+        "tagHelperRunner",
+        "InjectAttribute",
+        "antMatchers"
+      ],
+      "max_act": 20.952
+    },
+    {
+      "index": 6,
+      "pos_str": [
+        "\u2581nahilalakip",
+        "\u2581Normdatei",
+        "AntiForgeryToken",
+        "\u2581r\u00e9unis",
+        "\u2581espressione"
+      ],
+      "neg_str": [
+        "KEYCODE",
+        "\u2581poveznice",
+        "\u2581endregion",
+        "toff",
+        "\u00fcrn"
+      ],
+      "max_act": 22.698
+    },
+    {
+      "index": 7,
+      "pos_str": [
+        "itemize",
+        "\u2581defaultstate",
+        "\u2581loch",
+        "\u2581*-",
+        "\u2581Potsdam"
+      ],
+      "neg_str": [
+        "\u2581McGrath",
+        "']\").",
+        "$\",",
+        "\u0445\u044c\u0442\u0430\u043d",
+        "']):"
+      ],
+      "max_act": 25.119
+    },
+    {
+      "index": 8,
+      "pos_str": [
+        "\u2581BoxDecoration",
+        "\u2581\u0645\u062a\u0639\u0644\u0642\u0647",
+        "__(/*!",
+        "\u2581\u062a\u0627\u0646\u064a\u0647",
+        "\u2581\u0644\u0644\u0645\u0639\u0627\u0631\u0641"
+      ],
+      "neg_str": [
+        "sidemargin",
+        "WindowConstants",
+        "\u2581fieldNum",
+        "qrstuvwxyz",
+        "apunov"
+      ],
+      "max_act": 20.242
+    },
+    {
+      "index": 9,
+      "pos_str": [
+        "\u2581CreateTagHelper",
+        "httphttps",
+        "}{|",
+        "\u2581HasFactory",
+        "\u062d\u0648\u0627\u0644\u06c1"
+      ],
+      "neg_str": [
+        "\u2581vend",
+        "\u2581referrerpolicy",
+        "cccccccc",
+        "\u2581CFS",
+        "\u2581Angst"
+      ],
+      "max_act": 85.816
+    }
+  ],
+  "layer_15": [
+    {
+      "index": 0,
+      "pos_str": [
+        "\u2581Australian",
+        "\u2581Australia",
+        "\u2581Australians",
+        "\u2581Aussie",
+        "Australia"
+      ],
+      "neg_str": [
+        "+#+",
+        "\u2581Spill",
+        "\u2581Morin",
+        "\u00e9n",
+        "</b>"
+      ],
+      "max_act": 56.589
+    },
+    {
+      "index": 1,
+      "pos_str": [
+        "\u2581Jahrgang",
+        "\u2581cohort",
+        "Personensuche",
+        "\u2581ModelExpression",
+        "\u2581ann\u00e9e"
+      ],
+      "neg_str": [
+        "\u2581Count",
+        "inalg",
+        "\u2581shadow",
+        "IGraphics",
+        "afel"
+      ],
+      "max_act": 41.342
+    },
+    {
+      "index": 2,
+      "pos_str": [
+        "\n",
+        "\n\n",
+        "\u2581",
+        "1",
+        "ma"
+      ],
+      "neg_str": [
+        "\u2581ModelExpression",
+        "\u2581\u0627\u0644\u0645\u0639\u064a\u0627\u0631\u0649",
+        "\u2581\u0643\u0648\u0645\u0648\u0646\u0632",
+        "complexContent",
+        "\u2581estekak"
+      ],
+      "max_act": 59.007
+    },
+    {
+      "index": 3,
+      "pos_str": [
+        "\u2581statistics",
+        "\u2581Statistics",
+        "\u2581average",
+        "\u2581records",
+        "\u2581averaged"
+      ],
+      "neg_str": [
+        "featureID",
+        "MLLoader",
+        "\u2581\u064a\u062a\u064a\u0645\u0647",
+        "CreateModel",
+        "ReusableCell"
+      ],
+      "max_act": 42.154
+    },
+    {
+      "index": 4,
+      "pos_str": [
+        "enumi",
+        "\u2581/\\.(",
+        "\u2581Italijanski",
+        "Portail",
+        "\u2581/\\."
+      ],
+      "neg_str": [
+        "PrototypeOf",
+        "\u2581\u0645\u0634\u064a\u0646",
+        "AccessorTable",
+        "extAlignment",
+        "setVerticalGroup"
+      ],
+      "max_act": 55.592
+    },
+    {
+      "index": 5,
+      "pos_str": [
+        "haustible",
+        "\u2581\u0627\u0644\u0645\u0639\u064a\u0627\u0631\u0649",
+        "\u2581\u0432\u0438\u043f\u0440\u0430\u0432\u0438\u0432\u0448\u0438",
+        "awtextra",
+        "MigrationBuilder"
+      ],
+      "neg_str": [
+        "\u90ce",
+        "mo",
+        "elor",
+        "\u00ebnt",
+        "\u2581singolo"
+      ],
+      "max_act": 33.122
+    },
+    {
+      "index": 6,
+      "pos_str": [
+        "\u2581archived",
+        "\u2581original",
+        "\u2581archive",
+        "\u2581documents",
+        "\u2581archives"
+      ],
+      "neg_str": [
+        "CGRectMake",
+        "\u2581inform\u00e9e",
+        "\u2581createState",
+        "\u2581estim\u00e9s",
+        ")\u200f"
+      ],
+      "max_act": 30.235
+    },
+    {
+      "index": 7,
+      "pos_str": [
+        "\u2581autorytatywna",
+        "\u2581\u0645\u062a\u0639\u0644\u0642\u0647",
+        "rungsseite",
+        "\u2581surla",
+        "tagHelperRunner"
+      ],
+      "neg_str": [
+        "\n",
+        ",",
+        "\n\n",
+        "\u2581",
+        "</b>"
+      ],
+      "max_act": 20.504
+    },
+    {
+      "index": 8,
+      "pos_str": [
+        "\u2581adding",
+        "\u2581add",
+        "\u2581Adding",
+        "Add",
+        "\u2581Add"
+      ],
+      "neg_str": [
+        "\")));\r",
+        "\u2581endforeach",
+        "Demikian",
+        "\u2581}}$}",
+        "\u2014\u200a"
+      ],
+      "max_act": 39.78
+    },
+    {
+      "index": 9,
+      "pos_str": [
+        "\u2581'",
+        "[]",
+        "\u2581N",
+        "\u2581concerned",
+        "\u2581interess"
+      ],
+      "neg_str": [
+        "StoryboardSegue",
+        "\u2581BoxDecoration",
+        "tagHelperRunner",
+        "MLLoader",
+        "saraba"
+      ],
+      "max_act": 65.587
+    }
+  ]
+}

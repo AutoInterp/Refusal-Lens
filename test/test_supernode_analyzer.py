@@ -5,6 +5,8 @@ This module contains comprehensive tests for the SupernodeAnalyzer class,
 including tests for loading data, querying supernodes, and performing analysis.
 """
 
+from __future__ import annotations
+
 import json
 import tempfile
 from pathlib import Path
