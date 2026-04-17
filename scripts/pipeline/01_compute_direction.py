@@ -45,6 +45,10 @@ def parse_args():
         "--recompute", action="store_true",
         help="Recompute even if existing directions found",
     )
+    parser.add_argument(
+        "--update-metadata", action="store_true",
+        help="Re-populate cosine matrix from existing per-layer directions (no model load)",
+    )
     return parser.parse_args()
 
 
@@ -91,6 +95,24 @@ def compute_mean_activations(model, tokenizer, prompts, layers, batch_size=4):
 
     return means
 
+def compute_full_cosine_matrix(normalized_directions: dict) -> list[list[float]]:
+    """A5: full layer×layer cosine-similarity matrix between per-layer directions."""
+    layers = sorted(normalized_directions.keys())
+    n = len(layers)
+    matrix = [[0.0] * n for _ in range(n)]
+    for i, l1 in enumerate(layers):
+        for j in range(i, n):
+            l2 = layers[j]
+            if i == j:
+                matrix[i][j] = 1.0
+            else:
+                cos = torch.nn.functional.cosine_similarity(
+                    normalized_directions[l1].unsqueeze(0),
+                    normalized_directions[l2].unsqueeze(0),
+                ).item()
+                matrix[i][j] = round(cos, 6)
+                matrix[j][i] = round(cos, 6)
+    return matrix
 
 def main():
     args = parse_args()
@@ -105,6 +127,25 @@ def main():
 
     out_dir = get_stage_dir(run_dir, "01_direction")
     layers = args.layers or config.DIRECTION_LAYERS
+
+    # A5: update-metadata path — recompute cosine matrix from saved directions, no model
+    if args.update_metadata:
+        from utils import load_json
+        meta_path = out_dir / "direction_metadata.json"
+        directions_dir = out_dir / "directions"
+        if not meta_path.exists() or not directions_dir.exists():
+            print(f"ERROR: --update-metadata needs existing {meta_path.name} and {directions_dir.name}/")
+            sys.exit(1)
+        normalized = {}
+        for pt_file in sorted(directions_dir.glob("layer_*.pt")):
+            layer_idx = int(pt_file.stem.split("_")[1])
+            normalized[layer_idx] = torch.load(pt_file, map_location="cpu")
+        meta = load_json(meta_path)
+        meta["cosine_matrix"] = compute_full_cosine_matrix(normalized)
+        save_json(meta, meta_path)
+        print(f"  Updated {meta_path} with {len(normalized)}×{len(normalized)} cosine matrix")
+        print("DONE!")
+        return
 
     # Check for existing
     unnorm_path = out_dir / "unnormalized_r.pt"
@@ -185,6 +226,7 @@ def main():
             print(f"  cos(L{l1}, L{l2}) = {cos:.4f}")
 
     metadata["cosine_similarities"] = cosine_sims
+    metadata["cosine_matrix"] = compute_full_cosine_matrix(normalized_directions)
 
     # Find best separation and best causal layers
     best_sep_layer = max(layers, key=lambda l: metadata["layers"][str(l)]["separation"])

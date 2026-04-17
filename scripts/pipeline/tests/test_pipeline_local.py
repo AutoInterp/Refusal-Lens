@@ -705,6 +705,39 @@ def test_stage_02b():
             len(mismatches) == 0,
             "; ".join(mismatches[:3]) if mismatches else f"{sum(len(v) for v in pre_stats.values())} values match",
         )
+    
+    # A5: cosine heatmap (requires cosine_matrix in direction_metadata)
+    heatmap = run_dir / "02b_stats" / "cosine_heatmap.png"
+    dm_path = run_dir / "01_direction" / "direction_metadata.json"
+    dm = json.loads(dm_path.read_text()) if dm_path.exists() else {}
+    if "cosine_matrix" in dm:
+        log_test(
+            "T-A5h: cosine_heatmap.png exists",
+            heatmap.exists(),
+            str(heatmap.relative_to(run_dir)) if heatmap.exists() else "missing",
+        )
+        if heatmap.exists():
+            log_test(
+                "T-A5i: cosine_heatmap.png non-trivial (>5KB)",
+                heatmap.stat().st_size > 5_000,
+                f"size={heatmap.stat().st_size} bytes",
+            )
+    else:
+        log_skip("T-A5h/i: cosine heatmap", "cosine_matrix not populated (run --stage 01-a5 first)")
+    
+    # A6: bare-vs-JB distribution plot                                                                                          
+    dist = run_dir / "02b_stats" / "distribution_by_class.png"
+    log_test(                                                                                                                   
+        "T-A6a: distribution_by_class.png exists",
+        dist.exists(),                                                                                                          
+        str(dist.relative_to(run_dir)) if dist.exists() else "missing",
+    )                                                                                                                           
+    if dist.exists():
+        log_test(                                                                                                               
+            "T-A6b: distribution_by_class.png non-trivial (>5KB)",                                                              
+            dist.stat().st_size > 5_000,
+            f"size={dist.stat().st_size} bytes",                                                                                
+        )
 
 def test_stage_03_a4():
     print("\n" + "=" * 60)
@@ -786,6 +819,151 @@ def test_stage_03_a4():
         post.get("summary") == pre_summary,
     )
 
+def test_stage_01_a5():
+    print("\n" + "=" * 60)
+    print("STAGE 01 A5 TESTS (full cosine matrix)")
+    print("=" * 60)
+
+    run_dir = find_latest_pipeline_run()
+    if run_dir is None:
+        log_skip("T-A5: Stage 01 A5", "no pipeline run found")
+        return
+    meta_path = run_dir / "01_direction" / "direction_metadata.json"
+    directions_dir = run_dir / "01_direction" / "directions"
+    if not meta_path.exists() or not directions_dir.exists():
+        log_skip("T-A5: Stage 01 A5", "Stage 01 outputs missing")
+        return
+    print(f"  Using run: {run_dir}")
+
+    pre = json.loads(meta_path.read_text())
+    pre_layers = pre.get("layers", {})
+    pre_cos_sims = pre.get("cosine_similarities", {})
+
+    import importlib
+    stage01 = importlib.import_module("01_compute_direction")
+
+    class MockArgs:
+        run_dir = None
+        n_samples = config.N_DIRECTION_SAMPLES
+        layers = None
+        recompute = False
+        update_metadata = True
+
+    mock = MockArgs()
+    mock.run_dir = run_dir
+    original_parse = stage01.parse_args
+    stage01.parse_args = lambda: mock
+    try:
+        stage01.main()
+    finally:
+        stage01.parse_args = original_parse
+
+    post = json.loads(meta_path.read_text())
+
+    log_test("T-A5a: cosine_matrix key present", "cosine_matrix" in post)
+
+    if "cosine_matrix" in post:
+        matrix = post["cosine_matrix"]
+        n = len(matrix)
+        log_test(
+            "T-A5b: matrix is 34×34",
+            n == config.N_LAYERS and all(len(row) == n for row in matrix),
+            f"got {n}×{len(matrix[0]) if matrix else 0}",
+        )
+        diag_ok = all(abs(matrix[i][i] - 1.0) < 1e-6 for i in range(n))
+        log_test("T-A5c: diagonal == 1.0", diag_ok)
+        sym_ok = all(
+            abs(matrix[i][j] - matrix[j][i]) < 1e-6
+            for i in range(n) for j in range(i + 1, n)
+        )
+        log_test("T-A5d: matrix symmetric", sym_ok)
+        # L15-L32 should match the previously-stored pairwise value
+        if "L15_L32" in pre_cos_sims:
+            diff = abs(matrix[15][32] - pre_cos_sims["L15_L32"])
+            log_test(
+                "T-A5e: L15-L32 matches prior pairwise value",
+                diff < 1e-3,
+                f"diff={diff:.6f}",
+            )
+
+    log_test("T-A5f: existing layers unchanged", post.get("layers") == pre_layers)
+    log_test(
+        "T-A5g: existing cosine_similarities unchanged",
+        post.get("cosine_similarities") == pre_cos_sims,
+    )
+
+def test_stage_04_a8():
+    print("\n" + "=" * 60)
+    print("STAGE 04 A8 TESTS (layer histogram)")
+    print("=" * 60)
+
+    run_dir = find_latest_pipeline_run()
+    if run_dir is None:
+        log_skip("T-A8: Stage 04 A8", "no pipeline run found")
+        return
+    comp_path = run_dir / "04_labels" / "feature_comparison_labeled.json"
+    if not comp_path.exists():
+        log_skip("T-A8: Stage 04 A8", "feature_comparison_labeled.json missing")
+        return
+    print(f"  Using run: {run_dir}")
+
+    import importlib
+    stage04 = importlib.import_module("04_label_features")
+
+    class MockArgs:
+        run_dir = None
+        skip_download = False
+        max_features = None
+        n_examples = 3
+        n_logits = 10
+        histogram_only = True
+
+    mock = MockArgs()
+    mock.run_dir = run_dir
+    original_parse = stage04.parse_args
+    stage04.parse_args = lambda: mock
+    try:
+        stage04.main()
+    finally:
+        stage04.parse_args = original_parse
+
+    plot = run_dir / "04_labels" / "features_by_layer.png"
+    log_test(
+        "T-A8a: features_by_layer.png exists",
+        plot.exists(),
+        str(plot.relative_to(run_dir)) if plot.exists() else "missing",
+    )
+    if plot.exists():
+        log_test(
+            "T-A8b: features_by_layer.png non-trivial (>5KB)",
+            plot.stat().st_size > 5_000,
+            f"size={plot.stat().st_size} bytes",
+        )
+
+    hist_path = run_dir / "04_labels" / "layer_histogram.json"
+    log_test("T-A8c: layer_histogram.json exists", hist_path.exists())
+    if hist_path.exists():
+        hist = json.loads(hist_path.read_text())
+        log_test(
+            "T-A8d: histogram has 3 buckets",
+            set(hist.get("buckets", {}).keys()) == {"sign_flipped", "dampened", "amplified_anti"},
+        )
+        log_test(
+            "T-A8e: each bucket has 34 layer slots",
+            all(len(b["by_layer"]) == 34 for b in hist.get("buckets", {}).values()),
+        )
+        # Cross-validate totals against label_coverage.json
+        cov_path = run_dir / "04_labels" / "label_coverage.json"
+        if cov_path.exists():
+            cov = json.loads(cov_path.read_text())
+            expected = cov.get("comparison_counts", {})
+            actual = {k: b["total"] for k, b in hist["buckets"].items()}
+            log_test(
+                "T-A8f: histogram totals match label_coverage.json",
+                actual == expected,
+                f"actual={actual}, expected={expected}",
+            )
+
 # ============================================================
 # Main
 # ============================================================
@@ -793,7 +971,7 @@ def test_stage_03_a4():
 def main():
     parser = argparse.ArgumentParser(description="Local pipeline validation tests")
     parser.add_argument(
-        "--stage", choices=["01", "02b", "03", "03-a4", "utils", "all"], default="all",
+        "--stage", choices=["01", "01-a5", "02b", "03", "03-a4", "04-a8", "utils", "all"], default="all",
         help="Which stage to test (default: all)",
     )
     parser.add_argument(
@@ -815,8 +993,10 @@ def main():
         test_utils()
     elif args.stage == "all":
         test_utils()
+        test_stage_01_a5()
         test_stage_02b()
         test_stage_03_a4()
+        test_stage_04_a8()
         if check_gpu():
             test_stage_01()
             test_stage_03()
@@ -828,6 +1008,8 @@ def main():
             test_stage_01()
         else:
             log_skip("Stage 01 tests", "no GPU available")
+    elif args.stage == "01-a5":
+        test_stage_01_a5()
     elif args.stage == "02b":
         test_stage_02b()
     elif args.stage == "03":
@@ -837,6 +1019,8 @@ def main():
             log_skip("Stage 03 tests", "no GPU available")
     elif args.stage == "03-a4":
         test_stage_03_a4()
+    elif args.stage == "04-a8":
+          test_stage_04_a8()
 
     elapsed = time.time() - t0
 

@@ -24,166 +24,291 @@ Shared modules: `config.py` (model/layer/class constants), `utils.py` (run-dir h
 
 ## Latest experiment — `run_20260417_010035` (50 prompts)
 
-### Stage 01: Direction Computation
+### Stage 01 · Direction computation
 
-| Layer | Separation | Role |
-|---|---:|---|
-| 0 | 7.4 | — |
-| 11 | 1,346 | early MLP buildup |
-| 15 | **3,101** | **best causal layer** (Tejas) |
-| 24 | 9,384 | JB effects concentrate here → L32 |
-| 29 | 18,930 | — |
-| 32 | **20,873** | **best separation layer** |
-| 33 | 287 | pre-RMSNorm artifact |
+<table>
+<thead>
+<tr><th>Layer</th><th align="right">Separation</th><th>Role</th></tr>
+</thead>
+<tbody>
+<tr><td><code>L0</code></td><td align="right"><code>7.4</code></td><td>—</td></tr>
+<tr><td><code>L11</code></td><td align="right"><code>1,346</code></td><td>early MLP buildup</td></tr>
+<tr><td><code><strong>L15</strong></code></td><td align="right"><code><strong>3,101</strong></code></td><td><strong>best causal layer</strong> (Tejas)</td></tr>
+<tr><td><code>L24</code></td><td align="right"><code>9,384</code></td><td>JB effects concentrate here → L32</td></tr>
+<tr><td><code>L29</code></td><td align="right"><code>18,930</code></td><td>—</td></tr>
+<tr><td><code><strong>L32</strong></code></td><td align="right"><code><strong>20,873</strong></code></td><td><strong>best separation layer</strong></td></tr>
+<tr><td><code>L33</code></td><td align="right"><code>287</code></td><td>pre-RMSNorm artifact</td></tr>
+</tbody>
+</table>
 
-- Matches Tejas's prior numbers within noise (L32: 20,827; L15: 3,131).
-- **Cosine(L15, L32) = −0.115** — near-orthogonal. The direction rotates meaningfully between the layer where it *separates* and the layer where it's *causally effective*. Flag for mentor.
-- The L33 collapse (287) is consistent with the pre-RMSNorm hook artifact.
+- Matches Tejas's prior numbers within noise (L32: `20,827`; L15: `3,131`).
+- **`cos(L15, L32) = −0.115`** — near-orthogonal. The full 34×34 cosine matrix (see "Mechanistic story" below) resolves this into three regimes separated by two pivots at L13→L14 and L17→L18.
+- **`cos(L32, L33) = +0.83`** — the L33 separation collapse (`287` vs `20,873`) is a *magnitude* collapse only, not a directional rotation. RMSNorm preserves the direction but rescales it away.
 
-### Stage 02b: Statistical Analysis
+### Stage 02b · Statistical analysis
 
-All five jailbreak classes produce highly significant effects on net refusal attribution:
+All five jailbreak classes produce highly significant effects on net refusal attribution.
 
-| Class | Δnet | % change | Cohen's d | p (Wilcoxon) | 95% CI | Consistency |
-|---|---:|---:|---:|---:|---|---:|
-| **Analytical** | −73.7 | −104.6% | −2.37 | 5.3e-15 | [−82.1, −64.9] | 49/50 |
-| **Fiction** | −65.3 | −92.7% | −1.57 | 3.0e-13 | [−76.6, −53.8] | 47/50 |
-| **Cognitive reframe** | −50.2 | −71.3% | −1.41 | 2.5e-14 | [−60.2, −40.4] | 49/50 |
-| **Roleplay** | −38.7 | −54.9% | −0.91 | 1.4e-8 | [−50.5, −27.0] | 42/50 |
-| **Completion** | **+5.0** | **+7.2%** | +0.27 | 0.011 | [−0.1, +10.2] | 15/50 |
+<table>
+<thead>
+<tr>
+  <th>Class</th>
+  <th align="right">Δnet</th>
+  <th align="right">% change</th>
+  <th align="right">Cohen's d</th>
+  <th align="right">p (Wilcoxon)</th>
+  <th>95% CI</th>
+  <th align="right">Consistency</th>
+</tr>
+</thead>
+<tbody>
+<tr><td><strong>Analytical</strong></td><td align="right"><code>−73.7</code></td><td align="right"><code>−104.6%</code></td><td align="right"><code>−2.37</code></td><td align="right"><code>5.3e-15</code></td><td><code>[−82.1, −64.9]</code></td><td align="right"><code>49/50</code></td></tr>
+<tr><td><strong>Fiction</strong></td><td align="right"><code>−65.3</code></td><td align="right"><code>−92.7%</code></td><td align="right"><code>−1.57</code></td><td align="right"><code>3.0e-13</code></td><td><code>[−76.6, −53.8]</code></td><td align="right"><code>47/50</code></td></tr>
+<tr><td><strong>Cognitive reframe</strong></td><td align="right"><code>−50.2</code></td><td align="right"><code>−71.3%</code></td><td align="right"><code>−1.41</code></td><td align="right"><code>2.5e-14</code></td><td><code>[−60.2, −40.4]</code></td><td align="right"><code>49/50</code></td></tr>
+<tr><td><strong>Roleplay</strong></td><td align="right"><code>−38.7</code></td><td align="right"><code>−54.9%</code></td><td align="right"><code>−0.91</code></td><td align="right"><code>1.4e-8</code></td><td><code>[−50.5, −27.0]</code></td><td align="right"><code>42/50</code></td></tr>
+<tr><td><strong>Completion</strong></td><td align="right"><code><strong>+5.0</strong></code></td><td align="right"><code><strong>+7.2%</strong></code></td><td align="right"><code>+0.27</code></td><td align="right"><code>0.011</code></td><td><code>[−0.1, +10.2]</code></td><td align="right"><code>15/50</code></td></tr>
+</tbody>
+</table>
 
-**Dual-mechanism decomposition** (how each class moves the positive-attribution and negative-attribution halves separately):
+**Dual-mechanism decomposition** — how each class moves the positive-attribution (`dPos`) and negative-attribution (`dNeg`) halves separately:
 
-| Class | dPos (pro-refusal) | dNeg (anti-refusal) | Dominant |
-|---|---:|---:|---|
-| Roleplay | −22.5 (−16.7%) | −16.2 (−25.3%) | Balanced |
-| Fiction | −43.1 (−32.0%) | −22.2 (−34.6%) | Balanced |
-| Analytical | −44.7 (−33.2%) | −29.0 (−45.1%) | Balanced |
-| **Completion** | **+19.7 (+14.6%)** | −14.6 (−22.8%) | **Pro-refusal recruitment** |
-| Cognitive reframe | −33.8 (−25.1%) | −16.4 (−25.5%) | Dampening-dominant |
+<table>
+<thead>
+<tr><th>Class</th><th align="right">dPos (pro-refusal)</th><th align="right">dNeg (anti-refusal)</th><th>Dominant</th></tr>
+</thead>
+<tbody>
+<tr><td>Roleplay</td><td align="right"><code>−22.5 (−16.7%)</code></td><td align="right"><code>−16.2 (−25.3%)</code></td><td>Balanced</td></tr>
+<tr><td>Fiction</td><td align="right"><code>−43.1 (−32.0%)</code></td><td align="right"><code>−22.2 (−34.6%)</code></td><td>Balanced</td></tr>
+<tr><td>Analytical</td><td align="right"><code>−44.7 (−33.2%)</code></td><td align="right"><code>−29.0 (−45.1%)</code></td><td>Balanced</td></tr>
+<tr><td><strong>Completion</strong></td><td align="right"><code><strong>+19.7 (+14.6%)</strong></code></td><td align="right"><code>−14.6 (−22.8%)</code></td><td><strong>Pro-refusal recruitment</strong></td></tr>
+<tr><td>Cognitive reframe</td><td align="right"><code>−33.8 (−25.1%)</code></td><td align="right"><code>−16.4 (−25.5%)</code></td><td>Dampening-dominant</td></tr>
+</tbody>
+</table>
 
-Completion is the paradox: 35/50 prompts show *more* refusal attribution after the JB framing. dPos increases by +14.6% — new pro-refusal features are being recruited, not existing ones being amplified.
+Completion is the paradox: `35/50` prompts show *more* refusal attribution after the JB framing. `dPos` increases by `+14.6%` — new pro-refusal features are being recruited, not existing ones being amplified.
 
-**Feature comparison sizes** (total unique features per condition pair):
+**Feature comparison sizes** — total unique features per bare-vs-JB pair:
 
-| Class | Bare | JB | Shared % | JB-only % | Sign-flip % |
-|---|---:|---:|---:|---:|---:|
-| Roleplay | 8,342 | 12,540 | 65.7% | 56.3% | 17.5% |
-| **Fiction** | 8,342 | 12,996 | 58.5% | **62.5%** | **25.6%** |
-| Analytical | 8,342 | 12,109 | 63.0% | 56.6% | 23.1% |
-| Completion | 8,342 | 11,200 | **73.5%** | 45.3% | 16.6% |
-| Cognitive reframe | 8,342 | 11,131 | 64.4% | 51.8% | 20.3% |
+<table>
+<thead>
+<tr><th>Class</th><th align="right">Bare</th><th align="right">JB</th><th align="right">Shared %</th><th align="right">JB-only %</th><th align="right">Sign-flip %</th></tr>
+</thead>
+<tbody>
+<tr><td>Roleplay</td><td align="right"><code>8,342</code></td><td align="right"><code>12,540</code></td><td align="right"><code>65.7%</code></td><td align="right"><code>56.3%</code></td><td align="right"><code>17.5%</code></td></tr>
+<tr><td><strong>Fiction</strong></td><td align="right"><code>8,342</code></td><td align="right"><code>12,996</code></td><td align="right"><code>58.5%</code></td><td align="right"><code><strong>62.5%</strong></code></td><td align="right"><code><strong>25.6%</strong></code></td></tr>
+<tr><td>Analytical</td><td align="right"><code>8,342</code></td><td align="right"><code>12,109</code></td><td align="right"><code>63.0%</code></td><td align="right"><code>56.6%</code></td><td align="right"><code>23.1%</code></td></tr>
+<tr><td>Completion</td><td align="right"><code>8,342</code></td><td align="right"><code>11,200</code></td><td align="right"><code><strong>73.5%</strong></code></td><td align="right"><code>45.3%</code></td><td align="right"><code>16.6%</code></td></tr>
+<tr><td>Cognitive reframe</td><td align="right"><code>8,342</code></td><td align="right"><code>11,131</code></td><td align="right"><code>64.4%</code></td><td align="right"><code>51.8%</code></td><td align="right"><code>20.3%</code></td></tr>
+</tbody>
+</table>
 
-Fiction restructures the circuit most dramatically — highest sign-flip rate (25.6%) and highest share of JB-only features. Completion preserves the most of the bare circuit (73.5% shared).
+Fiction restructures the circuit most dramatically — highest sign-flip rate (`25.6%`) and highest share of JB-only features. Completion preserves the most of the bare circuit (`73.5%` shared).
 
-### Stage 03: Attribution Verification (M2)
+### Stage 03 · Attribution verification (M2)
 
-- Full projection `r · h[L=32]` (mean): **17,230.8** (std 1,986)
-- Sum of feature attributions (mean): **70.47** (std 17.6)
-- **MLP ratio**: **0.404%** of the total refusal signal lives in the transcoded MLP features. The remaining 99.6% is carried by attention heads + embeddings.
-- `attr_net_mean=70.47` exactly matches the bare condition in Stage 02b — keys plumb through correctly.
-- Per-layer decomposition (10 prompts, 34 layers) shows early-layer buildup — layers 7–11 alone contribute ~2,400 to the projection for a typical prompt.
+<table>
+<thead>
+<tr><th>Metric</th><th align="right">Mean</th><th align="right">Std</th></tr>
+</thead>
+<tbody>
+<tr><td>Full projection <code>r · h[L=32]</code></td><td align="right"><code>17,230.8</code></td><td align="right"><code>1,986</code></td></tr>
+<tr><td>Σ feature attributions (MLP only)</td><td align="right"><code>70.47</code></td><td align="right"><code>17.6</code></td></tr>
+<tr><td><strong>MLP ratio</strong></td><td align="right"><code><strong>0.404%</strong></code></td><td align="right"><code>0.077%</code></td></tr>
+</tbody>
+</table>
 
-### Stage 04: Feature Labeling (M4)
+- `attr_net_mean = 70.47` exactly matches the bare condition in Stage 02b — keys plumb through correctly end-to-end.
+- Per-layer decomposition (10 prompts × 34 layers) shows early-layer buildup — layers 7–11 alone contribute `~2,400` to the projection for a typical prompt.
+- The remaining `99.6%` is carried by **attention heads + embeddings** — a property of the Gemma Scope transcoder set (MLP-only).
 
-- **876 unique features** collected across all prompts and conditions
-- **876 labeled (100%)** via HuggingFace Gemma Scope dashboards (`mwhanna/gemma-scope-2-4b-it`)
-- **788 priority features** (those appearing in sign-flipped / dampened / amplified-anti buckets) all labeled
-- Comparison-bucket sizes: 603 sign-flipped, 115 dampened, 117 amplified-anti
-- Caveat: many top-token patches in Gemma Scope are polyglot or byte-level noise. The labels are *correct representations of what the dashboard shows*, but human-interpretable features will require reading activation examples on concrete prompts (Stage 05).
+### Stage 04 · Feature labeling (M4)
+
+<table>
+<thead>
+<tr><th>Metric</th><th align="right">Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Unique features collected</td><td align="right"><code>876</code></td></tr>
+<tr><td>Labeled via HF Gemma Scope</td><td align="right"><code>876 (100%)</code></td></tr>
+<tr><td>Priority features (in sign-flipped / dampened / amplified-anti buckets)</td><td align="right"><code>788 / 788</code></td></tr>
+<tr><td>Sign-flipped features</td><td align="right"><code>603</code></td></tr>
+<tr><td>Dampened features</td><td align="right"><code>115</code></td></tr>
+<tr><td>Amplified-anti features</td><td align="right"><code>117</code></td></tr>
+</tbody>
+</table>
+
+Labels come from `mwhanna/gemma-scope-2-4b-it` (byte-range HTTP against the dashboard binary).
+
+> **Caveat.** Many top-token patches in Gemma Scope are polyglot or byte-level noise. Labels are correct representations of what the dashboard shows, but human-interpretable features will require reading activation examples on concrete prompts (Stage 05).
 
 ---
 
 ## Mechanistic story so far
 
-A running narrative of what the pipeline has taught us about Gemma-3-4b-it's refusal circuit. This section grows as new stages and analyses land — last revised 2026-04-17 after A3 + A4 visualizations.
+A running narrative of what the pipeline has taught us about Gemma-3-4b-it's refusal circuit. This section grows as new stages and analyses land — last revised 2026-04-17 after A3 + A4 + A5 + A6 visualizations.
 
 Plot paths below are relative to repo root; each was produced by the most recent pipeline run (`data/results/pipeline_runs/run_20260417_010035/`).
 
-### 1. Refusal is linear, but the "direction" rotates across layers
+### 1. Refusal is linear, but the "direction" rotates in two sharp pivots
 
-The diff-in-means between harmful and harmless activations gives a clean linear readout at every layer from L9 onward, with separation climbing monotonically to L32 (~20,873) before collapsing at L33 to 287 — the known pre/post-RMSNorm artifact.
+The diff-in-means between harmful and harmless activations gives a clean linear readout at every layer from `L9` onward, with separation climbing monotonically to `L32 (~20,873)` before collapsing at `L33` to `287`.
 
-![Separation by layer](../../data/results/pipeline_runs/run_20260417_010035/02b_stats/separation_by_layer.png)
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/02b_stats/separation_by_layer.png" alt="Refusal-direction separation as a function of layer, with L15 and L32 marked and the L33 pre-RMSNorm artifact annotated" width="800">
+<figcaption><em><strong>Figure 1.</strong> Per-layer separation <code>|μ(harmful) − μ(harmless)|</code>. Monotonic climb through <code>L32</code>, collapse at <code>L33</code> from the pre-RMSNorm artifact.</em></figcaption>
+</figure>
 
-But **the direction at the best-separation layer (L32) is nearly orthogonal to the direction at Tejas's best-causal layer (L15)**: cosine = −0.115 at n=64. Causal steering works at L15 despite L15 having ~7× less separation than L32 — which means the right causal direction is not simply a scaled version of the right readout direction. The signal rotates as it propagates. (A5 will show the full 34×34 cosine matrix so we can see exactly where the pivot happens.)
+The full 34×34 cosine matrix between per-layer directions exposes three distinct *regimes* separated by two pivots:
+
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/02b_stats/cosine_heatmap.png" alt="34 by 34 cosine similarity matrix between per-layer refusal directions, showing three blocks" width="800">
+<figcaption><em><strong>Figure 2.</strong> Cosine similarity <code>cos(r̂_i, r̂_j)</code> for all layer pairs. Red = aligned, blue = anti-aligned. Grey gridlines mark <code>L15</code>, <code>L25</code>, <code>L32</code>.</em></figcaption>
+</figure>
+
+<table>
+<thead>
+<tr><th>Regime</th><th>Layers</th><th>Internal coherence</th><th>Example cosine</th></tr>
+</thead>
+<tbody>
+<tr><td>A — early "proto-refusal"</td><td><code>L5–L13</code></td><td>Strong (<code>~0.5–0.9</code>)</td><td><code>cos(L5, L13) = +0.39</code></td></tr>
+<tr><td><strong>Pivot 1 (sharp)</strong></td><td><code>L13 → L14</code></td><td>—</td><td><code><strong>cos(L13, L14) = −0.21</strong></code></td></tr>
+<tr><td>B — causal band</td><td><code>L14–L17</code></td><td>Very strong (<code>~0.94</code>)</td><td><code><strong>cos(L14, L15) = +0.94</strong></code></td></tr>
+<tr><td><strong>Pivot 2 (gentler)</strong></td><td><code>L17 → L18</code></td><td>—</td><td>gradual drop</td></tr>
+<tr><td>C — late readout</td><td><code>L18–L33</code></td><td>Increasing toward <code>L32</code></td><td><code>cos(L25, L32) = +0.31</code></td></tr>
+</tbody>
+</table>
+
+This explains the L15/L32 paradox: **L15 (Tejas's best-causal layer) and L32 (best-separation layer) live in different regimes**. `cos(L15, L32) = −0.115` — near-orthogonal. Causal steering works at L15 because downstream layers rewrite the direction; causal intervention applied to the L32 direction at L15 misses the then-current geometry.
+
+A second observation from the heatmap: **`cos(L32, L33) = +0.83`**, so the L33 collapse is almost entirely a *magnitude* collapse, not a directional rotation. RMSNorm rescales the projection but preserves the direction. This tightens the L33 caveat — it's not that the refusal direction "disappears" at L33, it's that the residual stream is renormalized and the dot product shrinks by `~70×`.
+
+Finally, Regime A (`L5–L13`) and Regime C (`L18–L33`) correlate weakly-to-negatively (`−0.5 to −0.1` in the heatmap's blue strips). The early "proto-refusal" is **not** just a noisier version of the final readout — they're distinct features rewritten at the L13→L14 pivot.
 
 ### 2. The signal is assembled in two waves, with a dampening layer mid-stream
 
-The per-layer-decomposition plot (10 prompts × 34 layers, aggregated) shows:
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/03_verification/per_layer_contribution.png" alt="Bar chart of mean per-layer contribution to the refusal-direction projection across 10 prompts" width="800">
+<figcaption><em><strong>Figure 3.</strong> Mean per-layer contribution <code>(h[L+1] − h[L]) · r̂</code> to the L32 projection (n=10 prompts). Layers 0–32 shown; post-measurement L33 is the RMSNorm artifact and is reported in the inset.</em></figcaption>
+</figure>
 
-![Per-layer contribution](../../data/results/pipeline_runs/run_20260417_010035/03_verification/per_layer_contribution.png)
+<table>
+<thead>
+<tr><th>Phase</th><th>Layers</th><th align="right">Mean contribution</th><th>Behaviour</th></tr>
+</thead>
+<tbody>
+<tr><td>Early wave</td><td><code>L7–L11</code></td><td align="right"><code>peaks ~850 at L11</code></td><td>first buildup</td></tr>
+<tr><td>Mid plateau</td><td><code>L12–L19</code></td><td align="right"><code>200–450</code></td><td>modest contributions</td></tr>
+<tr><td><strong>Dampener</strong></td><td><code><strong>L20</strong></code></td><td align="right"><code><strong>~−200</strong></code></td><td><strong>pulls projection down</strong></td></tr>
+<tr><td>Late wave</td><td><code>L23–L32</code></td><td align="right"><code>L29–L30 ≈ 1,650 each</code></td><td>dominant ramp</td></tr>
+<tr><td>Post-measurement</td><td><code>L33</code></td><td align="right"><code>−17,311</code></td><td>RMSNorm artifact, not part of projection</td></tr>
+</tbody>
+</table>
 
-- **Early wave (L7–L11)** — first buildup, peaks ~850 at L11
-- **Mid plateau (L12–L19)** — modest contributions (200–450)
-- **L20 actively dampens** the projection (~−200 mean)
-- **Late wave (L23–L32)** — the dominant ramp; L29–L30 alone contribute ~1,650 each
-- **L33 (post-measurement)** — −17,311, the RMSNorm artifact; not part of the assembled projection
-
-Interpretation: the separation at L32 is mostly *late*-built. Tejas's L15 intervention works because downstream layers then amplify the L15 residual ~4×. L20 is an open question — a "pump-the-brakes" layer actively pulling the projection down.
+**Interpretation.** The separation at `L32` is mostly *late*-built. Tejas's L15 intervention works because downstream layers then amplify the L15 residual `~4×`. `L20` is an open question — a "pump-the-brakes" layer actively pulling the projection down.
 
 ### 3. MLP transcoders only capture ~0.4% of the refusal signal
 
-Verification against the full residual-stream dot product shows:
+<table>
+<thead>
+<tr><th>Metric</th><th align="right">Mean</th><th align="right">Std</th></tr>
+</thead>
+<tbody>
+<tr><td>Full projection <code>r · h[L=32]</code></td><td align="right"><code>17,230</code></td><td align="right"><code>1,986</code></td></tr>
+<tr><td>Σ feature attributions</td><td align="right"><code>70.47</code></td><td align="right"><code>17.6</code></td></tr>
+<tr><td><strong>MLP ratio</strong></td><td align="right"><code><strong>0.404%</strong></code></td><td align="right"><code>0.077%</code></td></tr>
+</tbody>
+</table>
 
-| Metric | Mean | Std |
-|---|---:|---:|
-| `r · h[L=32]` | 17,230 | 1,986 |
-| Σ feature attributions | 70.47 | 17.6 |
-| **MLP ratio** | **0.404%** | 0.077% |
-
-The ~99.6% gap is carried by **attention heads + embeddings** — a property of the Gemma Scope transcoder set (MLP-only). Implication: any mechanistic intervention relying purely on transcoded MLP features will move <1% of the measured refusal signal. Attention-head attribution is a known gap (task S3).
+The `~99.6%` gap is carried by **attention heads + embeddings** — a property of the Gemma Scope transcoder set (MLP-only). Implication: any mechanistic intervention relying purely on transcoded MLP features will move `<1%` of the measured refusal signal. Attention-head attribution is a known gap (task S3).
 
 ### 4. Jailbreaks produce strong, statistically real changes
 
-Five jailbreak classes × 50 prompts, paired bare-vs-JB, all stat-significant:
+Five jailbreak classes × 50 prompts, paired bare-vs-JB, all statistically significant.
 
-![Class comparison](../../data/results/pipeline_runs/run_20260417_010035/02b_stats/class_comparison.png)
-![Effect sizes](../../data/results/pipeline_runs/run_20260417_010035/02b_stats/effect_sizes.png)
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/02b_stats/class_comparison.png" alt="Bar chart comparing positive, net, and negative attribution across bare and five jailbreak classes with significance stars" width="800">
+<figcaption><em><strong>Figure 4.</strong> Positive (pro-refusal), net, and negative (anti-refusal) attribution per class. Error bars are ±1 std on net; *, **, *** are Wilcoxon p-value significance thresholds.</em></figcaption>
+</figure>
 
-Ordering (by effect size):
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/02b_stats/distribution_by_class.png" alt="Violin plots with inner box plots and jittered scatter points showing the net-attribution distribution per class, with a dashed reference line at the bare mean" width="900">
+<figcaption><em><strong>Figure 5.</strong> Net-attribution distribution by class (<code>n=50</code> prompts). Violin shape + inner box + jittered per-prompt points. Dashed grey line at bare mean (<code>+70.5</code>).</em></figcaption>
+</figure>
 
-```
-Analytical       d = −2.37  (strongest; 49/50 consistency)
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/02b_stats/effect_sizes.png" alt="Horizontal bar chart of Cohen's d for each jailbreak class with small, medium, and large threshold guides" width="700">
+<figcaption><em><strong>Figure 6.</strong> Cohen's d per class. Dotted/dashed/solid grey verticals mark small/medium/large effect thresholds.</em></figcaption>
+</figure>
+
+Ordering by effect size:
+
+```text
+Analytical       d = −2.37   (strongest; 49/50 consistency)
 Fiction          d = −1.57
 Cognitive reframe d = −1.41
 Roleplay         d = −0.91
-Completion       d = +0.27  (INVERTED — discussed below)
+Completion       d = +0.27   (INVERTED — discussed below)
 ```
 
-Analytical framing is the most reliable net suppressor (net goes *negative*, i.e. the model becomes anti-refusal-biased). Fiction is the most disruptive to the underlying circuit (see #5). Roleplay is weakest.
+The distribution plot (Figure 5) adds shape evidence to the effect-size summary:
+
+- **Bare is remarkably tight** — IQR roughly `60–95`, no long tail. The model's default refusal behaviour is very consistent across our 50 prompts. **Every JB class broadens this distribution substantially** — jailbreaks *destabilize* the circuit, not just shift its mean.
+- **Analytical is the only class whose median goes firmly negative.** Not just dampening — it flips the net sign on most prompts. This is what "most jailbreakable" actually looks like at the distribution level.
+- **Fiction has the longest lower tail (`~−55`)** but retains a small residual cluster above `+50` — some prompts *resist* the fiction framing. Worth asking later whether that's a prompt-category pattern (A7 / A8 can answer).
+- **Roleplay has the widest IQR** (`~−10 to +70`) despite only a `−38.7` mean shift — it's the most volatile class, a mix of total-flip and no-effect prompts.
+- **Completion's mass sits *above* the bare-mean line** with a narrow tail down to ~0 — the "high-and-tight with a minority tail" shape. This visually previews the recruitment mechanism unpacked in #6.
 
 ### 5. Fiction reorganizes the circuit; completion preserves it
 
-Feature-comparison sizes between each JB condition and bare:
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/02b_stats/feature_comparison_summary.png" alt="Grouped bar chart showing shared, bare-only, JB-only, sign-flipped, dampened, and amplified-anti feature counts per class" width="800">
+<figcaption><em><strong>Figure 7.</strong> Mean feature counts per JB class across six comparison buckets (shared / bare-only / JB-only / sign-flipped / dampened / amplified-anti).</em></figcaption>
+</figure>
 
-![Feature comparison summary](../../data/results/pipeline_runs/run_20260417_010035/02b_stats/feature_comparison_summary.png)
-
-| Class | Shared with bare | JB-only features | Sign-flipped |
-|---|---:|---:|---:|
-| **Fiction** | 58.5% | **62.5%** | **25.6%** |
-| Analytical | 63.0% | 56.6% | 23.1% |
-| Cognitive reframe | 64.4% | 51.8% | 20.3% |
-| Roleplay | 65.7% | 56.3% | 17.5% |
-| Completion | **73.5%** | 45.3% | 16.6% |
+<table>
+<thead>
+<tr><th>Class</th><th align="right">Shared with bare</th><th align="right">JB-only features</th><th align="right">Sign-flipped</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Fiction</strong></td><td align="right"><code>58.5%</code></td><td align="right"><code><strong>62.5%</strong></code></td><td align="right"><code><strong>25.6%</strong></code></td></tr>
+<tr><td>Analytical</td><td align="right"><code>63.0%</code></td><td align="right"><code>56.6%</code></td><td align="right"><code>23.1%</code></td></tr>
+<tr><td>Cognitive reframe</td><td align="right"><code>64.4%</code></td><td align="right"><code>51.8%</code></td><td align="right"><code>20.3%</code></td></tr>
+<tr><td>Roleplay</td><td align="right"><code>65.7%</code></td><td align="right"><code>56.3%</code></td><td align="right"><code>17.5%</code></td></tr>
+<tr><td>Completion</td><td align="right"><code><strong>73.5%</strong></code></td><td align="right"><code>45.3%</code></td><td align="right"><code>16.6%</code></td></tr>
+</tbody>
+</table>
 
 Fiction uses the most novel features and flips the most shared features — it's not suppressing the circuit, it's *rewiring* it. Completion in contrast keeps almost three-quarters of the bare circuit intact — consistent with its paradoxical *strengthening* effect (see #6).
 
 ### 6. Completion is the paradox: it recruits *more* refusal
 
-Completion-style JBs ("I cannot help with that, but what I can suggest is…") should *weaken* refusal but instead **strengthen it by +7.2%** (Cohen's d = +0.27). Decomposition into pro-refusal (`dPos`) and anti-refusal (`dNeg`) halves:
+Completion-style JBs ("I cannot help with that, but what I can suggest is…") should *weaken* refusal but instead **strengthen it by `+7.2%`** (Cohen's d `= +0.27`).
 
-![Per-prompt deltas](../../data/results/pipeline_runs/run_20260417_010035/02b_stats/per_prompt_deltas.png)
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/02b_stats/per_prompt_deltas.png" alt="Per-prompt delta (JB − bare) bar plots for each of the five jailbreak classes" width="900">
+<figcaption><em><strong>Figure 8.</strong> Per-prompt deltas (<code>JB − bare</code>) for each class. Red bars suppress refusal, blue bars strengthen. Completion is visibly bimodal: 35 positive, 15 negative.</em></figcaption>
+</figure>
 
-| Class | dPos | dNeg | Interpretation |
-|---|---:|---:|---|
-| Roleplay | −22.5 | −16.2 | Balanced dampening |
-| Fiction | −43.1 | −22.2 | Balanced dampening |
-| Analytical | −44.7 | −29.0 | Balanced dampening |
-| **Completion** | **+19.7** | −14.6 | **Pro-refusal recruitment** |
-| Cognitive reframe | −33.8 | −16.4 | Dampening-dominant |
+<table>
+<thead>
+<tr><th>Class</th><th align="right">dPos</th><th align="right">dNeg</th><th>Interpretation</th></tr>
+</thead>
+<tbody>
+<tr><td>Roleplay</td><td align="right"><code>−22.5</code></td><td align="right"><code>−16.2</code></td><td>Balanced dampening</td></tr>
+<tr><td>Fiction</td><td align="right"><code>−43.1</code></td><td align="right"><code>−22.2</code></td><td>Balanced dampening</td></tr>
+<tr><td>Analytical</td><td align="right"><code>−44.7</code></td><td align="right"><code>−29.0</code></td><td>Balanced dampening</td></tr>
+<tr><td><strong>Completion</strong></td><td align="right"><code><strong>+19.7</strong></code></td><td align="right"><code>−14.6</code></td><td><strong>Pro-refusal recruitment</strong></td></tr>
+<tr><td>Cognitive reframe</td><td align="right"><code>−33.8</code></td><td align="right"><code>−16.4</code></td><td>Dampening-dominant</td></tr>
+</tbody>
+</table>
 
-Every other class dampens both halves. Completion is the only one that *grows* the pro-refusal half (+14.6%) while weakening the anti-refusal half — two mechanisms pulling in opposite directions, with pro-refusal winning. 35/50 prompts go up, 15/50 go down (the per-prompt-delta plot shows the bimodal pattern clearly). This suggests there's a specific set of features being *recruited* by the completion framing. Identifying which ones is A2.
+Every other class dampens both halves. Completion is the only one that *grows* the pro-refusal half (`+14.6%`) while weakening the anti-refusal half — two mechanisms pulling in opposite directions, with pro-refusal winning. `35/50` prompts go up, `15/50` go down.
+
+Two independent views converge on this:
+- **Figure 5** (distribution by class) shows completion's mass sitting *above* the bare-mean line, with a thin tail down toward zero — "high-and-tight with a minority tail."
+- **Figure 8** (per-prompt deltas) shows the same pattern in delta space: a cluster of blue (strengthening) bars with a minority of red (weakening) bars — visibly bimodal.
+
+Both views suggest there's a specific set of features being *recruited* by the completion framing. Identifying which ones is `A2` — next in the analysis plan.
 
 ---
 
@@ -191,17 +316,22 @@ Every other class dampens both halves. Completion is the only one that *grows* t
 
 Items flagged for future pipeline stages or deeper analysis.
 
-| Gap | Status | Where it gets answered |
-|---|---|---|
-| Does the model actually refuse bare prompts / comply under JB? | Not measured | A1 (Stage 02c — coherence + refusal classification) |
-| Which specific features are recruited by completion? | Not identified | A2 (Stage 02b extension — top Δattribution under completion) |
-| How much does the direction rotate, layer-by-layer? | Only 6 pairwise cosines stored | A5 (full 34×34 heatmap, next) |
-| Bare-vs-JB distribution shape (esp. completion's bimodal pattern) | Only means + CIs reported | A6 (violin/box plot by class) |
-| Where do sign-flipped / dampened / amplified-anti features live by layer? | Not binned | A8 (layer histogram per bucket) |
-| Class overlap — which features appear in all 5 classes vs one? | Table only | A7 (UpSet plot) |
-| What does L20 do? Why is it the only negative-contribution layer? | Open | Dedicated follow-up (not in current plan) |
-| 99.6% of the refusal signal lives in attention + embeddings — which heads? | Not attributed | Task S3 (attention-head attribution) |
-| Are any two JB classes structurally similar (shared recruited features)? | Not cross-tabulated | Stage 07 subcircuit identification |
+<table>
+<thead>
+<tr><th>Gap</th><th>Status</th><th>Where it gets answered</th></tr>
+</thead>
+<tbody>
+<tr><td>Does the model actually refuse bare prompts / comply under JB?</td><td>Not measured</td><td><code>A1</code> · Stage 02c — coherence + refusal classification</td></tr>
+<tr><td>Which specific features are recruited by completion?</td><td>Not identified</td><td><code>A2</code> · Stage 02b extension — top <code>Δattribution</code> under completion</td></tr>
+<tr><td>Where do sign-flipped / dampened / amplified-anti features live by layer?</td><td>Not binned</td><td><code>A8</code> · layer histogram per bucket</td></tr>
+<tr><td>Class overlap — which features appear in all 5 classes vs one?</td><td>Table only</td><td><code>A7</code> · UpSet plot</td></tr>
+<tr><td>What does <code>L20</code> do? Why is it the only negative-contribution layer?</td><td>Open</td><td>Dedicated follow-up (not in current plan)</td></tr>
+<tr><td>What features live in Regime A (<code>L5–L13</code>) vs Regime C (<code>L18–L33</code>)? They're weakly anti-correlated</td><td>Open</td><td>Stage 07 subcircuit identification</td></tr>
+<tr><td>What happens at the <code>L13→L14</code> pivot? Is there a specific attention head / MLP that triggers the rotation?</td><td>Open</td><td>Task <code>S3</code> (attention-head attribution) + follow-up probe</td></tr>
+<tr><td><code>99.6%</code> of the refusal signal lives in attention + embeddings — which heads?</td><td>Not attributed</td><td>Task <code>S3</code> (attention-head attribution)</td></tr>
+<tr><td>Are any two JB classes structurally similar (shared recruited features)?</td><td>Not cross-tabulated</td><td>Stage 07 subcircuit identification</td></tr>
+</tbody>
+</table>
 
 ---
 
@@ -306,12 +436,16 @@ data/results/pipeline_runs/run_YYYYMMDD_HHMMSS/
 │   ├── statistical_analysis.json
 │   ├── EXPERIMENT_SUMMARY.md
 │   ├── class_comparison.png
+│   ├── distribution_by_class.png
 │   ├── per_prompt_deltas.png
 │   ├── effect_sizes.png
-│   └── feature_comparison_summary.png
+│   ├── feature_comparison_summary.png
+│   ├── separation_by_layer.png
+│   └── cosine_heatmap.png
 ├── 03_verification/
-│   ├── verification_results.json
-│   └── per_layer_decomposition.json
+│   ├── verification_results.json       # includes per_layer_aggregate (A4)
+│   ├── per_layer_decomposition.json
+│   └── per_layer_contribution.png      # A4 bar chart
 └── 04_labels/
     ├── feature_labels.json            # {L:F → {top_logits, bottom_logits, examples, ...}}
     ├── feature_labels_cache.json      # raw HF payload cache (survives re-runs)

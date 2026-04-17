@@ -60,6 +60,10 @@ def parse_args():
     parser.add_argument(
         "--n-logits", type=int, default=10,                                                                                                               
         help="Number of top/bottom logits to store per feature (default: 10)",
+    )
+    parser.add_argument(
+        "--histogram-only", action="store_true",
+        help="Skip HF downloads; regenerate layer histogram from existing labeled data",
     )                                                                                                                                                     
     return parser.parse_args()
                                                                                                                                                         
@@ -275,11 +279,86 @@ def collect_comparison_features(results: list[dict]) -> dict:
             }
     return result                                                                                                                                         
                                         
+def build_layer_histogram(comparison_labeled: dict, n_layers: int = 34) -> dict:
+    """A8: count features per layer per bucket for histogram + JSON export."""
+    buckets_order = ["sign_flipped", "dampened", "amplified_anti"]
+    histogram = {"n_layers": n_layers, "buckets": {}}
+    for bucket in buckets_order:
+        entries = comparison_labeled.get(bucket, [])
+        counts = [0] * n_layers
+        for entry in entries:
+            layer = entry.get("layer")
+            if layer is not None and 0 <= layer < n_layers:
+                counts[layer] += 1
+        histogram["buckets"][bucket] = {
+            "total": len(entries),
+            "by_layer": counts,
+        }
+    return histogram
+
+
+def plot_layer_histogram(histogram: dict, out_dir: Path) -> None:
+    """A8: render a 3-row bar chart of feature counts by layer per bucket."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    buckets_order = ["sign_flipped", "dampened", "amplified_anti"]
+    bucket_titles = {
+        "sign_flipped": "Sign-Flipped",
+        "dampened": "Dampened (pro-refusal weakened)",
+        "amplified_anti": "Amplified Anti-Refusal",
+    }
+    bucket_colors = {
+        "sign_flipped": "#ff7f0e",
+        "dampened": "#2ca02c",
+        "amplified_anti": "#9467bd",
+    }
+    n_layers = histogram["n_layers"]
+    x = np.arange(n_layers)
+
+    fig, axes = plt.subplots(3, 1, figsize=(14, 9), sharex=True)
+    for ax, bucket in zip(axes, buckets_order):
+        data = histogram["buckets"][bucket]
+        ax.bar(
+            x, data["by_layer"],
+            color=bucket_colors[bucket], alpha=0.85,
+            edgecolor="black", linewidth=0.3,
+        )
+        ax.axvspan(24, 32, alpha=0.08, color="red", zorder=0)
+        ax.set_ylabel("Count")
+        ax.set_title(f"{bucket_titles[bucket]}  (total = {data['total']})")
+        ax.grid(axis="y", alpha=0.3)
+
+    axes[-1].set_xlabel("Layer index")
+    axes[-1].set_xticks(np.arange(0, n_layers, 2))
+    fig.suptitle(
+        "Feature Counts by Layer  (shaded: L24–L32 expected-peak band)",
+        fontsize=13,
+    )
+    plt.tight_layout()
+    plt.savefig(out_dir / "features_by_layer.png", dpi=150)
+    plt.close()
 
 def main():
     args = parse_args()
     run_dir = args.run_dir
     out_dir = get_stage_dir(run_dir, "04_labels")
+
+    # A8: histogram-only path — regenerate feature-by-layer histogram without HF
+    if args.histogram_only:
+        comp_path = out_dir / "feature_comparison_labeled.json"
+        if not comp_path.exists():
+            print(f"ERROR: --histogram-only needs existing {comp_path.name}")
+            sys.exit(1)
+        comp = load_json(comp_path)
+        histogram = build_layer_histogram(comp)
+        save_json(histogram, out_dir / "layer_histogram.json")
+        plot_layer_histogram(histogram, out_dir)
+        print(f"  Saved layer_histogram.json and features_by_layer.png")
+        print("DONE!")
+        return
                                                                                                                                                         
     print("=" * 60)
     print("STAGE 04: Feature Labeling (HuggingFace Dashboard Data)")                                                                                      
@@ -475,7 +554,13 @@ def main():
                                         
     with open(out_dir / "top_features_report.md", "w") as f:
         f.write("\n".join(report_lines) + "\n")
-    print("    Saved top_features_report.md")                                                                                                             
+    print("    Saved top_features_report.md")    
+
+    # A8: layer histogram                                                                                                       
+    histogram = build_layer_histogram(comparison_labeled)
+    save_json(histogram, out_dir / "layer_histogram.json")                                                                      
+    plot_layer_histogram(histogram, out_dir)
+    print("    Saved features_by_layer.png + layer_histogram.json")                                                                                                         
                                                                                                                                                         
     # Summary                                                                                                                                             
     print(f"\n{'='*60}")                                                                                                                                  

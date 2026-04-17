@@ -336,6 +336,7 @@ def main():
         plt.close()                                                                                                                                       
         print("    Saved feature_comparison_summary.png")
 
+    # Plot 5: Per Layer Separation
     if direction_meta and "layers" in direction_meta:
         fig, ax = plt.subplots(figsize=(12, 6))
         layers_dict = direction_meta["layers"]
@@ -369,7 +370,99 @@ def main():
         plt.savefig(out_dir / "separation_by_layer.png", dpi=150)
         plt.close()
         print("    Saved separation_by_layer.png")
-                                                                                                                                                        
+
+    # --- Plot 6: Cosine heatmap (A5) ---
+    if direction_meta and "cosine_matrix" in direction_meta:
+        fig, ax = plt.subplots(figsize=(11, 9))
+        matrix = np.array(direction_meta["cosine_matrix"])
+        n = matrix.shape[0]
+
+        vmax = max(abs(matrix.min()), abs(matrix.max()))
+        im = ax.imshow(matrix, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
+
+        key_layers = [15, 25, 32]
+        for kl in key_layers:
+            if 0 <= kl < n:
+                ax.axvline(kl, color="black", linewidth=0.8, alpha=0.4)
+                ax.axhline(kl, color="black", linewidth=0.8, alpha=0.4)
+
+        ax.set_xticks(np.arange(0, n, 2))
+        ax.set_yticks(np.arange(0, n, 2))
+        ax.set_xticklabels([f"L{i}" for i in range(0, n, 2)], fontsize=8)
+        ax.set_yticklabels([f"L{i}" for i in range(0, n, 2)], fontsize=8)
+        ax.set_xlabel("Layer j")
+        ax.set_ylabel("Layer i")
+        ax.set_title("Per-Layer Direction Similarity: cos(r̂_i, r̂_j)")
+
+        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label("Cosine similarity")
+
+        plt.tight_layout()
+        plt.savefig(out_dir / "cosine_heatmap.png", dpi=150)
+        plt.close()
+        print("    Saved cosine_heatmap.png")
+
+    # --- Plot 7: Bare-vs-JB net-attribution distribution (A6) ---                                                              
+    fig, ax = plt.subplots(figsize=(12, 7))                                                                                     
+    data_per_class = []                                                                                                         
+    labels = []                                                                                                                 
+    for cls in ["bare"] + classes:     
+        nets = []                                                                                                               
+        for row in results:
+            conds = row.get("conditions", row)                                                                                  
+            if cls in conds and "error" not in conds[cls]:
+                nets.append(conds[cls]["net"])
+        data_per_class.append(nets)                                                                                             
+        labels.append(cls.upper())
+                                                                                                                                
+    class_colors = ["#7f7f7f", "#1f77b4", "#2ca02c", "#9467bd", "#ff7f0e", "#d62728"]                                           
+    parts = ax.violinplot(
+        data_per_class, showmeans=False, showmedians=False, showextrema=False,                                                  
+    )                                  
+    for i, pc in enumerate(parts["bodies"]):
+        pc.set_facecolor(class_colors[i % len(class_colors)])                                                                   
+        pc.set_alpha(0.45)
+        pc.set_edgecolor("black")                                                                                               
+        pc.set_linewidth(0.6)          
+                                                                                                                                
+    ax.boxplot(                                                                                                                 
+        data_per_class, widths=0.18, patch_artist=True,
+        medianprops=dict(color="black", linewidth=1.5),                                                                         
+        boxprops=dict(facecolor="white", alpha=0.85, edgecolor="black"),
+        whiskerprops=dict(color="black"),                                                                                       
+        capprops=dict(color="black"),
+        flierprops=dict(marker="o", markersize=3, alpha=0.4, markerfacecolor="gray"),                                           
+    )                                                                                                                           
+                                                                                                                                
+    jitter_rng = np.random.RandomState(42)                                                                                      
+    for i, vals in enumerate(data_per_class, start=1):
+        if not vals:                                                                                                            
+            continue
+        jitter = jitter_rng.uniform(-0.07, 0.07, len(vals))                                                                     
+        ax.scatter(                    
+            np.full(len(vals), i) + jitter, vals,                                                                               
+            alpha=0.35, s=12, color="#333333", linewidths=0,
+        )                                                                                                                       
+                                        
+    bare_mean = float(np.mean(data_per_class[0])) if data_per_class[0] else 0.0                                                 
+    ax.axhline(                        
+        bare_mean, color="gray", linestyle="--", alpha=0.6,                                                                     
+        label=f"Bare mean ({bare_mean:+.1f})",
+    )                                                                                                                           
+    ax.axhline(0, color="black", linewidth=0.5)
+                                                                                                                                
+    ax.set_xticks(range(1, len(labels) + 1))
+    ax.set_xticklabels(labels, fontsize=10)
+    ax.set_ylabel("Net attribution to r · h[L=32]")                                                                             
+    ax.set_title(                                                                                                               
+        f"Net-Attribution Distribution by Class (n={len(results)} prompts)"                                                     
+    )                                                                                                                           
+    ax.legend(loc="upper right", fontsize=9)
+    ax.grid(axis="y", alpha=0.3)                                                                                                
+    plt.tight_layout()                 
+    plt.savefig(out_dir / "distribution_by_class.png", dpi=150)                                                                 
+    plt.close()
+    print("    Saved distribution_by_class.png")                                                                                                                                   
     # ============================================================
     # Summary report
     # ============================================================
