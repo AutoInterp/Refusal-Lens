@@ -1,0 +1,36 @@
+
+============================================================
+Stage 01: Compute Directions — 2026-04-17T01:00:35.366624
+Command: /workspace/Refusal-Lens/scripts/pipeline/01_compute_direction.py --run-dir /workspace/Refusal-Lens/data/results/pipeline_runs/run_20260417_010035 --n-samples 64
+============================================================
+[DONE] 0m 30s
+
+============================================================
+Stage 02: Run Attribution — 2026-04-17T01:01:05.445907
+Command: /workspace/Refusal-Lens/scripts/pipeline/02_run_attribution.py --run-dir /workspace/Refusal-Lens/data/results/pipeline_runs/run_20260417_010035 --n-prompts 50
+============================================================
+[DONE] 734m 2s
+
+============================================================
+Stage 02b: Statistical Analysis — 2026-04-17T13:15:08.216802
+Command: /workspace/Refusal-Lens/scripts/pipeline/02b_statistical_analysis.py --run-dir /workspace/Refusal-Lens/data/results/pipeline_runs/run_20260417_010035
+============================================================
+[FAIL] exit code 1
+
+============================================================
+Stage 02b: Statistical Analysis — 2026-04-17T14:04:04.366246
+Command: /workspace/Refusal-Lens/scripts/pipeline/02b_statistical_analysis.py --run-dir data/results/pipeline_runs/run_20260417_010035
+============================================================
+[DONE] 0m 3s
+
+============================================================
+Stage 03: Verify Attribution — 2026-04-17T14:04:07.987196
+Command: /workspace/Refusal-Lens/scripts/pipeline/03_verify_attribution.py --run-dir data/results/pipeline_runs/run_20260417_010035 --n-decompose 10
+============================================================
+[DONE] 0m 21s
+
+============================================================
+Stage 04: Feature Labeling — 2026-04-17T14:04:29.585511
+Command: /workspace/Refusal-Lens/scripts/pipeline/04_label_features.py --run-dir data/results/pipeline_runs/run_20260417_010035
+============================================================
+[DONE] 6m 22s
