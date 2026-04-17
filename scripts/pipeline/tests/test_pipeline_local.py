@@ -706,6 +706,86 @@ def test_stage_02b():
             "; ".join(mismatches[:3]) if mismatches else f"{sum(len(v) for v in pre_stats.values())} values match",
         )
 
+def test_stage_03_a4():
+    print("\n" + "=" * 60)
+    print("STAGE 03 A4 TESTS (per-layer aggregate + plot)")
+    print("=" * 60)
+
+    run_dir = find_latest_pipeline_run()
+    if run_dir is None:
+        log_skip("T-A4: Stage 03 A4", "no pipeline run found")
+        return
+    verif_path = run_dir / "03_verification" / "verification_results.json"
+    decomp_path = run_dir / "03_verification" / "per_layer_decomposition.json"
+    if not verif_path.exists() or not decomp_path.exists():
+        log_skip("T-A4: Stage 03 A4", "Stage 03 outputs missing; run full Stage 03 first")
+        return
+    print(f"  Using run: {run_dir}")
+
+    # Snapshot the per_prompt array for regression check
+    pre = json.loads(verif_path.read_text())
+    pre_per_prompt = pre.get("per_prompt", [])
+    pre_summary = pre.get("summary", {})
+
+    # Run --aggregate-only
+    import importlib
+    stage03 = importlib.import_module("03_verify_attribution")
+
+    class MockArgs:
+        run_dir = None
+        n_decompose = 10
+        aggregate_only = True
+
+    mock = MockArgs()
+    mock.run_dir = run_dir
+    original_parse = stage03.parse_args
+    stage03.parse_args = lambda: mock
+    try:
+        stage03.main()
+    finally:
+        stage03.parse_args = original_parse
+
+    plot = run_dir / "03_verification" / "per_layer_contribution.png"
+    log_test(
+        "T-A4a: per_layer_contribution.png exists",
+        plot.exists(),
+        str(plot.relative_to(run_dir)) if plot.exists() else "missing",
+    )
+    if plot.exists():
+        log_test(
+            "T-A4b: per_layer_contribution.png non-trivial (>5KB)",
+            plot.stat().st_size > 5_000,
+            f"size={plot.stat().st_size} bytes",
+        )
+
+    post = json.loads(verif_path.read_text())
+    log_test(
+        "T-A4c: per_layer_aggregate key added",
+        "per_layer_aggregate" in post,
+    )
+    if "per_layer_aggregate" in post:
+        agg = post["per_layer_aggregate"]
+        log_test(
+            "T-A4d: aggregate has all 34 layers",
+            len(agg.get("layers", [])) == config.N_LAYERS,
+            f"got {len(agg.get('layers', []))}",
+        )
+        log_test(
+            "T-A4e: aggregate has embedding block",
+            "embedding" in agg and "mean" in agg["embedding"],
+        )
+
+    # Regression: per_prompt unchanged, summary unchanged
+    log_test(
+        "T-A4f: per_prompt unchanged (regression)",
+        post.get("per_prompt") == pre_per_prompt,
+        "list differs" if post.get("per_prompt") != pre_per_prompt else f"{len(pre_per_prompt)} entries identical",
+    )
+    log_test(
+        "T-A4g: summary unchanged (regression)",
+        post.get("summary") == pre_summary,
+    )
+
 # ============================================================
 # Main
 # ============================================================
@@ -713,7 +793,7 @@ def test_stage_02b():
 def main():
     parser = argparse.ArgumentParser(description="Local pipeline validation tests")
     parser.add_argument(
-        "--stage", choices=["01", "02b", "03", "utils", "all"], default="all",
+        "--stage", choices=["01", "02b", "03", "03-a4", "utils", "all"], default="all",
         help="Which stage to test (default: all)",
     )
     parser.add_argument(
@@ -736,6 +816,7 @@ def main():
     elif args.stage == "all":
         test_utils()
         test_stage_02b()
+        test_stage_03_a4()
         if check_gpu():
             test_stage_01()
             test_stage_03()
@@ -754,6 +835,8 @@ def main():
             test_stage_03()
         else:
             log_skip("Stage 03 tests", "no GPU available")
+    elif args.stage == "03-a4":
+        test_stage_03_a4()
 
     elapsed = time.time() - t0
 

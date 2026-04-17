@@ -94,6 +94,117 @@ Fiction restructures the circuit most dramatically — highest sign-flip rate (2
 
 ---
 
+## Mechanistic story so far
+
+A running narrative of what the pipeline has taught us about Gemma-3-4b-it's refusal circuit. This section grows as new stages and analyses land — last revised 2026-04-17 after A3 + A4 visualizations.
+
+Plot paths below are relative to repo root; each was produced by the most recent pipeline run (`data/results/pipeline_runs/run_20260417_010035/`).
+
+### 1. Refusal is linear, but the "direction" rotates across layers
+
+The diff-in-means between harmful and harmless activations gives a clean linear readout at every layer from L9 onward, with separation climbing monotonically to L32 (~20,873) before collapsing at L33 to 287 — the known pre/post-RMSNorm artifact.
+
+![Separation by layer](../../data/results/pipeline_runs/run_20260417_010035/02b_stats/separation_by_layer.png)
+
+But **the direction at the best-separation layer (L32) is nearly orthogonal to the direction at Tejas's best-causal layer (L15)**: cosine = −0.115 at n=64. Causal steering works at L15 despite L15 having ~7× less separation than L32 — which means the right causal direction is not simply a scaled version of the right readout direction. The signal rotates as it propagates. (A5 will show the full 34×34 cosine matrix so we can see exactly where the pivot happens.)
+
+### 2. The signal is assembled in two waves, with a dampening layer mid-stream
+
+The per-layer-decomposition plot (10 prompts × 34 layers, aggregated) shows:
+
+![Per-layer contribution](../../data/results/pipeline_runs/run_20260417_010035/03_verification/per_layer_contribution.png)
+
+- **Early wave (L7–L11)** — first buildup, peaks ~850 at L11
+- **Mid plateau (L12–L19)** — modest contributions (200–450)
+- **L20 actively dampens** the projection (~−200 mean)
+- **Late wave (L23–L32)** — the dominant ramp; L29–L30 alone contribute ~1,650 each
+- **L33 (post-measurement)** — −17,311, the RMSNorm artifact; not part of the assembled projection
+
+Interpretation: the separation at L32 is mostly *late*-built. Tejas's L15 intervention works because downstream layers then amplify the L15 residual ~4×. L20 is an open question — a "pump-the-brakes" layer actively pulling the projection down.
+
+### 3. MLP transcoders only capture ~0.4% of the refusal signal
+
+Verification against the full residual-stream dot product shows:
+
+| Metric | Mean | Std |
+|---|---:|---:|
+| `r · h[L=32]` | 17,230 | 1,986 |
+| Σ feature attributions | 70.47 | 17.6 |
+| **MLP ratio** | **0.404%** | 0.077% |
+
+The ~99.6% gap is carried by **attention heads + embeddings** — a property of the Gemma Scope transcoder set (MLP-only). Implication: any mechanistic intervention relying purely on transcoded MLP features will move <1% of the measured refusal signal. Attention-head attribution is a known gap (task S3).
+
+### 4. Jailbreaks produce strong, statistically real changes
+
+Five jailbreak classes × 50 prompts, paired bare-vs-JB, all stat-significant:
+
+![Class comparison](../../data/results/pipeline_runs/run_20260417_010035/02b_stats/class_comparison.png)
+![Effect sizes](../../data/results/pipeline_runs/run_20260417_010035/02b_stats/effect_sizes.png)
+
+Ordering (by effect size):
+
+```
+Analytical       d = −2.37  (strongest; 49/50 consistency)
+Fiction          d = −1.57
+Cognitive reframe d = −1.41
+Roleplay         d = −0.91
+Completion       d = +0.27  (INVERTED — discussed below)
+```
+
+Analytical framing is the most reliable net suppressor (net goes *negative*, i.e. the model becomes anti-refusal-biased). Fiction is the most disruptive to the underlying circuit (see #5). Roleplay is weakest.
+
+### 5. Fiction reorganizes the circuit; completion preserves it
+
+Feature-comparison sizes between each JB condition and bare:
+
+![Feature comparison summary](../../data/results/pipeline_runs/run_20260417_010035/02b_stats/feature_comparison_summary.png)
+
+| Class | Shared with bare | JB-only features | Sign-flipped |
+|---|---:|---:|---:|
+| **Fiction** | 58.5% | **62.5%** | **25.6%** |
+| Analytical | 63.0% | 56.6% | 23.1% |
+| Cognitive reframe | 64.4% | 51.8% | 20.3% |
+| Roleplay | 65.7% | 56.3% | 17.5% |
+| Completion | **73.5%** | 45.3% | 16.6% |
+
+Fiction uses the most novel features and flips the most shared features — it's not suppressing the circuit, it's *rewiring* it. Completion in contrast keeps almost three-quarters of the bare circuit intact — consistent with its paradoxical *strengthening* effect (see #6).
+
+### 6. Completion is the paradox: it recruits *more* refusal
+
+Completion-style JBs ("I cannot help with that, but what I can suggest is…") should *weaken* refusal but instead **strengthen it by +7.2%** (Cohen's d = +0.27). Decomposition into pro-refusal (`dPos`) and anti-refusal (`dNeg`) halves:
+
+![Per-prompt deltas](../../data/results/pipeline_runs/run_20260417_010035/02b_stats/per_prompt_deltas.png)
+
+| Class | dPos | dNeg | Interpretation |
+|---|---:|---:|---|
+| Roleplay | −22.5 | −16.2 | Balanced dampening |
+| Fiction | −43.1 | −22.2 | Balanced dampening |
+| Analytical | −44.7 | −29.0 | Balanced dampening |
+| **Completion** | **+19.7** | −14.6 | **Pro-refusal recruitment** |
+| Cognitive reframe | −33.8 | −16.4 | Dampening-dominant |
+
+Every other class dampens both halves. Completion is the only one that *grows* the pro-refusal half (+14.6%) while weakening the anti-refusal half — two mechanisms pulling in opposite directions, with pro-refusal winning. 35/50 prompts go up, 15/50 go down (the per-prompt-delta plot shows the bimodal pattern clearly). This suggests there's a specific set of features being *recruited* by the completion framing. Identifying which ones is A2.
+
+---
+
+## Gaps & open questions
+
+Items flagged for future pipeline stages or deeper analysis.
+
+| Gap | Status | Where it gets answered |
+|---|---|---|
+| Does the model actually refuse bare prompts / comply under JB? | Not measured | A1 (Stage 02c — coherence + refusal classification) |
+| Which specific features are recruited by completion? | Not identified | A2 (Stage 02b extension — top Δattribution under completion) |
+| How much does the direction rotate, layer-by-layer? | Only 6 pairwise cosines stored | A5 (full 34×34 heatmap, next) |
+| Bare-vs-JB distribution shape (esp. completion's bimodal pattern) | Only means + CIs reported | A6 (violin/box plot by class) |
+| Where do sign-flipped / dampened / amplified-anti features live by layer? | Not binned | A8 (layer histogram per bucket) |
+| Class overlap — which features appear in all 5 classes vs one? | Table only | A7 (UpSet plot) |
+| What does L20 do? Why is it the only negative-contribution layer? | Open | Dedicated follow-up (not in current plan) |
+| 99.6% of the refusal signal lives in attention + embeddings — which heads? | Not attributed | Task S3 (attention-head attribution) |
+| Are any two JB classes structurally similar (shared recruited features)? | Not cross-tabulated | Stage 07 subcircuit identification |
+
+---
+
 ## Deployment
 
 ### Local smoke test (no GPU required)

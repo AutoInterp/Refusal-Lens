@@ -40,14 +40,107 @@ def parse_args():
         "--n-decompose", type=int, default=5,
         help="Number of prompts for full per-layer decomposition (slow)",
     )
+    parser.add_argument(
+        "--aggregate-only", action="store_true",
+        help="Skip model verification; re-aggregate per-layer stats + plot from existing JSON",
+    )
     return parser.parse_args()
 
+def aggregate_and_plot(decomposition_results: list, verification_summary: dict, out_dir: Path) -> dict:
+    """A4: aggregate per-layer contributions across prompts and emit bar chart."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    n_layers = config.N_LAYERS
+    emb_contribs = np.array([r["embedding_dot"] for r in decomposition_results])
+
+    layer_matrix = np.zeros((len(decomposition_results), n_layers))
+    for i, r in enumerate(decomposition_results):
+        for lc in r["layer_contributions"]:
+            layer_matrix[i, lc["layer"]] = lc["contribution"]
+
+    layer_mean = layer_matrix.mean(axis=0)
+    layer_std = layer_matrix.std(axis=0)
+
+    aggregate = {
+        "n_prompts_decomposed": len(decomposition_results),
+        "embedding": {"mean": float(emb_contribs.mean()), "std": float(emb_contribs.std())},
+        "layers": [
+            {"layer": i, "mean": float(layer_mean[i]), "std": float(layer_std[i])}
+            for i in range(n_layers)
+        ],
+    }
+
+    # Plot only layers 0..measurement_layer; L33 is post-measurement (RMSNorm artifact)                                         
+    ml = verification_summary.get("measurement_layer", 32)                                                                      
+    plot_max_layer = ml + 1  # inclusive
+    x = np.arange(plot_max_layer)                                                                                               
+    mean_in = layer_mean[:plot_max_layer]
+    std_in = layer_std[:plot_max_layer]                                                                                         
+    colors = ["#5cb85c" if m >= 0 else "#d9534f" for m in mean_in]
+                                                                                                                                
+    fig, ax = plt.subplots(figsize=(14, 6))
+    ax.bar(x, mean_in, yerr=std_in, color=colors, alpha=0.85,                                                                   
+            capsize=2, edgecolor="black", linewidth=0.3)                                                                         
+    ax.axvline(ml, color="red", linestyle="--", alpha=0.6,                                                                      
+                label=f"Measurement layer (L{ml})")                                                                              
+                                                                                                                                
+    # Post-measurement layers summary (annotation, not a bar)                                                                   
+    post_layers = [l for l in aggregate["layers"] if l["layer"] > ml]                                                           
+    post_text = ""                                                                                                              
+    if post_layers:                                                                                                             
+        lines = [
+            f"L{l['layer']}: {l['mean']:+.0f} ± {l['std']:.0f}"                                                                 
+            for l in post_layers                                                                                                
+        ]
+        post_text = "Post-L{0} (RMSNorm artifact, not part of projection):\n".format(ml) + "\n".join(lines)                     
+                                                                                                                                
+    emb_text = (
+        f"Embedding: {aggregate['embedding']['mean']:+.2f} "                                                                    
+        f"± {aggregate['embedding']['std']:.2f}"                                                                                
+    )
+    annot = emb_text + ("\n\n" + post_text if post_text else "")                                                                
+    ax.text(                                                                                                                    
+        0.99, 0.97, annot,
+        transform=ax.transAxes, va="top", ha="right", fontsize=9,                                                               
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.85),                                                             
+    )                                                                                                                           
+                                                                                                                                
+    ax.set_xlabel("Layer index")                                                                                                
+    ax.set_ylabel("Mean contribution to r · h[L=32]")
+    ax.set_title(                                                                                                               
+        f"Per-Layer Contribution to Refusal-Direction Projection "                                                              
+        f"(n={len(decomposition_results)} prompts, layers 0–{ml})"                                                              
+    )                                                                                                                           
+    ax.axhline(0, color="black", linewidth=0.5)                                                                                 
+    ax.legend(loc="upper left")                                                                                                 
+    ax.grid(axis="y", alpha=0.3)                                                                                                
+    plt.tight_layout()
+    plt.savefig(out_dir / "per_layer_contribution.png", dpi=150)                                                                
+    plt.close()
+
+    return aggregate
 
 def main():
     args = parse_args()
     run_dir = args.run_dir
     out_dir = get_stage_dir(run_dir, "03_verification")
 
+    # A4: aggregate-only path — regenerate per-layer aggregate + plot without model
+    if args.aggregate_only:
+        verif_path = out_dir / "verification_results.json"
+        decomp_path = out_dir / "per_layer_decomposition.json"
+        if not verif_path.exists() or not decomp_path.exists():
+            print(f"ERROR: --aggregate-only needs existing {verif_path.name} and {decomp_path.name}")
+            sys.exit(1)
+        verif = load_json(verif_path)
+        decomp = load_json(decomp_path)
+        verif["per_layer_aggregate"] = aggregate_and_plot(decomp, verif["summary"], out_dir)
+        save_json(verif, verif_path)
+        print(f"Aggregate + plot regenerated in {out_dir}/")
+        print("DONE!")
+        return
     # ----------------------------------------------------------
     # Load inputs from previous stages
     # ----------------------------------------------------------
@@ -246,9 +339,12 @@ def main():
     # ----------------------------------------------------------
     # Save results
     # ----------------------------------------------------------
+    per_layer_aggregate = aggregate_and_plot(decomposition_results, summary, out_dir)
+
     output = {
         "summary": summary,
         "per_prompt": verification_results,
+        "per_layer_aggregate": per_layer_aggregate,
     }
     save_json(output, out_dir / "verification_results.json")
     save_json(decomposition_results, out_dir / "per_layer_decomposition.json")
