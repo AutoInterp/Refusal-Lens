@@ -145,7 +145,7 @@ Labels come from `mwhanna/gemma-scope-2-4b-it` (byte-range HTTP against the dash
 
 ## Mechanistic story so far
 
-A running narrative of what the pipeline has taught us about Gemma-3-4b-it's refusal circuit. This section grows as new stages and analyses land — last revised 2026-04-17 after A3 + A4 + A5 + A6 + A8 visualizations.
+A running narrative of what the pipeline has taught us about Gemma-3-4b-it's refusal circuit. This section grows as new stages and analyses land — last revised 2026-04-17 after A3 + A4 + A5 + A6 + A7 + A8 visualizations.
 
 Plot paths below are relative to repo root; each was produced by the most recent pipeline run (`data/results/pipeline_runs/run_20260417_010035/`).
 
@@ -340,6 +340,72 @@ Key observations:
 
 The takeaway: **every JB mechanism we've catalogued exploits the same `L24–L32` band where refusal is actively assembled**. If we want to intervene on the circuit rather than steer the direction, targeted interventions in this window should be substantially more effective than broad-layer interventions.
 
+### 8. Only 12.7% of JB-affected features are universal — each class recruits its own subset
+
+**What these features are.** Every feature in this analysis is an **MLP transcoder feature** from the Gemma Scope `transcoder_all/width_16k_l0_small_affine` set, keyed as `L{layer}:F{feature_idx}` (e.g. `L29:F1066`). A feature enters the analysis when it appears in the top-50 attribution list for at least one `(prompt, condition)` pair across the 50-prompt run. Per Section 7, roughly `80%` of the 788 unique features sit in the `L24–L32` band — late-layer MLP features. The UpSet below aggregates across all three comparison buckets (sign-flipped / dampened / amplified-anti) for each of the 5 JB classes.
+
+**Important caveat — `bare` is not a column in this plot.** Every feature shown here is already "bare-relative" by construction: the comparison buckets are defined *relative to bare*, so bare is implicit. A separate pool in `feature_labels.json`'s `conditions_seen` field tracks which of the 6 conditions (`bare` + 5 JBs) had each feature in its own top-50, giving a striking complementary view:
+
+<table>
+<thead>
+<tr><th>Condition</th><th align="right">Features ever in top-50</th></tr>
+</thead>
+<tbody>
+<tr><td>roleplay</td><td align="right"><code>434</code></td></tr>
+<tr><td>cognitive_reframe</td><td align="right"><code>426</code></td></tr>
+<tr><td>fiction</td><td align="right"><code>401</code></td></tr>
+<tr><td>completion</td><td align="right"><code>384</code></td></tr>
+<tr><td>analytical</td><td align="right"><code>362</code></td></tr>
+<tr><td><strong>bare</strong></td><td align="right"><code><strong>100</strong></code></td></tr>
+</tbody>
+</table>
+
+Under bare refusal, only ~`100` MLP features ever carry top-50 attribution weight. Every JB class recruits **3–4× more features** into the top-50. That's a real finding in its own right: **bare refusal is a focused, concentrated computation; jailbreaks *broaden* the refusal circuit, pulling hundreds of additional MLP features into significant attribution**. Whether that broadening *helps* refusal (completion) or *scatters* it (roleplay) is what the UpSet below disambiguates — but the raw broadening itself is consistent across all 5 JBs. Building a `bare`-inclusive 6-way UpSet is a tracked follow-up.
+
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/04_labels/feature_class_upset.png" alt="UpSet plot of feature membership across the five jailbreak classes, showing intersection sizes ranked by cardinality" width="900">
+<figcaption><em><strong>Figure 10.</strong> Feature–class overlap UpSet across the 5 JB classes (bare is implicit in the comparison-bucket definition). Each column is a class-subset; bar height is the number of unique features affected in exactly that combination. Left-side horizontal bars show per-class totals (features appearing in that class's bucket, any type).</em></figcaption>
+</figure>
+
+<table>
+<thead>
+<tr><th>Class-set size</th><th align="right">Features</th><th align="right">% of 788</th><th>Interpretation</th></tr>
+</thead>
+<tbody>
+<tr><td>1 (class-exclusive)</td><td align="right"><code>363</code></td><td align="right"><code><strong>46.1%</strong></code></td><td>Single-class-specific</td></tr>
+<tr><td>2</td><td align="right"><code>147</code></td><td align="right"><code>18.7%</code></td><td>Shared by a pair</td></tr>
+<tr><td>3</td><td align="right"><code>103</code></td><td align="right"><code>13.1%</code></td><td>Shared by a triple</td></tr>
+<tr><td>4</td><td align="right"><code>75</code></td><td align="right"><code>9.5%</code></td><td>Shared by four classes</td></tr>
+<tr><td><strong>5 (universal)</strong></td><td align="right"><code><strong>100</strong></code></td><td align="right"><code><strong>12.7%</strong></code></td><td><strong>Canonical refusal circuit — all 5 JBs</strong></td></tr>
+</tbody>
+</table>
+
+Per-class totals paired with their effect sizes from #4:
+
+<table>
+<thead>
+<tr><th>Class</th><th align="right">Total features</th><th align="right">Class-exclusive</th><th align="right">Cohen's d</th></tr>
+</thead>
+<tbody>
+<tr><td>Roleplay</td><td align="right"><code>396</code></td><td align="right"><code><strong>107</strong></code></td><td align="right"><code>−0.91</code></td></tr>
+<tr><td>Cognitive reframe</td><td align="right"><code>371</code></td><td align="right"><code>66</code></td><td align="right"><code>−1.41</code></td></tr>
+<tr><td>Completion</td><td align="right"><code>363</code></td><td align="right"><code>78</code></td><td align="right"><code>+0.27</code></td></tr>
+<tr><td>Fiction</td><td align="right"><code>336</code></td><td align="right"><code>69</code></td><td align="right"><code>−1.57</code></td></tr>
+<tr><td>Analytical</td><td align="right"><code><strong>300</strong></code></td><td align="right"><code><strong>43</strong></code></td><td align="right"><code><strong>−2.37</strong></code></td></tr>
+</tbody>
+</table>
+
+Observations:
+
+- **A canonical refusal circuit exists.** The 100-feature 5-class intersection is the subset consistently affected regardless of JB framing. This is the natural anchor for Stage 07 subcircuit identification — intervening on these 100 should disrupt all five jailbreaks simultaneously.
+- **But class-specificity dominates.** `46.1%` of all JB-affected features appear in only ONE class. Each jailbreak framing recruits its own specialized subset — it's not "more or less of a shared circuit."
+- **Breadth is inversely related to strength.** Analytical affects the **fewest** features (`300`) but has the **strongest** effect (`d = −2.37`); roleplay affects the **most** (`396`) but the **weakest** (`d = −0.91`). Analytical operates on canonical pro-refusal features with precision; roleplay scatters effects across many targets — which is why its distribution in #4 has the widest IQR.
+- **Roleplay is the most idiosyncratic class.** 107 class-exclusive features — far more than any other. Combined with its wide distribution shape, roleplay appears to trigger a diverse, prompt-dependent feature soup rather than a clean mechanism.
+- **Largest pair-intersection is `completion + roleplay`** (26 features). Plausibly reflects "social/conversational" features the other three framings don't touch.
+- **Completion's 78 class-exclusive features** are a direct A2 target — these are the specific features being *recruited* to produce the paradoxical +7.2% strengthening.
+
+This sharpens the Stage 07 research question: separate the canonical 100 (affected universally) from each class's exclusive subset, and ask whether the class-exclusives have coherent functional roles (e.g. roleplay-exclusives all encoding "persona" features, completion-exclusives all encoding "refusal template" features, etc.).
+
 ---
 
 ## Gaps & open questions
@@ -353,7 +419,7 @@ Items flagged for future pipeline stages or deeper analysis.
 <tbody>
 <tr><td>Does the model actually refuse bare prompts / comply under JB?</td><td>Not measured</td><td><code>A1</code> · Stage 02c — coherence + refusal classification</td></tr>
 <tr><td>Which specific features are recruited by completion?</td><td>Not identified</td><td><code>A2</code> · Stage 02b extension — top <code>Δattribution</code> under completion</td></tr>
-<tr><td>Class overlap — which features appear in all 5 classes vs one?</td><td>Table only</td><td><code>A7</code> · UpSet plot</td></tr>
+<tr><td>Why does bare refusal use only ~100 features while every JB recruits 3–4× more? Which specific bare features survive / disappear / get replaced under each JB?</td><td>Counts known, identities not mapped</td><td><code>A7+</code> · 6-way UpSet built from <code>feature_labels.json[conditions_seen]</code></td></tr>
 <tr><td>What does <code>L20</code> do? Why is it the only negative-contribution layer?</td><td>Open</td><td>Dedicated follow-up (not in current plan)</td></tr>
 <tr><td>What features live in Regime A (<code>L5–L13</code>) vs Regime C (<code>L18–L33</code>)? They're weakly anti-correlated</td><td>Open</td><td>Stage 07 subcircuit identification</td></tr>
 <tr><td>What happens at the <code>L13→L14</code> pivot? Is there a specific attention head / MLP that triggers the rotation?</td><td>Open</td><td>Task <code>S3</code> (attention-head attribution) + follow-up probe</td></tr>
@@ -482,6 +548,8 @@ data/results/pipeline_runs/run_YYYYMMDD_HHMMSS/
     ├── label_coverage.json
     ├── layer_histogram.json           # A8 per-bucket layer counts
     ├── features_by_layer.png          # A8 histogram plot
+    ├── feature_class_sets.json        # A7 per-class feature membership
+    ├── feature_class_upset.png        # A7 UpSet overlap plot
     └── top_features_report.md
 ```
 

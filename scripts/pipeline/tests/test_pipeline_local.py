@@ -207,6 +207,37 @@ def test_utils():
         len(config.JB_CLASSES) == 5,
     )
 
+def test_utils_viz():
+    """A5a: round-trip sanity for viz helpers (no model required)."""
+    print("\n" + "=" * 60)
+    print("UTILS_VIZ TESTS (no model)")
+    print("=" * 60)
+
+    from utils_viz import feature_key_from_node, OVERLAP_BUCKETS
+
+    # Unit: feature key parsing
+    log_test(
+        "T-V1a: feature key parsed from transcoder node",
+        feature_key_from_node({
+            "feature_type": "cross layer transcoder",
+            "layer": "29", "node_id": "29_1066_5",
+        }) == "L29:F1066",
+    )
+    log_test(
+        "T-V1b: non-feature node returns None",
+        feature_key_from_node({"feature_type": "embedding", "node_id": "E_0_0"}) is None,
+    )
+    log_test(
+        "T-V1c: malformed node_id returns None",
+        feature_key_from_node({
+            "feature_type": "cross layer transcoder", "node_id": "garbage",
+        }) is None,
+    )
+    log_test(
+        "T-V1d: buckets constant is complete",
+        set(OVERLAP_BUCKETS) == {"shared_with_bare", "jb_unique", "bare_only", "bare", "non_feature"},
+    )
+
 
 # ============================================================
 # T1-T5: Stage 01 tests (GPU required)
@@ -964,6 +995,78 @@ def test_stage_04_a8():
                 f"actual={actual}, expected={expected}",
             )
 
+def test_stage_04_a7():                                                                                                         
+    print("\n" + "=" * 60)             
+    print("STAGE 04 A7 TESTS (feature-class UpSet)")                                                                            
+    print("=" * 60)                                                                                                             
+                                                                                                                                
+    run_dir = find_latest_pipeline_run()                                                                                        
+    if run_dir is None:                
+        log_skip("T-A7: Stage 04 A7", "no pipeline run found")                                                                  
+        return                                                                                                                  
+    comp_path = run_dir / "04_labels" / "feature_comparison_labeled.json"
+    if not comp_path.exists():                                                                                                  
+        log_skip("T-A7: Stage 04 A7", "feature_comparison_labeled.json missing")
+        return                                                                                                                  
+    try:                                                                                                                        
+        import upsetplot  # noqa: F401
+    except ImportError:                                                                                                         
+        log_skip("T-A7: Stage 04 A7", "upsetplot not installed (pip install upsetplot)")
+        return                                                                                                                  
+    print(f"  Using run: {run_dir}")
+                                                                                                                                
+    import importlib                                                                                                            
+    stage04 = importlib.import_module("04_label_features")
+                                                                                                                                
+    class MockArgs:                                                                                                             
+        run_dir = None
+        skip_download = False                                                                                                   
+        max_features = None            
+        n_examples = 3
+        n_logits = 10                                                                                                           
+        histogram_only = False
+        upset_only = True                                                                                                       
+                                                                                                                                
+    mock = MockArgs()
+    mock.run_dir = run_dir                                                                                                      
+    original_parse = stage04.parse_args
+    stage04.parse_args = lambda: mock                                                                                           
+    try:
+        stage04.main()                                                                                                          
+    finally:                           
+        stage04.parse_args = original_parse
+                                                                                                                                
+    plot = run_dir / "04_labels" / "feature_class_upset.png"
+    log_test(                                                                                                                   
+        "T-A7a: feature_class_upset.png exists",                                                                                
+        plot.exists(),
+        str(plot.relative_to(run_dir)) if plot.exists() else "missing",                                                         
+    )                                                                                                                           
+    if plot.exists():
+        log_test(                                                                                                               
+            "T-A7b: feature_class_upset.png non-trivial (>5KB)",                                                                
+            plot.stat().st_size > 5_000,
+            f"size={plot.stat().st_size} bytes",                                                                                
+        )                              
+                                                                                                                                
+    sets_path = run_dir / "04_labels" / "feature_class_sets.json"                                                               
+    log_test("T-A7c: feature_class_sets.json exists", sets_path.exists())
+    if sets_path.exists():                                                                                                      
+        fs = json.loads(sets_path.read_text())
+        log_test(                                                                                                               
+            "T-A7d: 5 classes detected",
+            fs.get("n_classes") == 5,                                                                                           
+            f"got {fs.get('n_classes')}",
+        )                                                                                                                       
+        log_test(                                                                                                               
+            "T-A7e: combined.total is a positive int",
+            isinstance(fs.get("combined", {}).get("total"), int) and fs["combined"]["total"] > 0,                               
+        )                                                                                                                       
+        # Sanity: every key in combined.features has non-empty class list
+        features = fs.get("combined", {}).get("features", {})                                                                   
+        all_tagged = all(isinstance(v, list) and len(v) > 0 for v in features.values())                                         
+        log_test("T-A7f: every combined feature has ≥1 class", all_tagged)
+
 # ============================================================
 # Main
 # ============================================================
@@ -971,7 +1074,7 @@ def test_stage_04_a8():
 def main():
     parser = argparse.ArgumentParser(description="Local pipeline validation tests")
     parser.add_argument(
-        "--stage", choices=["01", "01-a5", "02b", "03", "03-a4", "04-a8", "utils", "all"], default="all",
+        "--stage", choices=["01", "01-a5", "02b", "03", "03-a4", "04-a7", "04-a8", "utils", "utils-viz", "all"], default="all",
         help="Which stage to test (default: all)",
     )
     parser.add_argument(
@@ -993,9 +1096,11 @@ def main():
         test_utils()
     elif args.stage == "all":
         test_utils()
+        test_utils_viz()
         test_stage_01_a5()
         test_stage_02b()
         test_stage_03_a4()
+        test_stage_04_a7()
         test_stage_04_a8()
         if check_gpu():
             test_stage_01()
@@ -1019,8 +1124,12 @@ def main():
             log_skip("Stage 03 tests", "no GPU available")
     elif args.stage == "03-a4":
         test_stage_03_a4()
+    elif args.stage == "04-a7":        
+        test_stage_04_a7()
     elif args.stage == "04-a8":
-          test_stage_04_a8()
+        test_stage_04_a8()
+    elif args.stage == "utils-viz":
+        test_utils_viz()
 
     elapsed = time.time() - t0
 

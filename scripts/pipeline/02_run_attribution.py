@@ -47,6 +47,14 @@ def parse_args():
         "--dataset", type=Path, default=None,
         help="Path to curated dataset JSON (optional, falls back to random selection)",
     )
+    parser.add_argument(
+        "--save-graphs", action="store_true",
+        help="Persist full attribution graphs (.pt) to <run-dir>/02_attribution/graphs/",
+    )
+    parser.add_argument(
+        "--dtype", choices=["float32", "bfloat16", "float16"], default="float32",
+        help="Model dtype. Use bfloat16/float16 on 24 GB cards to avoid OOM.",
+    )
     return parser.parse_args()
 
 
@@ -140,6 +148,9 @@ def main():
     args = parse_args()
     run_dir = args.run_dir
     out_dir = get_stage_dir(run_dir, "02_attribution")
+    graphs_dir = out_dir / "graphs" if args.save_graphs else None
+    if graphs_dir is not None:
+        graphs_dir.mkdir(exist_ok=True)
 
     print("=" * 60)
     print("STAGE 02: Run CLT Attribution Graphs")
@@ -167,10 +178,11 @@ def main():
     tokenizer.padding_side = "left"
 
     print("  Loading ReplacementModel...")
+    dtype_map = {"float32": torch.float32, "bfloat16": torch.bfloat16, "float16": torch.float16}
     model = ReplacementModel.from_pretrained(
         config.MODEL_NAME,
         config.TRANSCODER_PATH,
-        dtype=torch.float32,
+        dtype=dtype_map[args.dtype],
         backend="nnsight",
         lazy_encoder=True,
     )
@@ -239,6 +251,8 @@ def main():
                     f"pos={summary['pos_sum']:.1f}  neg={summary['neg_sum']:.1f}  "
                     f"n={summary['n_features']}"
                 )
+                if graphs_dir is not None:
+                    g.to_pt(str(graphs_dir / f"{i:03d}_{cls}.pt"))
                 del g
 
             except Exception as e:

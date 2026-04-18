@@ -1,3 +1,7 @@
+
+# Raw attribution graph pickles (kept pod-side; commit pruned JSONs instead)
+data/results/pipeline_runs/**/02_attribution/graphs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

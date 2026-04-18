@@ -64,7 +64,11 @@ def parse_args():
     parser.add_argument(
         "--histogram-only", action="store_true",
         help="Skip HF downloads; regenerate layer histogram from existing labeled data",
-    )                                                                                                                                                     
+    )   
+    parser.add_argument(
+        "--upset-only", action="store_true",
+        help="Skip HF downloads; regenerate feature-class UpSet plot from existing labeled data",                               
+    )                                                                                                                                                  
     return parser.parse_args()
                                                                                                                                                         
                                                                                                                                                         
@@ -341,10 +345,90 @@ def plot_layer_histogram(histogram: dict, out_dir: Path) -> None:
     plt.savefig(out_dir / "features_by_layer.png", dpi=150)
     plt.close()
 
+def build_feature_class_sets(comparison_labeled: dict) -> dict:                                                                 
+    """A7: feature → class membership, per bucket and globally unioned."""
+    classes = set()                                                                                                             
+    per_bucket = {}
+    combined = {}                                                                                                               
+                                                                                                                                
+    for bucket, entries in comparison_labeled.items():
+        bucket_map = {}                                                                                                         
+        for entry in entries:          
+            key = entry.get("key")
+            cls_list = entry.get("classes", [])                                                                                 
+            if key is None or not cls_list:
+                continue                                                                                                        
+            classes.update(cls_list)   
+            bucket_map[key] = sorted(cls_list)
+            combined.setdefault(key, set()).update(cls_list)                                                                    
+        per_bucket[bucket] = bucket_map                                                                                         
+                                                                                                                                
+    return {                                                                                                                    
+        "n_classes": len(classes),     
+        "classes": sorted(classes),
+        "by_bucket": {
+            bucket: {"total": len(m), "features": m}                                                                            
+            for bucket, m in per_bucket.items()
+        },                                                                                                                      
+        "combined": {                  
+            "total": len(combined),
+            "features": {k: sorted(v) for k, v in combined.items()},                                                            
+        },
+    }                                                                                                                           
+                                        
+                                                                                                                                
+def plot_feature_class_upset(feature_sets: dict, out_dir: Path) -> None:
+    """A7: UpSet plot of feature-class overlap (combined across buckets)."""                                                    
+    try:                               
+        import upsetplot
+    except ImportError:
+        print("    [A7] upsetplot not installed — skipping (pip install upsetplot)")
+        return                                                                                                                  
+
+    import matplotlib                                                                                                           
+    matplotlib.use("Agg")              
+    import matplotlib.pyplot as plt                                                                                             
+
+    class_to_features = {cls: [] for cls in feature_sets["classes"]}                                                            
+    for key, cls_list in feature_sets["combined"]["features"].items():
+        for cls in cls_list:                                                                                                    
+            class_to_features[cls].append(key)
+                                                                                                                                
+    if not any(class_to_features.values()):
+        print("    [A7] no features to plot")
+        return                                                                                                                  
+
+    data = upsetplot.from_contents(class_to_features)                                                                           
+    upset = upsetplot.UpSet(           
+        data, show_counts=True, sort_by="cardinality",
+        min_subset_size=1,                                                                                                      
+    )
+    upset.plot()                                                                                                                
+    plt.suptitle(                      
+        f"Feature–Class Overlap across Buckets (N={feature_sets['combined']['total']} features)",                               
+        fontsize=12,
+    )                                                                                                                           
+    plt.savefig(out_dir / "feature_class_upset.png", dpi=150, bbox_inches="tight")
+    plt.close()
+
 def main():
     args = parse_args()
     run_dir = args.run_dir
     out_dir = get_stage_dir(run_dir, "04_labels")
+
+    # A7: upset-only path — regenerate feature-class overlap plot from existing labeled data                                    
+    if args.upset_only:                                                                                                         
+        comp_path = out_dir / "feature_comparison_labeled.json"
+        if not comp_path.exists():                                                                                              
+            print(f"ERROR: --upset-only needs existing {comp_path.name}")
+            sys.exit(1)                                                                                                         
+        comp = load_json(comp_path)    
+        feature_sets = build_feature_class_sets(comp)                                                                           
+        save_json(feature_sets, out_dir / "feature_class_sets.json")                                                            
+        plot_feature_class_upset(feature_sets, out_dir)
+        print(f"  Saved feature_class_sets.json and feature_class_upset.png")                                                   
+        print("DONE!")                 
+        return
 
     # A8: histogram-only path — regenerate feature-by-layer histogram without HF
     if args.histogram_only:
@@ -560,7 +644,13 @@ def main():
     histogram = build_layer_histogram(comparison_labeled)
     save_json(histogram, out_dir / "layer_histogram.json")                                                                      
     plot_layer_histogram(histogram, out_dir)
-    print("    Saved features_by_layer.png + layer_histogram.json")                                                                                                         
+    print("    Saved features_by_layer.png + layer_histogram.json")  
+
+    # A7: feature-class UpSet                                                                                                   
+    feature_sets = build_feature_class_sets(comparison_labeled)
+    save_json(feature_sets, out_dir / "feature_class_sets.json")                                                                
+    plot_feature_class_upset(feature_sets, out_dir)
+    print("    Saved feature_class_upset.png + feature_class_sets.json")                                                                                                       
                                                                                                                                                         
     # Summary                                                                                                                                             
     print(f"\n{'='*60}")                                                                                                                                  
