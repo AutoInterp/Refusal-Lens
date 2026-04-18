@@ -55,6 +55,23 @@ Currently random selection via `select_diverse_prompts()`. `utils.load_experimen
 ### Workflow rule
 Claude suggests code → Mahmoud implements by hand → Claude runs local tests and reports bugs → Mahmoud fixes → full RunPod run → Claude reviews results. No mocks — real tests, `pytest.importorskip("torch")` for gating when needed.
 
+### Stage 05 feature labels via LLM synthesis (proposed 2026-04-18, deferred)
+Circuit-tracer's `create_graph_files` leaves `clerp=""` on feature nodes. Anthropic's demos use hand-written labels which doesn't scale to 876 unique features across our 50 prompts. Plan: an offline labeler that, per feature, assembles `(top_logits, bottom_logits, activation_example_quantiles, top-5 incoming attribution edges, top-5 outgoing attribution edges)` → single Claude API call → 5–10 word description → store as `llm_label` in `feature_labels.json` → `utils_viz` injects into each graph's `clerp` at conversion time. Estimated cost: ~$2 total with Haiku 4.5 (876 × one-shot calls, no caching needed). Deferred until after 50-prompt pipeline validated end-to-end and Georg weighs in on whether this is worth the run cost.
+
+### Stage 05 side-by-side comparison viewer (proposed 2026-04-18)
+Currently the frontend shows one graph at a time. Research workflow demands simultaneous bare ↔ JB viewing. Plan: new `compare.html` in `05_frontend_patches/` with two iframes + URL-param `?graph=<slug>` support via a small patch to `init-cg.js`. Each iframe is an independent copy of the vanilla viewer — shared data, separate pan/zoom/feature-detail state. Deferred until the 10-prompt RunPod subset validates the core pipeline end-to-end.
+
+### Stage 05 storage strategy (2026-04-18, revisit after Georg feedback)
+Attribution graphs are much larger than expected: **~1.5 GB per raw `.pt`, ~40 MB per pruned frontend JSON** (with `node_threshold=0.8`, `edge_threshold=0.98`). For 50 prompts × 6 conditions = 300 graphs: ~430 GB raw `.pt`, ~12 GB pruned JSON.
+
+**Current decision** — optimize for *information fidelity* over storage:
+- **No tighter pruning.** Lowering thresholds (e.g. `0.6 / 0.9`) would disproportionately drop low-influence features — exactly the class-exclusive "JB subcircuit" features we want to highlight.
+- **Transport compression (gzip) instead of pruning.** `.json` gzips ~5–8× in practice → ~5–8 MB per graph. No information loss.
+- **Raw `.pt` files are pod-only for now.** Not committed; not synced. Revisit if Georg asks for them (options at that point: `scp` to local archive, or push to HF datasets under `AutoInterp/refusal-lens-graphs`).
+- **Pruned JSONs are the canonical artifact.** Hosted (not committed to git) — planned target: HuggingFace dataset repo, frontend fetches directly. Falls back to local `graph_data/` for local dev.
+
+**If storage is still a problem after gzip:** options in escalation order — (1) HF-hosted JSONs + frontend fetches from HF URL, (2) git-LFS for a committed subset (10 representative prompts), (3) accept stricter thresholds as last resort, carefully documenting what's dropped.
+
 ---
 
 ## Stage Status (as of 2026-04-17)
