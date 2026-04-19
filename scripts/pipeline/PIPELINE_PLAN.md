@@ -1,7 +1,7 @@
 # Refusal-Lens Unified Pipeline Plan
 
 **Created**: 2026-04-14
-**Last updated**: 2026-04-17 (post first successful 50-prompt RunPod run through Stage 04)
+**Last updated**: 2026-04-18 (after A3–A8 landed, Stage 05 frontend with overlap coloring + compare.html, 10-prompt local run in progress)
 
 ## Goal
 
@@ -200,6 +200,30 @@ These were not in the original plan. They're divided into **scientifically load-
 **Outputs**: named subcircuit definitions (dampening, tug-of-war, JB-detection)
 **Research story**: "Three functional subcircuits with distinct roles."
 
+**Approach A (rule-based, chosen as default 2026-04-18)** — interpretable, narratively defensible:
+- `universal_refusal_core` = features in all 5 JB classes ∩ bare top-50 (~100 features, from A7 analysis)
+- `canonical_pro_refusal` = features in 5-class intersection but NOT in bare pool (~50 features; shared suppression target)
+- `{class}_exclusive` (×5) = features unique to one JB class (43–107 each, from A7)
+- `dampening_specialists` = features in `dampened` bucket across ≥3 classes (~50)
+- `anti_refusal_amplifiers` = features in `amplified_anti` bucket across ≥3 classes (~60)
+- `late_wave_layer24_32` = all features in L24–L32 band (cross-cuts above; ~630)
+
+Implementation: pure set logic on `feature_class_sets.json` + `layer_histogram.json` + `feature_comparison_labeled.json`. No GPU, no ML fitting. Local test derives all from existing `run_20260417_010035` outputs.
+
+**Approach B (embedding-based, alternative, discuss with Georg)** — deferred, pending mentor input:
+- Build per-feature vector: `(class_membership_5d, layer_1d, mean_attribution_1d, max_activation_1d, top_logit_embeddings_Nd)`
+  - `top_logit_embeddings` = average of Gemma/Qwen sentence-embedding vectors for the top-5 promoted tokens, capturing semantic content of what the feature encodes
+- Dimensionality reduction: PCA to ~20 dims, then UMAP to 2D for visualization
+- Cluster with HDBSCAN (no k specified; cluster count determined by density)
+- Name clusters post-hoc by inspecting the most-central features per cluster (highest local density)
+
+Trade-offs vs rule-based:
+- **Pros**: finds unexpected feature groupings we didn't predict; captures semantic similarity (e.g. "all safety-warning features" clustering together regardless of which classes they appear in); more likely to generalize to new JB classes
+- **Cons**: cluster identity is statistical, not interpretable by inspection; hard to explain to Georg without a UMAP plot + handpicked labels; requires careful tuning (HDBSCAN min_cluster_size, min_samples); may produce ~10–20 small clusters instead of 6–8 big ones
+- **Open question for Georg**: does he want us to run both and compare? Or commit to one?
+
+**Plan**: ship Approach A first (rule-based). If Georg wants Approach B, add a `--method=embedding` flag to `07_identify_subcircuits.py` that runs HDBSCAN on the same input data and writes a parallel `subcircuits_embedding.json`. Both outputs feed into Stage 08 ablation independently — we can ablate by either subcircuit definition.
+
 ### Stage 08 — Ablate Subcircuits
 **Depends on**: 07, 01
 **Outputs**: per-subcircuit ablation results
@@ -226,18 +250,30 @@ These were not in the original plan. They're divided into **scientifically load-
 | Stage | Status | Local Test | RunPod Test | Notes |
 |-------|--------|------------|-------------|-------|
 | 01    | ✓ Done | 26/26      | ✓ n=64      | Matches Tejas within noise |
-| 02    | ✓ Done | via S03    | ✓ 50 prompts × 5 classes | Checkpoint-resumable |
-| 02b   | ✓ Done | Matches reference | ✓ 50 prompts | Stats match prior exactly |
-| 03    | ✓ Done | 15/15      | ✓ 50 prompts | MLP ratio 0.404% |
-| 04    | ✓ Done | —          | ✓ 876 features, 100% labeled | HF dashboard binary |
-| 02→A1 | Planned| —          | —           | Coherence wiring — Mahmoud queued |
-| 02b→A2–A6 | Planned | — | —       | Plot additions from 2026-04-17 review |
-| 04→A7–A8 | Planned | — | —        | Plot additions from 2026-04-17 review |
-| 05    | Planned| —          | —           | M3 visualization |
-| 06    | Planned| —          | —           | Tejas's task |
-| 06b   | Planned| —          | —           | |
-| 07    | Planned| —          | —           | |
-| 08    | Planned| —          | —           | |
+| 02    | ✓ Done | 1-prompt bf16 on 4090 | ✓ 50 prompts × 5 classes | Now supports `--save-graphs` + `--dtype` |
+| 02b   | ✓ Done | Matches reference | ✓ 50 prompts | Includes A3 sep-curve, A5 cosine heatmap, A6 distribution plots |
+| 03    | ✓ Done | 15/15      | ✓ 50 prompts | MLP ratio 0.404%; A4 per-layer contribution added |
+| 04    | ✓ Done | 04-a7, 04-a8 pass | ✓ 876 features, 100% labeled | A7 UpSet + A8 layer histogram added |
+| A3    | ✓ Done | ✓ | — | Separation-vs-layer plot in 02b |
+| A4    | ✓ Done | ✓ | — | Per-layer contribution aggregate in 03 |
+| A5    | ✓ Done | ✓ | — | 34×34 cosine heatmap (reveals Regime A/B/C pivot structure) |
+| A6    | ✓ Done | ✓ | — | Bare-vs-JB distribution violin plot |
+| A7    | ✓ Done | ✓ | — | Feature-class UpSet (N=788; 12.7% universal, 46.1% class-exclusive) |
+| A8    | ✓ Done | ✓ | — | Top-features-by-layer histogram (80% of JB-affected features in L24–L32) |
+| 05a   | ✓ Done | ✓ bf16 on 4090 | — | Stage 02 `--save-graphs` flag + `.pt` persistence |
+| 05b   | ✓ Done | ✓ | — | `utils_viz.py` helpers: convert_pt, annotate_overlap, stage_frontend, gzip_json_files |
+| 05c   | ✓ Done | ✓ | — | Frontend overlap coloring (shared/jb-unique/bare) + legend + fetch-override patch |
+| 05d   | ✓ Done | ✓ | — | `compare.html` side-by-side viewer (bare ↔ JB iframes, URL-param driven) |
+| 05e   | **In Progress** | 10-prompt local bf16 run started 2026-04-18 | — | ~8 hrs total; 1/10 prompts done |
+| 05f   | Planned | — | — | Full 50-prompt RunPod run after local validation |
+| A1    | Planned | — | — | Coherence wiring in Stage 02 (deferred, tracked) |
+| A2    | Planned | — | — | Completion-paradox feature attribution (deferred) |
+| LLM labels | Planned | — | — | Claude-API-synthesized `clerp` labels (deferred) |
+| 6-way UpSet | Planned | — | — | `feature_labels.json[conditions_seen]` including bare |
+| 06    | Planned | — | — | Tejas's task — causal intervention (Arditi method) |
+| 06b   | Planned | — | — | Linear probe |
+| 07    | **Next** | — | — | Rule-based subcircuit identification (embedding-based as alt) |
+| 08    | Planned | — | — | Subcircuit ablation |
 
 ---
 

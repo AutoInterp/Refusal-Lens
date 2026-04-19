@@ -164,6 +164,7 @@ def stage_frontend(
         html = index_path.read_text()
         injection = (                                                                                                           
             '<link rel="stylesheet" href="./overlap-colors.css">\n'
+            '<script src="./fetch-override.js" defer></script>\n'
             '<script src="./overlap-annotate.js" defer></script>\n'                                                             
         )       
         # Insert before the closing of the first <link> block (just after last CSS link)                                        

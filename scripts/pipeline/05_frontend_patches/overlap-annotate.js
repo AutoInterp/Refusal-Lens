@@ -40,10 +40,10 @@
 
     function tick() {
         const n = annotate();
-        if (n > 0) {
+        if (n > 0) {                                                                                                            
             console.log('[overlap] annotated ' + n + ' new elements');
-            updateLegendCounts();
-        }
+        }                                                                                                                       
+        updateLegendCounts();  // always refresh counts, even when nothing new
     }
 
     function buildLegend() {
