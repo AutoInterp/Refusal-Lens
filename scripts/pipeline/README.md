@@ -627,9 +627,13 @@ The attribution-graph browser (Stage 05) can be viewed on any machine without GP
 **Zero-to-browser in five steps, starting from nothing on a fresh machine:**
 
 ```bash
-# 1. Clone the repo on the foundation branch
-git clone -b foundation https://github.com/AutoInterp/Refusal-Lens.git
+# 1. Clone WITH submodules — vendor/circuit-tracer (Anthropic's upstream frontend
+#    assets) is a git submodule and must be populated for the viewer to render.
+git clone --recurse-submodules -b foundation https://github.com/AutoInterp/Refusal-Lens.git
 cd Refusal-Lens
+
+# If you already cloned without --recurse-submodules, run this once instead:
+# git submodule update --init --recursive
 
 # 2. Create a Python environment (3.10+ required) and install the single
 #    frontend-only dependency. No torch, no transformers, no circuit-tracer.
@@ -641,8 +645,10 @@ pip install huggingface_hub
 # hf auth login
 # Paste a read-scope token from https://huggingface.co/settings/tokens
 
-# 4. List available runs, then pull one. Incremental — only downloads
-#    files whose hash changed on HF, safe to re-run.
+# 4. List available runs, then pull one. Downloads ONLY the ~180 MB frontend
+#    bundle (gzipped per-graph JSON + metadata + subcircuit definitions).
+#    Raw .pt archives stay on HF and are never pulled unless you explicitly
+#    invoke fetch_raw_graphs.py. Incremental — safe to re-run.
 cd scripts/pipeline
 python3 fetch_graph_data.py --list --dataset-repo moon70/refusal-lens-graphs
 python3 fetch_graph_data.py --run run_20260418_172402 \

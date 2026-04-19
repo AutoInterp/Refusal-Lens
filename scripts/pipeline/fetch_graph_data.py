@@ -36,9 +36,30 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config
-from utils_viz import stage_frontend
+from utils_viz import VENDOR_FRONTEND, stage_frontend
 
 DEFAULT_DATASET_REPO = "AutoInterp/refusal-lens-graphs"
+
+
+def check_vendor_submodule() -> None:
+    """Fail fast if vendor/circuit-tracer submodule isn't populated.
+
+    `git clone` without `--recurse-submodules` leaves the directory empty,
+    and a cryptic FileNotFoundError surfaces 15 minutes into the flow.
+    This preflight bails immediately with the one command that fixes it.
+    """
+    if VENDOR_FRONTEND.is_dir() and any(VENDOR_FRONTEND.iterdir()):
+        return
+    repo_root = config.REPO_ROOT
+    print(f"ERROR: vendor frontend not found at {VENDOR_FRONTEND}")
+    print(f"       This directory is a git submodule (vendor/circuit-tracer).")
+    print(f"       If you cloned without --recurse-submodules, populate it now:")
+    print(f"")
+    print(f"           cd {repo_root}")
+    print(f"           git submodule update --init --recursive")
+    print(f"")
+    print(f"       Or re-clone with: git clone --recurse-submodules <repo-url>")
+    sys.exit(1)
 
 
 def parse_args():
@@ -97,19 +118,32 @@ def main():
     out_dir = run_dir / "05_frontend"
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Preflight: vendor frontend must exist before we start downloading.
+    # Avoids a 180-MB download that fails at the final stage_frontend() call.
+    check_vendor_submodule()
+
     print("=" * 60)
     print(f"Fetching run '{args.run}' from {args.dataset_repo}")
     print("=" * 60)
 
+    # Narrow allow_patterns so we ONLY pull frontend artifacts (~180 MB).
+    # The raw `.pt` graphs under `runs/<run>/raw_graphs/` are archived for
+    # deep analysis via fetch_raw_graphs.py — they must not come down here.
     try:
         snapshot_path = snapshot_download(
             repo_id=args.dataset_repo,
             repo_type="dataset",
-            allow_patterns=[f"runs/{args.run}/**"],
+            allow_patterns=[
+                f"runs/{args.run}/graph_data/*.json",
+                f"runs/{args.run}/graph_data/*.json.gz",
+                f"runs/{args.run}/graph-metadata.json",
+                f"runs/{args.run}/subcircuits.json",
+                f"runs/{args.run}/run_info.json",
+            ],
         )
     except Exception as e:
         print(f"ERROR downloading: {e}")
-        print(f"If the dataset is private, run `huggingface-cli login` first.")
+        print(f"If the dataset is private, run `hf auth login` first.")
         sys.exit(1)
 
     src_run = Path(snapshot_path) / "runs" / args.run
