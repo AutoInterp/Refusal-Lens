@@ -673,6 +673,7 @@ Total disk footprint on the collaborator machine for the 10-prompt bundle: ~180 
 - *"Cannot fetch `graph-metadata.json`"* → usually means `python3 -m http.server` is serving from the wrong directory. Make sure your pwd is the `05_frontend/` directory (it should contain `index.html` and a `data/` folder).
 - *Blank page or spinning forever* → check the browser DevTools console. If you see `[gzip-fetch] DecompressionStream unavailable`, upgrade to a current browser.
 - *Panel doesn't show subcircuit counts* → normal for the first ~2 s while the 3–4 MB gzipped graph JSON downloads and D3 binds nodes; the count updates every 1.5 s once data lands. If counts stay at 0 after 10+ seconds, check the DevTools console for fetch errors.
+- *Blank page with a spinner that never resolves, terminal shows only `GET /` and nothing else* → a stale browser session wedged on a prior cache entry. Close **all** windows of the browser (not just the tab) and reopen. The viewer uses a few third-party scripts (`d3`, `dagre`, `pako`) loaded from CDN; a half-cached response from a prior visit can stall the HTML parser until the session is reset.
 
 The on-disk graph files are gzipped (`*.json.gz`, ~12× smaller than plain). The in-browser fetch wrapper (`gzip-fetch.js`) decompresses them via `DecompressionStream` — no server config required. Works in Chrome 80+, Firefox 113+, Safari 16.4+.
 

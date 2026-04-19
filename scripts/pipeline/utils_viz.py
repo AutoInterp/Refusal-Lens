@@ -205,13 +205,15 @@ def stage_frontend(
             shutil.copy2(gz, graph_data_out / gz.name)
     
     # Inject overlap-coloring patches into index.html
-    patches_dir = Path(__file__).resolve().parent / "05_frontend_patches"                                                       
-    if patches_dir.exists():                                                                                                    
-        # Copy patch files into frontend root                                                                                   
-        for patch in patches_dir.iterdir():                                                                                     
+    patches_dir = Path(__file__).resolve().parent / "05_frontend_patches"
+    if patches_dir.exists():
+        # Copy patch files into frontend root (skip subdirs / __pycache__)
+        for patch in patches_dir.iterdir():
+            if patch.is_dir() or patch.name == "__pycache__":
+                continue
             shutil.copy2(patch, frontend_out / patch.name)
-        # Inject <link> + <script> into index.html                                                                              
-        index_path = frontend_out / "index.html"                                                                                
+        # Inject <link> + <script> into index.html
+        index_path = frontend_out / "index.html"
         html = index_path.read_text()
         gzip_flag = '<script>window.REFUSAL_LENS_USE_GZIP = true;</script>\n' if use_gzip else ''
         injection = (
@@ -222,11 +224,10 @@ def stage_frontend(
             '<script src="./gzip-fetch.js" defer></script>\n'
             '<script src="./overlap-annotate.js" defer></script>\n'
             '<script src="./subcircuit-panel.js" defer></script>\n'
-        )       
-        # Insert before the closing of the first <link> block (just after last CSS link)                                        
-        marker = "<script src='./util.js'></script>"                                                                            
+        )
+        marker = "<script src='./util.js'></script>"
         if marker in html and injection not in html:
-            html = html.replace(marker, injection + marker)                                                                     
+            html = html.replace(marker, injection + marker)
             index_path.write_text(html)
 
     # Move graph-metadata.json to data/ (different directory — always copy)
