@@ -98,16 +98,14 @@
 
     function refreshCounts() {
         const counts = countFromGraph();
-        let anyNonZero = false;
         for (const name of ORDER) {
             const el = document.getElementById(`sc-count-${name}`);
             if (el) el.textContent = counts[name];
-            if (counts[name] > 0) anyNonZero = true;
         }
-        // Hide panel entirely if no subcircuit annotations exist on this graph
-        // (e.g. the bare graph hasn't been re-annotated yet)
-        const panel = document.getElementById(PANEL_ID);
-        if (panel) panel.style.display = anyNonZero ? '' : 'none';
+        // Panel stays visible even when counts are all zero — on first ticks the
+        // graph JSON may still be loading, so zeros are transient, not a signal
+        // to hide the control. If a graph has no annotations at all, zeros
+        // themselves tell the user that (rather than the control vanishing).
     }
 
     function buildPanel() {

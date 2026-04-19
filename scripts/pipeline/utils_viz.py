@@ -137,9 +137,18 @@ def annotate_bare(bare_json_path: Path, prompt_idx: int) -> dict:
 
 
 def gzip_json_files(graph_data_dir: Path, keep_plain: bool = False) -> dict:
-    """Compress every *.json in graph_data_dir to *.json.gz. Returns size report."""
-    results = {"compressed": {}, "total_plain": 0, "total_gz": 0}
+    """Compress every per-graph *.json in graph_data_dir to *.json.gz.
+
+    Skips `graph-metadata.json` — that's the small index the frontend loads
+    unconditionally at page load, is served as plain JSON, and must stay
+    available at <frontend>/data/graph-metadata.json. Gzipping it would
+    leave the frontend with a stale or missing metadata file after staging.
+    """
+    results = {"compressed": {}, "total_plain": 0, "total_gz": 0, "skipped": []}
     for jp in sorted(graph_data_dir.glob("*.json")):
+        if jp.name == "graph-metadata.json":
+            results["skipped"].append(jp.name)
+            continue
         gz_path = jp.with_suffix(".json.gz")
         with open(jp, "rb") as src, gzip.open(gz_path, "wb", compresslevel=6) as dst:
             shutil.copyfileobj(src, dst)
@@ -154,7 +163,10 @@ def gzip_json_files(graph_data_dir: Path, keep_plain: bool = False) -> dict:
 
 
 def stage_frontend(
-    graph_data_dir: Path, frontend_out: Path, vendor_frontend: Path = VENDOR_FRONTEND,
+    graph_data_dir: Path,
+    frontend_out: Path,
+    vendor_frontend: Path = VENDOR_FRONTEND,
+    use_gzip: bool = False,
 ) -> None:
     """Copy circuit-tracer's frontend assets + arrange our graphs into the expected layout.
 
@@ -180,15 +192,17 @@ def stage_frontend(
         else:
             shutil.copy2(entry, dst)
 
-    # Copy our graphs into graph_data/
+    # Copy our graphs into graph_data/ (skip when caller already staged there)
     graph_data_out = frontend_out / "graph_data"
     graph_data_out.mkdir(exist_ok=True)
-    for jp in sorted(graph_data_dir.glob("*.json")):
-        if jp.name == "graph-metadata.json":
-            continue
-        shutil.copy2(jp, graph_data_out / jp.name)
-    for gz in sorted(graph_data_dir.glob("*.json.gz")):
-        shutil.copy2(gz, graph_data_out / gz.name)
+    same_graph_dir = graph_data_dir.resolve() == graph_data_out.resolve()
+    if not same_graph_dir:
+        for jp in sorted(graph_data_dir.glob("*.json")):
+            if jp.name == "graph-metadata.json":
+                continue
+            shutil.copy2(jp, graph_data_out / jp.name)
+        for gz in sorted(graph_data_dir.glob("*.json.gz")):
+            shutil.copy2(gz, graph_data_out / gz.name)
     
     # Inject overlap-coloring patches into index.html
     patches_dir = Path(__file__).resolve().parent / "05_frontend_patches"                                                       
@@ -199,10 +213,13 @@ def stage_frontend(
         # Inject <link> + <script> into index.html                                                                              
         index_path = frontend_out / "index.html"                                                                                
         html = index_path.read_text()
+        gzip_flag = '<script>window.REFUSAL_LENS_USE_GZIP = true;</script>\n' if use_gzip else ''
         injection = (
-            '<link rel="stylesheet" href="./overlap-colors.css">\n'
+            gzip_flag
+            + '<link rel="stylesheet" href="./overlap-colors.css">\n'
             '<link rel="stylesheet" href="./subcircuit-panel.css">\n'
             '<script src="./fetch-override.js" defer></script>\n'
+            '<script src="./gzip-fetch.js" defer></script>\n'
             '<script src="./overlap-annotate.js" defer></script>\n'
             '<script src="./subcircuit-panel.js" defer></script>\n'
         )       
@@ -212,9 +229,10 @@ def stage_frontend(
             html = html.replace(marker, injection + marker)                                                                     
             index_path.write_text(html)
 
-    # Move graph-metadata.json to data/
+    # Move graph-metadata.json to data/ (different directory — always copy)
     data_out = frontend_out / "data"
     data_out.mkdir(exist_ok=True)
     metadata_src = graph_data_dir / "graph-metadata.json"
-    if metadata_src.exists():
-        shutil.copy2(metadata_src, data_out / "graph-metadata.json")
+    metadata_dst = data_out / "graph-metadata.json"
+    if metadata_src.exists() and metadata_src.resolve() != metadata_dst.resolve():
+        shutil.copy2(metadata_src, metadata_dst)

@@ -1,6 +1,9 @@
 
-# Raw attribution graph pickles (kept pod-side; commit pruned JSONs instead)
+# Raw attribution graph pickles (archived to HF dataset, not committed)
 data/results/pipeline_runs/**/02_attribution/graphs/
+
+# Rendered frontend bundle — regenerable from HF via fetch_graph_data.py
+data/results/pipeline_runs/**/05_frontend/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

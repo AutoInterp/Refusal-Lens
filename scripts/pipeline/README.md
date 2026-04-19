@@ -620,6 +620,95 @@ tmux attach -t pipeline     # Ctrl+b n to switch windows, Ctrl+b d to detach
 - Stage 03: ~5–10 min
 - Stage 04: ~2 min
 
+### Sharing the frontend with collaborators
+
+The attribution-graph browser (Stage 05) can be viewed on any machine without GPU, without running any pipeline compute — all the expensive steps are pre-computed and the rendered graph bundle is hosted on HuggingFace. The steps below are what Georg / Tejas / any collaborator runs on a fresh machine.
+
+**Zero-to-browser in five steps, starting from nothing on a fresh machine:**
+
+```bash
+# 1. Clone the repo on the foundation branch
+git clone -b foundation https://github.com/AutoInterp/Refusal-Lens.git
+cd Refusal-Lens
+
+# 2. Create a Python environment (3.10+ required) and install the single
+#    frontend-only dependency. No torch, no transformers, no circuit-tracer.
+python3 -m venv venv
+source venv/bin/activate        # Windows PowerShell: .\venv\Scripts\Activate.ps1
+pip install huggingface_hub
+
+# 3. (Only if the HF dataset is private) one-time login
+# hf auth login
+# Paste a read-scope token from https://huggingface.co/settings/tokens
+
+# 4. List available runs, then pull one. Incremental — only downloads
+#    files whose hash changed on HF, safe to re-run.
+cd scripts/pipeline
+python3 fetch_graph_data.py --list --dataset-repo moon70/refusal-lens-graphs
+python3 fetch_graph_data.py --run run_20260418_172402 \
+    --dataset-repo moon70/refusal-lens-graphs
+
+# 5. Serve the resulting 05_frontend/ over HTTP
+cd ../../data/results/pipeline_runs/run_20260418_172402/05_frontend
+python3 -m http.server 8000
+```
+
+Then open one of:
+
+- **`http://localhost:8000/?slug=000_bare`** — single-graph viewer, with a left-rail subcircuit panel (Stage 07 memberships) and a right-rail overlap legend (shared / JB-unique / bare).
+- **`http://localhost:8000/compare.html`** — side-by-side bare ↔ JB viewer. Prompt and JB-class dropdowns in the toolbar; each iframe has its own independent subcircuit panel.
+
+Total disk footprint on the collaborator machine for the 10-prompt bundle: ~180 MB (gzipped graph files) + a few KB of HTML/JS/CSS. No GPU, no model weights, no raw `.pt` files downloaded.
+
+**Browser support:** the gzipped-fetch path uses `DecompressionStream('gzip')`, which requires Chrome 80+, Firefox 113+, Safari 16.4+. All released within the last ~2 years — should be fine on any current setup.
+
+**Troubleshooting:**
+
+- *"Cannot fetch `graph-metadata.json`"* → usually means `python3 -m http.server` is serving from the wrong directory. Make sure your pwd is the `05_frontend/` directory (it should contain `index.html` and a `data/` folder).
+- *Blank page or spinning forever* → check the browser DevTools console. If you see `[gzip-fetch] DecompressionStream unavailable`, upgrade to a current browser.
+- *Panel doesn't show subcircuit counts* → normal for the first ~2 s while the 3–4 MB gzipped graph JSON downloads and D3 binds nodes; the count updates every 1.5 s once data lands. If counts stay at 0 after 10+ seconds, check the DevTools console for fetch errors.
+
+The on-disk graph files are gzipped (`*.json.gz`, ~12× smaller than plain). The in-browser fetch wrapper (`gzip-fetch.js`) decompresses them via `DecompressionStream` — no server config required. Works in Chrome 80+, Firefox 113+, Safari 16.4+.
+
+**Updating when new runs land.** Re-run `fetch_graph_data.py --run <run>` — existing files are skipped, only new/changed bytes flow. The `data/graph-metadata.json` lists the graphs the viewer knows about; it's regenerated on each `stage_frontend()` call so newly-added graphs show up automatically in the dropdown. There's no client-side cache to bust beyond a hard reload.
+
+**Uploading new runs (pipeline author):**
+
+```bash
+# After running 05_visualize_circuits.py locally with your run, push the
+# staged bundle to HF. The push step gzips on the fly for upload bandwidth.
+hf auth login   # once per machine, with a Write-scope token
+python3 push_graph_data.py --run-dir data/results/pipeline_runs/run_YYYYMMDD_HHMMSS \
+    --subcircuits-run data/results/pipeline_runs/run_20260417_010035 \
+    --dataset-repo moon70/refusal-lens-graphs
+```
+
+The dataset repo is configurable via `--dataset-repo`. Currently `moon70/refusal-lens-graphs`; to migrate, change the flag (no code edits).
+
+**Archiving raw `.pt` attribution graphs (one-time, for cold storage):**
+
+The pruned `.json.gz` bundle is what the frontend needs — but the raw `.pt` files from `02_attribution/graphs/` (which contain the full 20k×20k adjacency matrix and every attribution edge, not just the pruned top-0.8) are worth keeping for future analyses that can't be done from the pruned view: re-pruning at different thresholds, Stage 08 subcircuit ablation, full gradient-based feature importance, etc.
+
+Push them to the same HF dataset once, then `rm -rf` locally to reclaim disk:
+
+```bash
+# ~70-90 min upload at home connection speeds for a 10-prompt run (~80 GB)
+python3 push_raw_graphs.py \
+    --run-dir data/results/pipeline_runs/run_20260418_172402 \
+    --dataset-repo moon70/refusal-lens-graphs
+# Verifies remote file list before printing the rm command. Resumable — re-run to retry.
+```
+
+Pull a subset back on demand:
+
+```bash
+python3 fetch_raw_graphs.py --run run_20260418_172402 \
+    --dataset-repo moon70/refusal-lens-graphs \
+    --prompts 0,1,2            # optional: subset to save download time
+```
+
+Raw graphs live at `runs/<run>/raw_graphs/*.pt` in the dataset (LFS-tracked). `fetch_graph_data.py` never touches them, so collaborators who only want the frontend don't pay the download cost.
+
 ### Resuming after a crash
 
 Stage 02 checkpoints after every prompt. To resume the attribution stage without redoing stages 01:
