@@ -238,6 +238,63 @@ def test_utils_viz():
         set(OVERLAP_BUCKETS) == {"shared_with_bare", "jb_unique", "bare_only", "bare", "non_feature"},
     )
 
+    # T-V2: annotate_subcircuits round-trip on a synthetic graph.
+    # Verifies reverse-index construction + per-node membership write.
+    from utils_viz import annotate_subcircuits
+    synth_graph = {
+        "metadata": {},
+        "nodes": [
+            {"node_id": "29_1066_5", "layer": "29", "feature_type": "cross layer transcoder"},
+            {"node_id": "24_107_3",  "layer": "24", "feature_type": "cross layer transcoder"},
+            {"node_id": "5_9999_0",  "layer": "5",  "feature_type": "cross layer transcoder"},  # no membership
+            {"node_id": "E_0_0", "feature_type": "embedding"},  # non-feature
+        ],
+    }
+    synth_subcircuits = {
+        "subcircuits": {
+            "universal_refusal_core":  {"features": ["L29:F1066", "L24:F107"]},
+            "dampening_specialists":   {"features": ["L29:F1066"]},
+            "anti_refusal_amplifiers": {"features": ["L24:F107"]},
+        },
+    }
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as gf:
+        gpath = Path(gf.name)
+        json.dump(synth_graph, gf)
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as sf:
+        spath = Path(sf.name)
+        json.dump(synth_subcircuits, sf)
+    try:
+        result = annotate_subcircuits(gpath, spath)
+        nodes_by_id = {n["node_id"]: n for n in result["nodes"]}
+        log_test(
+            "T-V2a: L29:F1066 → universal_refusal_core + dampening_specialists",
+            set(nodes_by_id["29_1066_5"]["subcircuits"])
+            == {"universal_refusal_core", "dampening_specialists"},
+            str(nodes_by_id["29_1066_5"]["subcircuits"]),
+        )
+        log_test(
+            "T-V2b: L24:F107 → universal_refusal_core + anti_refusal_amplifiers",
+            set(nodes_by_id["24_107_3"]["subcircuits"])
+            == {"universal_refusal_core", "anti_refusal_amplifiers"},
+            str(nodes_by_id["24_107_3"]["subcircuits"]),
+        )
+        log_test(
+            "T-V2c: feature node with no membership → empty list",
+            nodes_by_id["5_9999_0"]["subcircuits"] == [],
+        )
+        log_test(
+            "T-V2d: non-feature node → empty list",
+            nodes_by_id["E_0_0"]["subcircuits"] == [],
+        )
+        log_test(
+            "T-V2e: metadata records annotation count (2 of 3 feature nodes)",
+            result["metadata"].get("n_subcircuit_annotated") == 2,
+            f"got {result['metadata'].get('n_subcircuit_annotated')}",
+        )
+    finally:
+        gpath.unlink()
+        spath.unlink()
+
 
 # ============================================================
 # T1-T5: Stage 01 tests (GPU required)
@@ -1067,6 +1124,112 @@ def test_stage_04_a7():
         all_tagged = all(isinstance(v, list) and len(v) > 0 for v in features.values())                                         
         log_test("T-A7f: every combined feature has ≥1 class", all_tagged)
 
+def test_stage_07():                                                                                                            
+    print("\n" + "=" * 60)                                                                                                      
+    print("STAGE 07 TESTS (rule-based subcircuits)")                                                                            
+    print("=" * 60)                                                                                                             
+                                                                                                                                
+    run_dir = find_latest_pipeline_run()                                                                                        
+    if run_dir is None:                      
+        log_skip("T-07: Stage 07", "no pipeline run found")
+        return                             
+    for required in [                                                                                                           
+        run_dir / "04_labels" / "feature_labels.json",
+        run_dir / "04_labels" / "feature_class_sets.json",                                                                      
+    ]:                                       
+        if not required.exists():                  
+            log_skip("T-07: Stage 07", f"{required.name} missing")
+            return                                                                                                              
+    print(f"  Using run: {run_dir}")               
+                                                                                                                                
+    import importlib                         
+    stage07 = importlib.import_module("07_identify_subcircuits")                                                                
+                                                    
+    class MockArgs:                                                                                                             
+        run_dir = None                             
+        convergent_min = 3                                                                                                      
+        late_wave_start = 24                                                                                                    
+        late_wave_end = 32                         
+                                                                                                                                
+    mock = MockArgs()                        
+    mock.run_dir = run_dir                                                                                                      
+    orig = stage07.parse_args                      
+    stage07.parse_args = lambda: mock                                                                                           
+    try:                                     
+        stage07.main()                                                                                                          
+    finally:                                                                                                                    
+        stage07.parse_args = orig                  
+                                                                                                                                
+    out_dir = run_dir / "07_subcircuits" 
+    for fname in ["subcircuits.json", "subcircuits_summary.json",                                                               
+                "subcircuits_treemap.png", "subcircuits_by_layer.png",
+                "subcircuits_overlap.png", "SUBCIRCUITS_REPORT.md"]:                                                          
+        p = out_dir / fname                  
+        log_test(                            
+            f"T-07a: {fname} exists",                                                                                           
+            p.exists(),                            
+            str(p.relative_to(run_dir)) if p.exists() else "missing",                                                           
+        )                                          
+                                                                                                                                
+    sc_path = out_dir / "subcircuits.json"         
+    if not sc_path.exists():                                                                                                    
+        return                               
+    data = json.loads(sc_path.read_text())         
+                                                                                                                                
+    expected_names = {                             
+        "universal_refusal_core", "canonical_pro_refusal",                                                                      
+        "sign_flip_convergent", "dampening_specialists",
+        "anti_refusal_amplifiers", "late_wave_layer24_32",                                                                      
+        "analytical_exclusive", "cognitive_reframe_exclusive",
+        "completion_exclusive", "fiction_exclusive", "roleplay_exclusive",                                                      
+    }                                                                                                                           
+    actual_names = set(data["subcircuits"].keys())
+    log_test(                                                                                                                   
+        "T-07b: all 11 subcircuits present", 
+        actual_names == expected_names,                                                                                         
+        f"missing={expected_names - actual_names}; extra={actual_names - expected_names}",
+    )                                                                                                                           
+                                            
+    # Invariants                                                                                                                
+    excl = [set(data["subcircuits"][f"{c}_exclusive"]["features"])
+            for c in ["analytical", "cognitive_reframe", "completion", "fiction", "roleplay"]]                                  
+    all_disjoint = all(                            
+        excl[i].isdisjoint(excl[j]) for i in range(5) for j in range(i + 1, 5)                                                  
+    )                                                                                                                           
+    log_test("T-07c: class_exclusive sets pairwise-disjoint", all_disjoint)                                                     
+                                                                                                                                
+    uni = set(data["subcircuits"]["universal_refusal_core"]["features"])
+    can = set(data["subcircuits"]["canonical_pro_refusal"]["features"])                                                         
+    log_test("T-07d: universal_refusal_core ∩ canonical_pro_refusal = ∅", uni.isdisjoint(can))
+                                                                                                                                
+    labels = json.loads((run_dir / "04_labels" / "feature_labels.json").read_text())
+    late_feats = data["subcircuits"]["late_wave_layer24_32"]["features"]                                                        
+    all_late = all(24 <= labels.get(k, {}).get("layer", -1) <= 32 for k in late_feats)
+    log_test("T-07e: late_wave features all in L24–L32", all_late)                                                              
+                                                                                                                                
+    sizes = {n: v["size"] for n, v in data["subcircuits"].items()}                                                              
+    log_test(                                                                                                                   
+        "T-07f: universal_refusal_core size > 50 (expected ~83)",
+        sizes["universal_refusal_core"] > 50,                                                                                   
+        f"got {sizes['universal_refusal_core']}",                                                                               
+    )                                                                                                                           
+    log_test(                                                                                                                   
+        "T-07g: late_wave_layer24_32 is largest bucket",                                                                        
+        max(sizes.values()) == sizes["late_wave_layer24_32"],                                                                   
+        f"max={max(sizes, key=sizes.get)}",                                                                                     
+    )                                                                                                                           
+                                                                                                                                
+    # Sizes on reference run match probe predictions                                                                            
+    log_test(                                                                                                                   
+        "T-07h: sizes match probe predictions within ±2",
+        abs(sizes["universal_refusal_core"] - 83) <= 2                                                                          
+        and abs(sizes["canonical_pro_refusal"] - 56) <= 2                                                                       
+        and abs(sizes["dampening_specialists"] - 52) <= 2                                                                       
+        and abs(sizes["anti_refusal_amplifiers"] - 50) <= 2,                                                                    
+        f"uni={sizes['universal_refusal_core']}, can={sizes['canonical_pro_refusal']}, "                                        
+        f"damp={sizes['dampening_specialists']}, amp={sizes['anti_refusal_amplifiers']}",
+    )
+
 # ============================================================
 # Main
 # ============================================================
@@ -1074,7 +1237,7 @@ def test_stage_04_a7():
 def main():
     parser = argparse.ArgumentParser(description="Local pipeline validation tests")
     parser.add_argument(
-        "--stage", choices=["01", "01-a5", "02b", "03", "03-a4", "04-a7", "04-a8", "utils", "utils-viz", "all"], default="all",
+        "--stage", choices=["01", "01-a5", "02b", "03", "03-a4", "04-a7", "04-a8", "07", "utils", "utils-viz", "all"], default="all",
         help="Which stage to test (default: all)",
     )
     parser.add_argument(
@@ -1102,6 +1265,7 @@ def main():
         test_stage_03_a4()
         test_stage_04_a7()
         test_stage_04_a8()
+        test_stage_07()
         if check_gpu():
             test_stage_01()
             test_stage_03()
@@ -1128,6 +1292,8 @@ def main():
         test_stage_04_a7()
     elif args.stage == "04-a8":
         test_stage_04_a8()
+    elif args.stage == "07":                                                                                                        
+        test_stage_07()
     elif args.stage == "utils-viz":
         test_utils_viz()
 

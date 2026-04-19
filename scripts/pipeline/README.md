@@ -15,8 +15,10 @@ For the design philosophy, stage specs, and forward roadmap see **[PIPELINE_PLAN
 | 02b | `02b_statistical_analysis.py` | Paired stats (Wilcoxon, t-test, Cohen's d, bootstrap CIs), dual-mechanism decomposition, plots, markdown report | ✓ Done |
 | 03 | `03_verify_attribution.py` | Verifies `sum(feature attributions) ≈ r · h[L=32]`, reports MLP contribution fraction | ✓ Done |
 | 04 | `04_label_features.py` | Labels every unique feature using HuggingFace dashboard binary payloads (top/bottom logits, examples) | ✓ Done |
-| 05 | `05_visualize_circuits.py` | Color-coded attribution circuit diagrams | Planned |
+| 05 | `utils_viz.py` + `05_frontend_patches/` | Attribution circuit viewer with overlap coloring + bare↔JB compare | ✓ Done (50-prompt pending) |
 | 06 | `06_causal_intervention.py` | Arditi-method causal intervention (Tejas's track) | Planned |
+| 07 | `07_identify_subcircuits.py` | Rule-based subcircuit identification (11 subcircuits, set-logic) | ✓ Done |
+| 08 | `08_ablate_subcircuits.py` | Targeted subcircuit ablation (uses Stage 07 output) | Planned |
 
 Shared modules: `config.py` (model/layer/class constants), `utils.py` (run-dir helpers, prompt formatting, dataset selection).
 
@@ -405,6 +407,141 @@ Observations:
 - **Completion's 78 class-exclusive features** are a direct A2 target — these are the specific features being *recruited* to produce the paradoxical +7.2% strengthening.
 
 This sharpens the Stage 07 research question: separate the canonical 100 (affected universally) from each class's exclusive subset, and ask whether the class-exclusives have coherent functional roles (e.g. roleplay-exclusives all encoding "persona" features, completion-exclusives all encoding "refusal template" features, etc.).
+
+### 9. Eleven rule-based subcircuits reveal two mechanism identities and a temporal sequence
+
+Stage 07 partitions the 876 labeled features into 11 subcircuits using pure set-logic over `feature_labels.conditions_seen` and the bucket memberships in `feature_class_sets.json`. No ML fitting — every assignment is reproducible by a written rule. `834 / 876` features land in at least one named subcircuit (the residual 42 sit in 2–4 classes but aren't convergent at the ≥3-class threshold and aren't class-exclusive).
+
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/07_subcircuits/subcircuits_treemap.png" alt="Treemap of 11 subcircuit sizes, with late_wave_layer24_32 dominating at 689 and the five class-exclusive subsets each taking ~50-100" width="900">
+<figcaption><em><strong>Figure 11.</strong> Subcircuit sizes. <code>late_wave_layer24_32</code> (<code>n=689</code>) is a layer-based cross-cut that absorbs most features; the 10 other subcircuits partition behavior by class membership.</em></figcaption>
+</figure>
+
+<table>
+<thead>
+<tr><th>Subcircuit</th><th align="right">Size</th><th>Rule</th><th>Peak layer</th><th align="right">Mean act. freq.</th></tr>
+</thead>
+<tbody>
+<tr><td><code>late_wave_layer24_32</code></td><td align="right"><code>689</code></td><td>Any feature with layer ∈ [24, 32]</td><td><code>L30 (×115)</code></td><td align="right"><code>0.0060</code></td></tr>
+<tr><td><code>sign_flip_convergent</code></td><td align="right"><code>179</code></td><td>Sign-flipped in ≥3 JB classes</td><td><code>L30 (×34)</code></td><td align="right"><code>0.0072</code></td></tr>
+<tr><td><code>roleplay_exclusive</code></td><td align="right"><code>104</code></td><td>Seen only in <code>roleplay</code>, no bare</td><td><code>L30 (×14)</code></td><td align="right"><code>0.0051</code></td></tr>
+<tr><td><code>fiction_exclusive</code></td><td align="right"><code>97</code></td><td>Seen only in <code>fiction</code>, no bare</td><td><code>L28 (×14)</code></td><td align="right"><code>0.0060</code></td></tr>
+<tr><td><code><strong>universal_refusal_core</strong></code></td><td align="right"><code><strong>83</strong></code></td><td>Seen in <strong>bare + all 5 JB</strong></td><td><code>L29 (×9)</code></td><td align="right"><code>0.0045</code></td></tr>
+<tr><td><code>cognitive_reframe_exclusive</code></td><td align="right"><code>77</code></td><td>Seen only in <code>cognitive_reframe</code>, no bare</td><td><code>L30 (×9)</code></td><td align="right"><code>0.0060</code></td></tr>
+<tr><td><code>completion_exclusive</code></td><td align="right"><code>68</code></td><td>Seen only in <code>completion</code>, no bare</td><td><code>L31 (×10)</code></td><td align="right"><code>0.0074</code></td></tr>
+<tr><td><code><strong>canonical_pro_refusal</strong></code></td><td align="right"><code><strong>56</strong></code></td><td>Seen in <strong>all 5 JB but NOT bare</strong></td><td><code>L32 (×12)</code></td><td align="right"><code>0.0057</code></td></tr>
+<tr><td><code>analytical_exclusive</code></td><td align="right"><code>54</code></td><td>Seen only in <code>analytical</code>, no bare</td><td><code>L26 (×7)</code></td><td align="right"><code>0.0046</code></td></tr>
+<tr><td><code><strong>dampening_specialists</strong></code></td><td align="right"><code><strong>52</strong></code></td><td>Dampened in ≥3 JB classes</td><td><code>L30 (×8)</code></td><td align="right"><code>0.0031</code></td></tr>
+<tr><td><code><strong>anti_refusal_amplifiers</strong></code></td><td align="right"><code><strong>50</strong></code></td><td>Amplified-anti in ≥3 JB classes</td><td><code>L25 (×8)</code></td><td align="right"><code>0.0078</code></td></tr>
+</tbody>
+</table>
+
+#### 9.1 Two rules collapse into the same set — two mechanism identities for free
+
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/07_subcircuits/subcircuits_overlap.png" alt="Heatmap of pairwise normalized overlap between the 11 subcircuits, with canonical_pro_refusal x sign_flip_convergent and universal_refusal_core x dampening_specialists showing 0.85+" width="900">
+<figcaption><em><strong>Figure 12.</strong> Pairwise normalized overlap <code>|A ∩ B| / min(|A|, |B|)</code>. Warmer = one subcircuit is more contained in the other. Two off-diagonal hotspots (canonical ↔ sign-flip, universal ↔ dampening) expose mechanism identities; <code>late_wave</code> absorbs most subcircuits by construction.</em></figcaption>
+</figure>
+
+Two overlaps in the matrix land at <code>0.85+</code> despite the rules being defined completely independently:
+
+- **`canonical_pro_refusal ∩ sign_flip_convergent = 48 / 56 = 86%`.** The "features recruited under all 5 JB classes but not bare" are almost exactly the "features that robustly flip attribution sign under JB." These are two different semantic definitions, and they collapse into the same set. **Read: *the canonical JB-recruited refusal features are the sign-flipped refusal features*.** Nothing in the rules forces this — it's a finding.
+
+- **`universal_refusal_core ∩ dampening_specialists = 44 / 52 = 85%`.** The features being dampened across most JB classes are almost entirely drawn from the universal bare-refusal core itself. Dampening isn't a separate suppression circuit — *it's an attack on the canonical core*.
+
+Together these pin down what each JB mechanism actually does at the feature level: **JBs weaken the universal core AND recruit a parallel sign-flipped pro-refusal set**. The two mechanisms use mostly disjoint features (`canonical_pro_refusal ∩ dampening_specialists = 2 / 52 = 0.04`) — so Stage 08 can ablate them independently and measure their contributions cleanly.
+
+#### 9.2 The late wave is a temporal sequence, not simultaneous competition
+
+<figure>
+<img src="../../data/results/pipeline_runs/run_20260417_010035/07_subcircuits/subcircuits_by_layer.png" alt="Eleven-row histogram showing layer distributions per subcircuit with the L24-L32 band shaded, revealing anti_refusal_amplifiers peaks at L25 while canonical_pro_refusal peaks at L32" width="900">
+<figcaption><em><strong>Figure 13.</strong> Per-subcircuit layer distribution. Shaded band <code>L24–L32</code>. Peak layers read left-to-right in the forward pass: anti-refusal amplifiers (L25) → dampening specialists (L30) → universal core (L29) → canonical pro-refusal (L32).</em></figcaption>
+</figure>
+
+Reading peaks in forward-pass order:
+
+<table>
+<thead>
+<tr><th>Subcircuit</th><th>Peak layer</th><th>Timing interpretation</th></tr>
+</thead>
+<tbody>
+<tr><td><code>anti_refusal_amplifiers</code></td><td><code>L25</code></td><td>Bypass signal <em>amplifies first</em> — earliest in the late wave</td></tr>
+<tr><td><code>universal_refusal_core</code></td><td><code>L29</code></td><td>Canonical refusal peaks mid-wave</td></tr>
+<tr><td><code>sign_flip_convergent</code></td><td><code>L30</code></td><td>Sign reversals follow the core peak</td></tr>
+<tr><td><code>dampening_specialists</code></td><td><code>L30</code></td><td>Pro-refusal dampening co-peaks with flipping</td></tr>
+<tr><td><code>canonical_pro_refusal</code></td><td><code>L32</code></td><td>JB-reactive refusal recruitment lands <em>last</em></td></tr>
+</tbody>
+</table>
+
+The JB dynamic isn't a simultaneous tug-of-war across L24–L32 — **it unfolds in phases**. Bypass activates early (L25), the canonical refusal core peaks (L29), dampening + sign-flipping strike mid-wave (L30), and JB-reactive pro-refusal recruitment arrives *last* (L32). This orders intervention targets by layer: an L25 intervention hits the bypass signal before suppression kicks in; an L32 intervention catches the reactive recruitment too late to change the readout.
+
+#### 9.3 Brittle suppression vs robust bypass
+
+<table>
+<thead>
+<tr><th>Subcircuit</th><th align="right">Mean activation frequency</th><th>Interpretation</th></tr>
+</thead>
+<tbody>
+<tr><td><code>anti_refusal_amplifiers</code></td><td align="right"><code><strong>0.0078</strong></code></td><td>Common features — fire on many inputs</td></tr>
+<tr><td><code>completion_exclusive</code></td><td align="right"><code>0.0074</code></td><td>—</td></tr>
+<tr><td><code>sign_flip_convergent</code></td><td align="right"><code>0.0072</code></td><td>—</td></tr>
+<tr><td><code>universal_refusal_core</code></td><td align="right"><code>0.0045</code></td><td>Specialized refusal features</td></tr>
+<tr><td><code>dampening_specialists</code></td><td align="right"><code><strong>0.0031</strong></code></td><td>Rarest features — specialized suppressors</td></tr>
+</tbody>
+</table>
+
+Anti-refusal amplifiers fire **2.5× more often** than dampening specialists. **Bypass is built from common, general-purpose features; refusal suppression relies on specialized, rarely-activated features.** The prediction is asymmetric robustness: specialized features are brittle under distribution shift (easy to knock out), general features are robust. Competing mechanism strengths are load-bearing on who-fires-how-often, not just feature count.
+
+#### 9.4 Dampening attacks the strongest refusal features
+
+Top-3 features by `|attribution|` of `universal_refusal_core` and `dampening_specialists` are **the same three features**, in the same order:
+
+```text
+L29:F1066    |attr|=8.04    top logits: ' لیک', ' carr', ' evolved'
+L24:F1304    |attr|=4.39    top logits: 'ureau', ' sentidos', 'anea'
+L25:F963     |attr|=3.84    top logits: '級', 'ận', 'omeres'
+```
+
+The features most causally load-bearing for bare refusal are exactly the features the model weakens under JB. **"Kill the strong, not the weak."** An ablation of these three features should approximately halve the bare refusal signal and simulate the JB effect simultaneously — a clean Stage 08 control condition.
+
+#### 9.5 "OK, I'll help" is a single feature
+
+The top anti-refusal amplifier is `L24:F107` at `|attr|=3.881`, peaking at L25, with top logits `' ok', ' okay', ' OK'`. A compliance-acknowledgment feature whose job under bare is already mildly anti-refusal; under JB, its magnitude amplifies across all three JB classes (dampening / amplified-anti thresholds reach ≥3). **This is a mechanistically interpretable bypass feature** — the model has a literal "OK, I'll help" vector that JBs recruit. Candidate for isolated ablation in Stage 08; easy to explain externally.
+
+#### 9.6 Class-exclusive tokens are semantically coherent for the real jailbreaks
+
+Top logits of each class-exclusive subcircuit's top features:
+
+<table>
+<thead>
+<tr><th>Class</th><th>Top-feature logit themes</th><th>Read</th></tr>
+</thead>
+<tbody>
+<tr><td><code>fiction_exclusive</code></td><td><code>' Another'</code>, <code>' styling'</code>, <code>'Stage'</code>, <code>' choreography'</code></td><td>Narrative / scene-setting vocabulary</td></tr>
+<tr><td><code>roleplay_exclusive</code></td><td><code>' ok'</code>, <code>' okay'</code>, <code>' wow'</code>, <code>' sorry'</code>, <code>' Many'</code></td><td>Acknowledgment / conversational reactions</td></tr>
+<tr><td><code>analytical_exclusive</code></td><td><code>' whether'</code>, <code>' Whether'</code>, <code>' ne'</code></td><td>Conditional / analytical connectives</td></tr>
+<tr><td><code>cognitive_reframe_exclusive</code></td><td><code>' audience'</code>, <code>' comment'</code>, <code>' insult'</code>, <code>' string'</code>, <code>' bool'</code></td><td>Mixed — audience-reflection + code tokens</td></tr>
+<tr><td><code>completion_exclusive</code></td><td><code>' Kardash'</code>, <code>'oka'</code>, <code>' Tra'</code>, <code>' mu'</code></td><td>Byte-level noise; no clear theme</td></tr>
+</tbody>
+</table>
+
+Fiction, roleplay, and analytical look semantically coherent — the exclusive features match the linguistic register of each jailbreak style. Completion's exclusives are Gemma-Scope-style byte-level noise with no clear theme, which is consistent with completion being the weakest jailbreak (`d = +0.27`) and the paradoxical-strengthening class. **Completion's jailbreak works not by recruiting coherent bypass features but by failing to recruit them at all** — leaving the universal core plus some residual pro-refusal uptake, which explains the `+14.6%` dPos recruitment observed in #6.
+
+#### 9.7 The 5 class-exclusive sets are 100% pairwise-disjoint
+
+By construction — a feature can only be "seen in exactly one JB class." But this is load-bearing: it means the 363 class-exclusive features (`46.1%` of all affected features) form a clean, partitioned taxonomy. Each class has its own unique recruited set, with **no overlap** between classes. Combined with the 83-feature universal core, this is a 363 + 83 = 446-feature "identity-by-class" basis, covering `57%` of the 788 bucketed features. The remaining `43%` are multi-class but not all-class — the partial-overlap features to be explored when we layer embedding-based clustering.
+
+#### Stage 08 ablation queue (from the subcircuit report)
+
+The rule-based view gives us a prioritized ablation order for Stage 08, grounded in expected causal direction:
+
+1. **`canonical_pro_refusal` (56)** — JB-specific pro-refusal recruitment. Ablation should *strengthen* JB bypass (removes the JB-only refusal boost).
+2. **`sign_flip_convergent` (179)** — robust direction reversals. Ablation should partially restore bare behavior under JB.
+3. **`dampening_specialists` (52)** — weakened pro-refusal features. Restoring them to bare strength should counter fiction/analytical bypass.
+4. **`anti_refusal_amplifiers` (50)** — JB-amplified bypass signal. Suppressing them should *increase* refusal under JB.
+5. **`universal_refusal_core` (83)** — shared baseline. Ablation should break refusal on bare *and* JB (control — proves the subcircuits matter at all).
+
+The top-3 subcircuits are the priority story for Georg: "JBs do two disjoint things to the refusal circuit — they dampen the canonical core, and they recruit a sign-flipped parallel set. Both are interpretable at the feature level, both are concentrated in L24–L32, and they unfold in a fixed temporal order across the late wave."
 
 ---
 

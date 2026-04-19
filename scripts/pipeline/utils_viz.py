@@ -83,6 +83,43 @@ def annotate_overlap(
     return jb
 
 
+def annotate_subcircuits(graph_json_path: Path, subcircuits_json_path: Path) -> dict:
+    """Attach `subcircuits: [...]` membership array to every feature node in a graph JSON.
+
+    Reads Stage 07's `subcircuits.json`, builds a reverse index feature_key -> [names],
+    and writes each feature node's memberships in place. Non-feature nodes get `[]`.
+    Persists the mutated graph JSON in place and returns the dict.
+    """
+    with open(subcircuits_json_path) as f:
+        sc_data = json.load(f)
+
+    feature_to_subcircuits: dict[str, list[str]] = {}
+    for name, info in sc_data.get("subcircuits", {}).items():
+        for key in info.get("features", []):
+            feature_to_subcircuits.setdefault(key, []).append(name)
+
+    with open(graph_json_path) as f:
+        graph = json.load(f)
+
+    n_annotated = 0
+    for node in graph.get("nodes", []):
+        key = feature_key_from_node(node)
+        if key is None:
+            node["subcircuits"] = []
+            continue
+        scs = feature_to_subcircuits.get(key, [])
+        node["subcircuits"] = scs
+        if scs:
+            n_annotated += 1
+
+    graph.setdefault("metadata", {})["n_subcircuit_annotated"] = n_annotated
+    graph["metadata"]["subcircuits_source"] = subcircuits_json_path.name
+
+    with open(graph_json_path, "w") as f:
+        json.dump(graph, f, indent=2)
+    return graph
+
+
 def annotate_bare(bare_json_path: Path, prompt_idx: int) -> dict:
     """Tag every feature node in a bare graph JSON as 'bare'."""
     with open(bare_json_path) as f:
@@ -162,10 +199,12 @@ def stage_frontend(
         # Inject <link> + <script> into index.html                                                                              
         index_path = frontend_out / "index.html"                                                                                
         html = index_path.read_text()
-        injection = (                                                                                                           
+        injection = (
             '<link rel="stylesheet" href="./overlap-colors.css">\n'
+            '<link rel="stylesheet" href="./subcircuit-panel.css">\n'
             '<script src="./fetch-override.js" defer></script>\n'
-            '<script src="./overlap-annotate.js" defer></script>\n'                                                             
+            '<script src="./overlap-annotate.js" defer></script>\n'
+            '<script src="./subcircuit-panel.js" defer></script>\n'
         )       
         # Insert before the closing of the first <link> block (just after last CSS link)                                        
         marker = "<script src='./util.js'></script>"                                                                            

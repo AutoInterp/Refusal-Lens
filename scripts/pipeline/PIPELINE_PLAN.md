@@ -1,7 +1,7 @@
 # Refusal-Lens Unified Pipeline Plan
 
 **Created**: 2026-04-14
-**Last updated**: 2026-04-18 (after A3–A8 landed, Stage 05 frontend with overlap coloring + compare.html, 10-prompt local run in progress)
+**Last updated**: 2026-04-19 (Stage 07 rule-based subcircuits complete; 10-prompt local run complete; Stage 05 subcircuit filter panel queued)
 
 ## Goal
 
@@ -224,6 +224,57 @@ Trade-offs vs rule-based:
 
 **Plan**: ship Approach A first (rule-based). If Georg wants Approach B, add a `--method=embedding` flag to `07_identify_subcircuits.py` that runs HDBSCAN on the same input data and writes a parallel `subcircuits_embedding.json`. Both outputs feed into Stage 08 ablation independently — we can ablate by either subcircuit definition.
 
+### Stage 07 results (2026-04-19)
+
+11 subcircuits identified on `run_20260417_010035` (50 prompts). 834/876 features tagged. Two structural identities surfaced:
+- `canonical_pro_refusal ∩ sign_flip_convergent` = 48/56 (**86%**) — "JB-recruited refusal ≡ sign-flipped refusal"
+- `universal_refusal_core ∩ dampening_specialists` = 44/52 (**85%**) — "dampening attacks the canonical core, not a separate circuit"
+- `canonical_pro_refusal ∩ dampening_specialists` = 2/52 (**4%**) — the two mechanisms use disjoint features, ablatable independently
+- Temporal sequence in layer peaks: anti-refusal amplifiers (L25) → universal core (L29) → dampening + sign-flip (L30) → canonical pro-refusal (L32)
+- Anti-refusal amplifiers fire 2.5× more often than dampening specialists (0.0078 vs 0.0031 mean activation frequency) — bypass uses general-purpose features, suppression uses specialized rare ones
+- `L24:F107` (' ok', ' okay') is the top anti-refusal amplifier — a literal "OK, I'll help" compliance feature the model recruits to bypass refusal
+- Top-3 by |attribution| of `universal_refusal_core` == top-3 of `dampening_specialists` — JBs attack the strongest bare-refusal features first
+
+Full results + figures in `README.md` Section 9 + `07_subcircuits/SUBCIRCUITS_REPORT.md`.
+
+### Stage 05 subcircuit filter panel (proposed 2026-04-19, Plan A)
+
+Now that Stage 07 emits 11 named subcircuits, the frontend needs per-subcircuit highlighting in the graph viewer. Three options, implementing A first:
+
+**Plan A (chosen 2026-04-19)** — right-rail checkbox panel, composes with existing overlap coloring:
+- `utils_viz.annotate_subcircuits(graph_json, subcircuits_json)` attaches `subcircuits: [...]` membership array to each feature node at stage_frontend time
+- `05_frontend_patches/subcircuit-panel.{js,css}` adds a collapsible panel listing the 11 subcircuits with counts; click-to-filter dims non-member nodes, hover highlights members
+- Keeps the existing shared/jb_unique/bare overlap colors — subcircuit filter is a dim/highlight layer, not a color conflict
+- Works in both `index.html` and `compare.html` (applied to each iframe independently)
+
+**Plan B (later, if requested)** — radio "color by overlap" vs "color by subcircuit". Subcircuit-color mode uses a distinct palette (universal=green, canonical=orange, sign-flip=red, dampening=blue, anti-amp=purple, class-exclusive=shade-per-class). Multi-membership nodes need tie-break (first-match priority order or pie-slice encoding). Deferred — subcircuits overlap, and Plan A's dim/highlight avoids the tie-break problem.
+
+**Plan C (deferred)** — dedicated `subcircuits.html` viewer with left-sidebar list and per-subcircuit preset views. Bigger lift; only pursue if Plan A proves insufficient for Georg's workflow.
+
+### Stage 05 gzip compression approach (2026-04-19)
+
+Two deploy targets differ in fetch semantics:
+
+- **HuggingFace dataset host (preferred for the 50-prompt ship):** HF serves `.json.gz` with `Content-Encoding: gzip` and browsers auto-decode — frontend fetch unchanged. Canonical artifact = `.json.gz` on HF, raw `.json` only in local dev.
+- **Local dev (`python -m http.server`):** no `Content-Encoding` header; requires either (a) a tiny `util.js` patch that feeds the response through `DecompressionStream('gzip')` on `.json.gz` URLs (~10 LOC), or (b) keeping raw `.json` locally. Going with (b) initially — `stage_frontend()` stays uncompressed for local testing; a new `build_gzipped_frontend_bundle()` helper produces the HF-ready tree separately.
+
+For the 10-prompt local run: 60 graphs × ~40 MB = ~2.4 GB uncompressed, ~200 MB gzipped. Both are well under practical limits; we keep raw locally, gzip for HF upload.
+
+### 10-prompt local run (`run_20260418_172402`, complete 2026-04-19)
+
+Stage 02 ran locally on RTX 4090 (bf16) with `--save-graphs` → 60 `.pt` files, 83 GB on disk. Directional replication of all 50-prompt findings:
+
+| Class | n=10 mean net | n=10 Δ vs bare | n=50 Δ |
+|---|---|---|---|
+| bare | +65.78 | — | — |
+| completion | +75.62 | **+9.84** | +5.0 |
+| roleplay | +41.70 | −24.08 | −38.7 |
+| cognitive_reframe | +24.38 | −41.40 | −50.2 |
+| analytical | +2.66 | −63.12 | −73.7 |
+| fiction | +0.36 | −65.42 | −65.3 |
+
+Completion paradox replicates (+14.9%). Directional agreement with 50-prompt on all 5 classes. Primary use: graph corpus for end-to-end Stage 05 subcircuit-filter-panel iteration without RunPod.
+
 ### Stage 08 — Ablate Subcircuits
 **Depends on**: 07, 01
 **Outputs**: per-subcircuit ablation results
@@ -264,16 +315,18 @@ Trade-offs vs rule-based:
 | 05b   | ✓ Done | ✓ | — | `utils_viz.py` helpers: convert_pt, annotate_overlap, stage_frontend, gzip_json_files |
 | 05c   | ✓ Done | ✓ | — | Frontend overlap coloring (shared/jb-unique/bare) + legend + fetch-override patch |
 | 05d   | ✓ Done | ✓ | — | `compare.html` side-by-side viewer (bare ↔ JB iframes, URL-param driven) |
-| 05e   | **In Progress** | 10-prompt local bf16 run started 2026-04-18 | — | ~8 hrs total; 1/10 prompts done |
-| 05f   | Planned | — | — | Full 50-prompt RunPod run after local validation |
+| 05e   | ✓ Done | 10-prompt local bf16 complete 2026-04-19 | — | 60 .pt files, 83 GB; directional match with 50-prompt |
+| 05f   | Planned | — | — | Full 50-prompt RunPod run with `--save-graphs` |
+| 05g   | **Next** | — | — | Subcircuit filter panel (Plan A) — right-rail highlight/dim |
+| 05h   | Planned | — | — | Gzipped HF bundle (`build_gzipped_frontend_bundle`) |
 | A1    | Planned | — | — | Coherence wiring in Stage 02 (deferred, tracked) |
 | A2    | Planned | — | — | Completion-paradox feature attribution (deferred) |
 | LLM labels | Planned | — | — | Claude-API-synthesized `clerp` labels (deferred) |
 | 6-way UpSet | Planned | — | — | `feature_labels.json[conditions_seen]` including bare |
 | 06    | Planned | — | — | Tejas's task — causal intervention (Arditi method) |
 | 06b   | Planned | — | — | Linear probe |
-| 07    | **Next** | — | — | Rule-based subcircuit identification (embedding-based as alt) |
-| 08    | Planned | — | — | Subcircuit ablation |
+| 07    | ✓ Done | 13/13 tests pass; 11 subcircuits, 834/876 tagged | — | Rule-based; embedding-based Plan B deferred for Georg meeting |
+| 08    | Planned | — | — | Subcircuit ablation (priority queue in README §9 Stage 08 ablation queue) |
 
 ---
 
