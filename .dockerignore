@@ -1,0 +1,16 @@
+# The Dockerfile clones the repo fresh inside the image — no COPY — so the
+# build context should be as small as possible. These entries just keep
+# accidental COPY . . invocations sane.
+data/results/
+outputs/
+hf-cache/
+*.pt
+*.safetensors
+__pycache__/
+.git/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
