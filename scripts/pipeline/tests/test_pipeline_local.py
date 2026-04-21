@@ -587,6 +587,75 @@ def test_stage_02():
         f"got {config.BEST_SEPARATION_LAYER}",
     )
 
+    # T-02n..s: multi-position plumbing (Task 14).
+    # _load_per_position_directions returns {} gracefully when the positions
+    # subdir is missing, populates from discovered files when present.
+    import torch
+    from tempfile import TemporaryDirectory
+
+    with TemporaryDirectory() as td:
+        run = Path(td)
+        (run / "01_direction" / "positions_L15").mkdir(parents=True)
+        for pos in (-5, -3, -2, -1):
+            torch.save(torch.randn(2560), run / "01_direction" / "positions_L15" / f"pos_{pos:+d}.pt")
+        # An unnormalized companion file should be ignored by the loader.
+        torch.save(torch.randn(2560), run / "01_direction" / "positions_L15" / "pos_-2_unnormalized.pt")
+
+        loaded = stage02._load_per_position_directions(run, target_layer=15)
+        log_test(
+            "T-02n: _load_per_position_directions reads every pos_*.pt",
+            set(loaded.keys()) == {-5, -3, -2, -1},
+            f"got {sorted(loaded.keys())}",
+        )
+        log_test(
+            "T-02o: _load_per_position_directions ignores _unnormalized companions",
+            all(not any(
+                str(p) == f"pos_-2_unnormalized"
+                for p in loaded.keys()
+            ) for _ in [0]),
+        )
+
+        loaded_subset = stage02._load_per_position_directions(
+            run, target_layer=15, requested_positions=[-2, -3, -999],
+        )
+        log_test(
+            "T-02p: requested_positions filters to subset; missing positions silently dropped",
+            set(loaded_subset.keys()) == {-2, -3},
+            f"got {sorted(loaded_subset.keys())}",
+        )
+
+    empty_dirs = stage02._load_per_position_directions(Path("/nonexistent"), 15)
+    log_test(
+        "T-02q: missing positions dir returns empty dict (single-position fallback)",
+        empty_dirs == {},
+    )
+
+    # _valid_positions_for_prompt: skip positions too deep for short prompts.
+    class FakeTokenizer:
+        def __call__(self, text, return_tensors):
+            # Return a tensor with 8 fake token ids — pretend the prompt tokenized to 8 tokens.
+            return {"input_ids": torch.tensor([[1] * 8])}
+
+    valid, seq_len = stage02._valid_positions_for_prompt(
+        FakeTokenizer(), "irrelevant", available_positions=[-15, -5, -3, -2, -1],
+    )
+    log_test(
+        "T-02r: _valid_positions_for_prompt keeps only in-range positions",
+        valid == [-5, -3, -2, -1] and seq_len == 8,
+        f"got valid={valid}, seq_len={seq_len}",
+    )
+
+    # Config sanity for new multi-position constants
+    log_test(
+        "T-02s: config has PER_POSITION_LAYER = 15",
+        config.PER_POSITION_LAYER == 15,
+    )
+    log_test(
+        "T-02t: config.PER_POSITION_POSITIONS spans -15..-1",
+        set(config.PER_POSITION_POSITIONS) == set(range(-15, 0)),
+        f"got {sorted(config.PER_POSITION_POSITIONS)}",
+    )
+
 
 # ============================================================
 # T1-T5: Stage 01 tests (GPU required)

@@ -86,7 +86,20 @@ def parse_args():
     )
     parser.add_argument(
         "--target-position", type=int, default=config.MEASUREMENT_POSITION,
-        help="Token position at which attribution is measured (default: -2, the Gemma-3 'model' token).",
+        help="(Single-position mode) Token position at which attribution is measured "
+             "(default: -2, the Gemma-3 'model' token). Ignored in multi-position mode.",
+    )
+    parser.add_argument(
+        "--target-positions", type=int, nargs="+", default=None,
+        help="(Multi-position mode override) Explicit list of positions to target. "
+             "If not set, Stage 02 uses every position that has a saved direction in "
+             "01_direction/positions_L{target_layer}/. Requires Stage 01 run with "
+             "per-position computation.",
+    )
+    parser.add_argument(
+        "--single-position", action="store_true",
+        help="Force single-position attribution even when per-position directions are "
+             "available. Use for debugging / reproducing pre-multi-position runs.",
     )
     parser.add_argument(
         "--save-graphs", action="store_true",
@@ -231,6 +244,75 @@ def _load_target_direction(run_dir: Path, target_layer: int) -> torch.Tensor:
     return t.to(torch.float32)
 
 
+def _load_per_position_directions(
+    run_dir: Path, target_layer: int, requested_positions: list[int] | None = None,
+) -> dict[int, torch.Tensor]:
+    """Load per-position refusal directions at `target_layer` from Stage 01.
+
+    Stage 01 writes one ``pos_{k:+d}.pt`` file per computed position under
+    ``01_direction/positions_L{layer:02d}/``. If a position file is missing
+    (e.g. Stage 01 was run with --skip-per-position), it's silently omitted
+    from the returned dict — caller handles the fallback.
+
+    Parameters
+    ----------
+    run_dir : pipeline run directory
+    target_layer : layer index (e.g. 15)
+    requested_positions : if given, load only these positions; otherwise load
+        every pos_*.pt file present.
+
+    Returns
+    -------
+    dict {pos: normalized direction (cpu float32 tensor)}
+    """
+    pos_dir = run_dir / "01_direction" / f"positions_L{target_layer:02d}"
+    if not pos_dir.exists():
+        return {}
+
+    out: dict[int, torch.Tensor] = {}
+    if requested_positions is not None:
+        iter_positions = sorted(set(requested_positions))
+    else:
+        # Discover from filesystem.
+        iter_positions = []
+        for p in sorted(pos_dir.glob("pos_*.pt")):
+            name = p.stem  # e.g. "pos_-15" or "pos_-15_unnormalized"
+            if name.endswith("_unnormalized"):
+                continue
+            try:
+                iter_positions.append(int(name.removeprefix("pos_")))
+            except ValueError:
+                pass
+        iter_positions = sorted(set(iter_positions))
+
+    for pos in iter_positions:
+        fp = pos_dir / f"pos_{pos:+d}.pt"
+        if not fp.exists():
+            continue
+        r_hat = torch.load(fp, map_location="cpu", weights_only=False)
+        if isinstance(r_hat, dict):
+            r_hat = r_hat.get("direction") or next(iter(r_hat.values()))
+        out[pos] = r_hat.to(torch.float32)
+
+    return out
+
+
+def _valid_positions_for_prompt(
+    tokenizer, formatted_text: str, available_positions: list[int],
+) -> tuple[list[int], int]:
+    """Return (valid_positions, seq_len) for this prompt.
+
+    A position `pos` is valid when |pos| <= seq_len (the tokenized prompt is
+    long enough to have a token at that offset from the end). Short prompts
+    skip deep positions (e.g. pos=-15 on a 10-token prompt is in the
+    chat-template header, not in the real user content — skip).
+    """
+    input_ids = tokenizer(formatted_text, return_tensors="pt")["input_ids"]
+    seq_len = input_ids.shape[1]
+    valid = [p for p in sorted(available_positions) if abs(p) <= seq_len]
+    return valid, seq_len
+
+
 def _aggregate_comparison(results: list[dict], classes: tuple[str, ...]) -> dict:
     """Summarize per-prompt feature-comparison stats across the corpus.
 
@@ -287,20 +369,48 @@ def main():
 
     print("=" * 60)
     print("STAGE 02: Run CLT Attribution Graphs")
-    print(f"        target: L{args.target_layer} @ pos={args.target_position}")
     print("=" * 60)
-
-    # Load per-layer direction from Stage 01.
-    direction = _load_target_direction(run_dir, args.target_layer).cuda()
-    print(
-        f"  Loaded direction: L{args.target_layer}, ||r||={direction.norm().item():.4f}, "
-        f"shape={tuple(direction.shape)}"
-    )
 
     from circuit_tracer import ReplacementModel, attribute
     from circuit_tracer.attribution.targets import CustomTarget
 
-    target = CustomTarget(token_str="refusal_direction", prob=1.0, vec=direction)
+    # Direction-loading logic: prefer multi-position at target_layer when the
+    # Stage 01 per-position directory exists and --single-position was NOT
+    # set. Multi-position attribution (Georg's design) builds one target per
+    # meaningful position at target_layer, so the backward pass captures the
+    # full circuit feeding into ANY position's refusal scalar — not just the
+    # first-order contributors you'd get from filtering a single-target
+    # graph's nodes by position.
+    per_position_directions = (
+        {} if args.single_position
+        else _load_per_position_directions(
+            run_dir, args.target_layer, args.target_positions or None,
+        )
+    )
+
+    if per_position_directions:
+        direction = None  # sentinel; multi-position path builds targets per-prompt
+        positions_loaded = sorted(per_position_directions.keys())
+        # Move every direction tensor to GPU once, reuse across all prompts.
+        for pos in positions_loaded:
+            per_position_directions[pos] = per_position_directions[pos].cuda()
+        print(
+            f"  Multi-position mode: loaded {len(positions_loaded)} directions at "
+            f"L{args.target_layer} for positions {positions_loaded}"
+        )
+        default_target = None  # no global CustomTarget in multi-position mode
+        mode = "multi_position"
+    else:
+        direction = _load_target_direction(run_dir, args.target_layer).cuda()
+        print(
+            f"  Single-position mode: L{args.target_layer} @ pos={args.target_position}, "
+            f"||r||={direction.norm().item():.4f}, shape={tuple(direction.shape)}"
+        )
+        default_target = CustomTarget(
+            token_str="refusal_direction", prob=1.0, vec=direction,
+        )
+        positions_loaded = [args.target_position]
+        mode = "single_position"
 
     tokenizer_module = __import__("transformers", fromlist=["AutoTokenizer"])
     tokenizer = tokenizer_module.AutoTokenizer.from_pretrained(config.MODEL_NAME)
@@ -380,21 +490,53 @@ def main():
         for cond_name, input_text, prefix in iter_conditions(prompt_row):
             formatted = format_prompt(tokenizer, input_text)
 
+            # Build per-condition attribution targets. Multi-position mode
+            # constructs one CustomTarget per valid position (direction-specific);
+            # single-position mode reuses the global default_target. Positions
+            # outside the prompt's real token span are skipped.
+            if mode == "multi_position":
+                valid_positions, seq_len = _valid_positions_for_prompt(
+                    tokenizer, formatted, list(per_position_directions.keys()),
+                )
+                if not valid_positions:
+                    print(
+                        f"    {cond_name:>18}: ERROR — no valid positions "
+                        f"(seq_len={seq_len} shorter than all loaded positions)"
+                    )
+                    row["conditions"][cond_name] = {
+                        "error": f"no valid positions for seq_len={seq_len}",
+                    }
+                    continue
+                targets = [
+                    CustomTarget(
+                        token_str=f"refusal_L{args.target_layer}_pos{pos:+d}",
+                        prob=1.0,
+                        vec=per_position_directions[pos],
+                    )
+                    for pos in valid_positions
+                ]
+                measurement_positions_arg = valid_positions
+            else:
+                targets = [default_target]
+                valid_positions = [args.target_position]
+                measurement_positions_arg = args.target_position
+
             try:
                 g = attribute(
                     prompt=formatted,
                     model=model,
-                    attribution_targets=[target],
+                    attribution_targets=targets,
                     batch_size=args.batch_size,
                     max_feature_nodes=max_features,
                     measurement_layer=args.target_layer,
-                    measurement_position=args.target_position,
+                    measurement_position=measurement_positions_arg,
                     verbose=False,
                 )
                 summary = graph_summary(g)
                 features = extract_all_features(g)
                 summary["prefix"] = prefix
                 summary["n_active"] = len(features)
+                summary["target_positions"] = list(valid_positions)
 
                 sorted_feats = sorted(
                     features.items(),
@@ -446,7 +588,9 @@ def main():
         del prompt_features
         results.append(row)
 
-        # Checkpoint
+        # Checkpoint — carry metadata so merge_stage02_shards.py can
+        # recover measurement_layer / measurement_position / dataset without
+        # having to consult a shard's (mutable, overwritable) final JSON.
         save_json(
             {
                 "last_completed": i,
@@ -455,6 +599,13 @@ def main():
                     p.get("bare") or p.get("base") or p.get("instruction")
                     for p in prompts
                 ],
+                "metadata": {
+                    "measurement_layer": args.target_layer,
+                    "measurement_position": args.target_position,
+                    "measurement_mode": mode,
+                    "target_positions_loaded": positions_loaded,
+                    "dataset": "controlled" if not args.legacy_dataset else "legacy",
+                },
             },
             checkpoint_path,
         )
@@ -470,6 +621,8 @@ def main():
             "transcoder": config.TRANSCODER_PATH,
             "measurement_layer": args.target_layer,
             "measurement_position": args.target_position,
+            "measurement_mode": mode,
+            "target_positions_loaded": positions_loaded,
             "dataset": "controlled" if not args.legacy_dataset else "legacy",
             "elapsed_minutes": round(elapsed / 60, 1),
         },

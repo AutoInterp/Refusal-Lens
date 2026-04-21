@@ -34,14 +34,31 @@ DIRECTION_POSITION = -2
 DIRECTION_DTYPE = "float64"  # Accumulation precision
 
 # ============================================================
-# Direction computation — per-layer (Tejas's fix)                                                                                                         
+# Direction computation — per-layer (Tejas's fix)
 # ============================================================
-# Directions must be computed at EVERY layer, not just L32.                                                                                               
+# Directions must be computed at EVERY layer, not just L32.
 # The direction rotates across layers (L15-L32 cosine sim = 0.938).
-# Causal intervention at layer L must use r computed at layer L.                                                                                          
-DIRECTION_LAYERS = list(range(N_LAYERS))  # All 34 layers                                                                                                 
-BEST_SEPARATION_LAYER = 32   # Highest separation (for attribution target)                                                                                
+# Causal intervention at layer L must use r computed at layer L.
+DIRECTION_LAYERS = list(range(N_LAYERS))  # All 34 layers
+BEST_SEPARATION_LAYER = 32   # Highest separation (for attribution target)
 BEST_CAUSAL_LAYER = 15       # Highest causal effectiveness (for intervention)
+
+# ============================================================
+# Direction computation — per-position at the causal layer
+# ============================================================
+# Georg asked for multi-position attribution targeting the L15 refusal
+# direction at every context position with meaningful separation. The
+# direction rotates across positions within a layer (Tejas finding:
+# cos(L15-pos=-2, L15-pos=-5) = -0.80 — anti-correlated). Stage 01 computes
+# a per-position direction at L15 for positions in PER_POSITION_POSITIONS,
+# and Stage 02 builds a multi-target attribution call with the subset of
+# those positions whose separation clears MEANINGFUL_POSITION_THRESHOLD.
+PER_POSITION_LAYER = 15
+PER_POSITION_POSITIONS = list(range(-15, 0))  # -15, -14, ..., -1 (default: all 15)
+# Default position-selection threshold for Stage 02. Tejas's table at L15:
+# sep > 2000 keeps {-15, -5, -3, -2, -14, -1}. Lower the threshold (or pass
+# an explicit list via CLI) to include weaker positions like -4, -6, -8..-13.
+MEANINGFUL_POSITION_THRESHOLD = 0.0  # 0 = include every position with a saved direction
 
 # ============================================================
 # Attribution

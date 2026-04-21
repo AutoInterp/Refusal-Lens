@@ -113,10 +113,16 @@ def main():
     all_results.sort(key=lambda r: r["prompt_idx"])
     print(f"Merged: {len(all_results)} prompts total")
 
-    # Inherit metadata from the first shard (assumes all shards ran with
-    # the same target_layer/target_position/dataset — which they will if
-    # they were launched by run_stage02_parallel.sh).
-    meta_src = shards[0]["data"].get("metadata", {})
+    # Inherit metadata from any shard that has it (shards all run with the
+    # same CLI config when launched via run_stage02_parallel.sh, so any
+    # shard's checkpoint metadata is authoritative). Fall back to {} if
+    # no shard stored metadata — older runs before this field was added.
+    meta_src: dict = {}
+    for s in shards:
+        md = s["data"].get("metadata")
+        if md:
+            meta_src = md
+            break
 
     classes = ("roleplay", "fiction", "analytical", "completion", "cognitive_reframe")
     agg = _aggregate(all_results, classes)
@@ -128,6 +134,8 @@ def main():
             "transcoder": config.TRANSCODER_PATH,
             "measurement_layer": meta_src.get("measurement_layer"),
             "measurement_position": meta_src.get("measurement_position"),
+            "measurement_mode": meta_src.get("measurement_mode"),
+            "target_positions_loaded": meta_src.get("target_positions_loaded"),
             "dataset": meta_src.get("dataset"),
             "n_shards": len(shards),
         },
