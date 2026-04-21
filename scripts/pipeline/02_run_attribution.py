@@ -145,13 +145,53 @@ def feature_key(layer: int, feat_idx: int) -> str:
     return f"L{layer}:F{feat_idx}"
 
 
+def _aggregated_target_row(graph, n_selected: int | None = None) -> torch.Tensor:
+    """Return the weighted sum of all target (logit) rows in the adjacency matrix.
+
+    circuit-tracer's ``graph.adjacency_matrix`` orders rows as
+    ``[features, errors, embeds, logits]`` (logit/target rows are LAST).
+    The previous helper read ``adj[-1, :]``, which only picked ONE target row —
+    for a multi-target graph with targets [-5, -3, -2] that was just pos=-2's
+    row, indistinguishable from a single-target attribution at pos=-2.
+
+    The correct aggregation is a ``logit_probabilities``-weighted sum over
+    every target row. For CustomTargets built with ``prob=1.0`` this is a
+    plain sum across targets — the total attribution contributed to any
+    target sink by each source node.
+
+    Parameters
+    ----------
+    graph : circuit_tracer.Graph
+    n_selected : optional column slice; if given, return only those columns.
+
+    Returns
+    -------
+    Tensor of shape (n_selected,) or (n_cols,) — per-source aggregated
+    attribution to the full target set.
+    """
+    adj = graph.adjacency_matrix
+    n_targets = len(graph.logit_targets) if graph.logit_targets else 1
+    # Last n_targets rows are the target rows by circuit-tracer's convention.
+    target_rows = adj[-n_targets:, :]
+    weights = graph.logit_probabilities.to(target_rows.dtype)
+    # (n_targets, n_cols) * (n_targets, 1) → sum axis 0 → (n_cols,)
+    aggregated = (target_rows * weights.unsqueeze(1)).sum(dim=0)
+    if n_selected is not None:
+        aggregated = aggregated[:n_selected]
+    return aggregated
+
+
 def extract_all_features(graph) -> dict[str, dict]:
-    """Extract ALL features and their attributions from a graph."""
+    """Extract every feature and its aggregated attribution from a graph.
+
+    ``attribution`` is the weighted sum across all target rows — for a
+    multi-position graph this is each feature's total contribution to the
+    combined refusal signal across every target position.
+    """
     active = graph.active_features
     selected = graph.selected_features
     n_selected = len(selected)
-    adj = graph.adjacency_matrix
-    target_row = adj[-1, :n_selected]
+    target_row = _aggregated_target_row(graph, n_selected)
 
     features = {}
     for i in range(n_selected):
@@ -174,15 +214,39 @@ def extract_all_features(graph) -> dict[str, dict]:
 
 
 def graph_summary(graph) -> dict:
-    """Compute summary stats from a single attribution graph."""
+    """Compute summary stats from a single attribution graph.
+
+    For multi-target graphs, attribution is aggregated (weighted sum) across
+    every target row so the summary reflects contribution to the combined
+    target-set, not just the last-row target. Adds ``per_target`` with
+    position-wise breakdowns for diagnostic use.
+    """
     adj = graph.adjacency_matrix
-    last = adj[-1, :]
+    n_targets = len(graph.logit_targets) if graph.logit_targets else 1
     n_feat = graph.active_features.shape[0]
+
+    # Aggregated row (weighted sum across all targets)
+    last = _aggregated_target_row(graph)
+
+    # Per-target breakdown so downstream code can inspect each position's
+    # contribution separately when the multi-target aggregation is too coarse.
+    per_target = []
+    target_rows = adj[-n_targets:, :]
+    for k in range(n_targets):
+        row = target_rows[k]
+        per_target.append({
+            "pos_sum": float(row[row > 0].sum().item()),
+            "neg_sum": float(row[row < 0].sum().item()),
+            "net": float(row.sum().item()),
+        })
+
     return {
         "pos_sum": float(last[last > 0].sum().item()),
         "neg_sum": float(last[last < 0].sum().item()),
         "net": float(last.sum().item()),
         "n_features": int(n_feat),
+        "n_targets": int(n_targets),
+        "per_target": per_target,
     }
 
 
