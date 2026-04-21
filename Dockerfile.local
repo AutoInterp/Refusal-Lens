@@ -45,6 +45,19 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HF_HOME=/workspace/hf-cache \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
     TOKENIZERS_PARALLELISM=false \
+    # --- non-root-user compatibility ---
+    # When the container is launched with --user <host-uid>:<host-gid>, that
+    # UID has no /etc/passwd entry. Python's getpass.getuser() (used by
+    # torch._inductor, tqdm, huggingface_hub, etc.) checks USER/LOGNAME
+    # env vars before falling back to pwd.getpwuid(), so a synthetic name
+    # bypasses KeyError: getpwuid(): uid not found. The value is arbitrary;
+    # it's only used to name cache directories and log lines.
+    USER=runtime \
+    LOGNAME=runtime \
+    # torch inductor + triton cache dirs under a writable location; avoids
+    # the default_cache_dir() code path that also calls getuser().
+    TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor-cache \
+    TRITON_CACHE_DIR=/tmp/triton-cache \
     HTTP_PROXY=${HTTP_PROXY} \
     HTTPS_PROXY=${HTTPS_PROXY} \
     NO_PROXY=${NO_PROXY} \
