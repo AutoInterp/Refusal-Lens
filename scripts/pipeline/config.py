@@ -54,11 +54,22 @@ BEST_CAUSAL_LAYER = 15       # Highest causal effectiveness (for intervention)
 # and Stage 02 builds a multi-target attribution call with the subset of
 # those positions whose separation clears MEANINGFUL_POSITION_THRESHOLD.
 PER_POSITION_LAYER = 15
-PER_POSITION_POSITIONS = list(range(-15, 0))  # -15, -14, ..., -1 (default: all 15)
-# Default position-selection threshold for Stage 02. Tejas's table at L15:
-# sep > 2000 keeps {-15, -5, -3, -2, -14, -1}. Lower the threshold (or pass
-# an explicit list via CLI) to include weaker positions like -4, -6, -8..-13.
-MEANINGFUL_POSITION_THRESHOLD = 0.0  # 0 = include every position with a saved direction
+PER_POSITION_POSITIONS = list(range(-15, 0))  # -15, -14, ..., -1 (default: all 15 for Stage 01 flexibility)
+
+# Stage 02 targets — template-anchored positions in the Gemma-3 chat template.
+# These three tokens are prompt-length-invariant:
+#   pos=-5: <end_of_turn>     sep ≈ 4500 at L15
+#   pos=-3: <start_of_turn>   sep ≈ 3600 at L15
+#   pos=-2: model             sep ≈ 3100 at L15 — causally verified by Tejas
+#                                                 (95/95 JB flip, 10/10 control flip)
+# Content positions (-15..-6) had higher nominal separations in Stage 01, but
+# those averages are over 64 semantically different tokens per position
+# across the direction-computation prompts — the "direction" there is a
+# mishmash rather than a single-token refusal signal. Template positions are
+# the set we can argue represent "the same refusal concept at different
+# template landmarks."
+TARGET_POSITIONS_MULTI = [-5, -3, -2]
+TARGET_POSITIONS_SINGLE = [-2]
 
 # ============================================================
 # Attribution

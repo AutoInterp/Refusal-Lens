@@ -655,6 +655,48 @@ def test_stage_02():
         set(config.PER_POSITION_POSITIONS) == set(range(-15, 0)),
         f"got {sorted(config.PER_POSITION_POSITIONS)}",
     )
+    log_test(
+        "T-02u: config.TARGET_POSITIONS_MULTI == [-5, -3, -2] (template positions)",
+        sorted(config.TARGET_POSITIONS_MULTI) == [-5, -3, -2],
+        f"got {sorted(config.TARGET_POSITIONS_MULTI)}",
+    )
+    log_test(
+        "T-02v: config.TARGET_POSITIONS_SINGLE == [-2] (causally-verified baseline)",
+        list(config.TARGET_POSITIONS_SINGLE) == [-2],
+        f"got {list(config.TARGET_POSITIONS_SINGLE)}",
+    )
+
+    # CLI flags for two-graph scheme
+    sys.argv = ["02_run_attribution.py", "--run-dir", "/tmp/fake"]
+    args = stage02.parse_args()
+    log_test(
+        "T-02w: --multi-position-targets defaults to [-5, -3, -2]",
+        sorted(args.multi_position_targets) == [-5, -3, -2],
+        f"got {args.multi_position_targets}",
+    )
+    log_test(
+        "T-02x: --single-position-target defaults to -2",
+        args.single_position_target == -2,
+        f"got {args.single_position_target}",
+    )
+    log_test(
+        "T-02y: --skip-multi-graph / --skip-single-graph default False",
+        args.skip_multi_graph is False and args.skip_single_graph is False,
+    )
+
+    sys.argv = [
+        "02_run_attribution.py", "--run-dir", "/tmp",
+        "--multi-position-targets", "-5", "-3", "-2", "-15",
+        "--single-position-target", "-5",
+        "--skip-single-graph",
+    ]
+    args = stage02.parse_args()
+    log_test(
+        "T-02z: --multi-position-targets / --single-position-target / --skip-* parse",
+        sorted(args.multi_position_targets) == [-15, -5, -3, -2]
+        and args.single_position_target == -5
+        and args.skip_single_graph is True,
+    )
 
 
 # ============================================================

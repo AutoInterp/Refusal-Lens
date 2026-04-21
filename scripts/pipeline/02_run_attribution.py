@@ -85,21 +85,26 @@ def parse_args():
         help="Transformer layer at which attribution is measured (default: 15).",
     )
     parser.add_argument(
-        "--target-position", type=int, default=config.MEASUREMENT_POSITION,
-        help="(Single-position mode) Token position at which attribution is measured "
-             "(default: -2, the Gemma-3 'model' token). Ignored in multi-position mode.",
+        "--multi-position-targets", type=int, nargs="+",
+        default=config.TARGET_POSITIONS_MULTI,
+        help="Positions for the multi-target attribution graph (default: "
+             "the Gemma-3 template positions [-5, -3, -2] = "
+             "<end_of_turn>, <start_of_turn>, 'model'). Requires Stage 01 run "
+             "with per-position directions at target_layer.",
     )
     parser.add_argument(
-        "--target-positions", type=int, nargs="+", default=None,
-        help="(Multi-position mode override) Explicit list of positions to target. "
-             "If not set, Stage 02 uses every position that has a saved direction in "
-             "01_direction/positions_L{target_layer}/. Requires Stage 01 run with "
-             "per-position computation.",
+        "--single-position-target", type=int,
+        default=config.TARGET_POSITIONS_SINGLE[0],
+        help="Position for the single-target baseline graph (default: -2). "
+             "Tejas validated this as the causal L15 target (95/95 JB flip).",
     )
     parser.add_argument(
-        "--single-position", action="store_true",
-        help="Force single-position attribution even when per-position directions are "
-             "available. Use for debugging / reproducing pre-multi-position runs.",
+        "--skip-multi-graph", action="store_true",
+        help="Do not produce the multi-position graph (single-only run).",
+    )
+    parser.add_argument(
+        "--skip-single-graph", action="store_true",
+        help="Do not produce the single-position baseline graph (multi-only run).",
     )
     parser.add_argument(
         "--save-graphs", action="store_true",
@@ -374,43 +379,56 @@ def main():
     from circuit_tracer import ReplacementModel, attribute
     from circuit_tracer.attribution.targets import CustomTarget
 
-    # Direction-loading logic: prefer multi-position at target_layer when the
-    # Stage 01 per-position directory exists and --single-position was NOT
-    # set. Multi-position attribution (Georg's design) builds one target per
-    # meaningful position at target_layer, so the backward pass captures the
-    # full circuit feeding into ANY position's refusal scalar — not just the
-    # first-order contributors you'd get from filtering a single-target
-    # graph's nodes by position.
-    per_position_directions = (
-        {} if args.single_position
-        else _load_per_position_directions(
-            run_dir, args.target_layer, args.target_positions or None,
+    # Determine which graph modes to produce. Default: both "multi"
+    # (targets=TARGET_POSITIONS_MULTI, template-anchored [-5,-3,-2]) and
+    # "single" (target=TARGET_POSITIONS_SINGLE, the causally-verified pos=-2).
+    produce_multi = not args.skip_multi_graph
+    produce_single = not args.skip_single_graph
+    if not produce_multi and not produce_single:
+        raise ValueError(
+            "--skip-multi-graph and --skip-single-graph both set; nothing to do"
         )
-    )
 
-    if per_position_directions:
-        direction = None  # sentinel; multi-position path builds targets per-prompt
-        positions_loaded = sorted(per_position_directions.keys())
-        # Move every direction tensor to GPU once, reuse across all prompts.
-        for pos in positions_loaded:
-            per_position_directions[pos] = per_position_directions[pos].cuda()
+    # Load per-position directions for the multi graph. The single graph's
+    # direction comes from the same position file (pos=-2) by default, so we
+    # consolidate into one load call and pick out both target subsets.
+    all_needed_positions = sorted(set(
+        (args.multi_position_targets if produce_multi else [])
+        + ([args.single_position_target] if produce_single else [])
+    ))
+    per_position_directions = _load_per_position_directions(
+        run_dir, args.target_layer, all_needed_positions,
+    )
+    missing = set(all_needed_positions) - set(per_position_directions.keys())
+    if missing:
+        raise FileNotFoundError(
+            f"Stage 01 did not emit directions for positions {sorted(missing)} at "
+            f"L{args.target_layer}. Re-run Stage 01 with "
+            f"--per-position-positions {' '.join(map(str, all_needed_positions))} "
+            f"or adjust --multi-position-targets / --single-position-target."
+        )
+    # Move every tensor to GPU once and reuse across every prompt × condition.
+    for pos in per_position_directions:
+        per_position_directions[pos] = per_position_directions[pos].cuda()
+
+    modes: dict[str, dict] = {}
+    if produce_multi:
+        modes["multi"] = {
+            "positions": sorted(args.multi_position_targets),
+        }
         print(
-            f"  Multi-position mode: loaded {len(positions_loaded)} directions at "
-            f"L{args.target_layer} for positions {positions_loaded}"
+            f"  Multi graph: L{args.target_layer} targets = "
+            f"{modes['multi']['positions']} "
+            f"(template: <end_of_turn>, <start_of_turn>, 'model')"
         )
-        default_target = None  # no global CustomTarget in multi-position mode
-        mode = "multi_position"
-    else:
-        direction = _load_target_direction(run_dir, args.target_layer).cuda()
+    if produce_single:
+        modes["single"] = {
+            "positions": [args.single_position_target],
+        }
         print(
-            f"  Single-position mode: L{args.target_layer} @ pos={args.target_position}, "
-            f"||r||={direction.norm().item():.4f}, shape={tuple(direction.shape)}"
+            f"  Single graph: L{args.target_layer} target = "
+            f"{modes['single']['positions']} (causally-verified pos)"
         )
-        default_target = CustomTarget(
-            token_str="refusal_direction", prob=1.0, vec=direction,
-        )
-        positions_loaded = [args.target_position]
-        mode = "single_position"
 
     tokenizer_module = __import__("transformers", fromlist=["AutoTokenizer"])
     tokenizer = tokenizer_module.AutoTokenizer.from_pretrained(config.MODEL_NAME)
@@ -490,23 +508,28 @@ def main():
         for cond_name, input_text, prefix in iter_conditions(prompt_row):
             formatted = format_prompt(tokenizer, input_text)
 
-            # Build per-condition attribution targets. Multi-position mode
-            # constructs one CustomTarget per valid position (direction-specific);
-            # single-position mode reuses the global default_target. Positions
-            # outside the prompt's real token span are skipped.
-            if mode == "multi_position":
+            cond_entry: dict = {"prefix": prefix, "graphs": {}}
+            # For feature comparison we want the MULTI graph's features as
+            # the canonical feature set per condition. Stash them here for
+            # the later comparison step.
+            canonical_features: dict | None = None
+
+            for mode_name, mode_cfg in modes.items():
+                # Per-mode target list — filter out positions beyond this
+                # specific prompt's length (shorter prompts skip pos=-15 etc.).
                 valid_positions, seq_len = _valid_positions_for_prompt(
-                    tokenizer, formatted, list(per_position_directions.keys()),
+                    tokenizer, formatted, mode_cfg["positions"],
                 )
                 if not valid_positions:
-                    print(
-                        f"    {cond_name:>18}: ERROR — no valid positions "
-                        f"(seq_len={seq_len} shorter than all loaded positions)"
-                    )
-                    row["conditions"][cond_name] = {
+                    cond_entry["graphs"][mode_name] = {
                         "error": f"no valid positions for seq_len={seq_len}",
+                        "target_positions_requested": list(mode_cfg["positions"]),
                     }
+                    print(
+                        f"    {cond_name:>22} [{mode_name}]: ERROR — no valid positions"
+                    )
                     continue
+
                 targets = [
                     CustomTarget(
                         token_str=f"refusal_L{args.target_layer}_pos{pos:+d}",
@@ -515,51 +538,61 @@ def main():
                     )
                     for pos in valid_positions
                 ]
-                measurement_positions_arg = valid_positions
-            else:
-                targets = [default_target]
-                valid_positions = [args.target_position]
-                measurement_positions_arg = args.target_position
-
-            try:
-                g = attribute(
-                    prompt=formatted,
-                    model=model,
-                    attribution_targets=targets,
-                    batch_size=args.batch_size,
-                    max_feature_nodes=max_features,
-                    measurement_layer=args.target_layer,
-                    measurement_position=measurement_positions_arg,
-                    verbose=False,
+                # Pass a list for multi (len>1) or scalar for single (len==1).
+                # The patched attribute() accepts both.
+                measurement_positions_arg = (
+                    valid_positions if len(valid_positions) > 1
+                    else valid_positions[0]
                 )
-                summary = graph_summary(g)
-                features = extract_all_features(g)
-                summary["prefix"] = prefix
-                summary["n_active"] = len(features)
-                summary["target_positions"] = list(valid_positions)
 
-                sorted_feats = sorted(
-                    features.items(),
-                    key=lambda x: abs(x[1]["attribution"]),
-                    reverse=True,
-                )[:50]
-                summary["top50_features"] = {k: v["attribution"] for k, v in sorted_feats}
+                try:
+                    g = attribute(
+                        prompt=formatted,
+                        model=model,
+                        attribution_targets=targets,
+                        batch_size=args.batch_size,
+                        max_feature_nodes=max_features,
+                        measurement_layer=args.target_layer,
+                        measurement_position=measurement_positions_arg,
+                        verbose=False,
+                    )
+                    summary = graph_summary(g)
+                    features = extract_all_features(g)
+                    summary["n_active"] = len(features)
+                    summary["target_positions"] = list(valid_positions)
 
-                row["conditions"][cond_name] = summary
-                prompt_features[cond_name] = features
+                    sorted_feats = sorted(
+                        features.items(),
+                        key=lambda x: abs(x[1]["attribution"]),
+                        reverse=True,
+                    )[:50]
+                    summary["top50_features"] = {
+                        k: v["attribution"] for k, v in sorted_feats
+                    }
 
-                print(
-                    f"    {cond_name:>18}: net={summary['net']:+.3f}  "
-                    f"pos={summary['pos_sum']:.1f}  neg={summary['neg_sum']:.1f}  "
-                    f"n={summary['n_features']}"
-                )
-                if graphs_dir is not None:
-                    g.to_pt(str(graphs_dir / f"{i:03d}_{cond_name}.pt"))
-                del g
+                    cond_entry["graphs"][mode_name] = summary
+                    # Canonical features for feature_comparison come from the
+                    # multi graph when present; fall back to single otherwise.
+                    if mode_name == "multi" or canonical_features is None:
+                        canonical_features = features
 
-            except Exception as e:
-                print(f"    {cond_name:>18}: ERROR — {e}")
-                row["conditions"][cond_name] = {"error": str(e)[:200]}
+                    print(
+                        f"    {cond_name:>22} [{mode_name}]: net={summary['net']:+.3f}  "
+                        f"pos={summary['pos_sum']:.1f}  neg={summary['neg_sum']:.1f}  "
+                        f"n_feat={summary['n_features']}  targets={valid_positions}"
+                    )
+
+                    if graphs_dir is not None:
+                        g.to_pt(str(graphs_dir / f"{i:03d}_{cond_name}_{mode_name}.pt"))
+                    del g
+
+                except Exception as e:
+                    cond_entry["graphs"][mode_name] = {"error": str(e)[:200]}
+                    print(f"    {cond_name:>22} [{mode_name}]: ERROR — {e}")
+
+            row["conditions"][cond_name] = cond_entry
+            if canonical_features is not None:
+                prompt_features[cond_name] = canonical_features
 
         # 3-way feature comparison per class: bare↔JB, ctrl↔JB, bare↔ctrl.
         # bare↔JB is the legacy comparison; ctrl↔JB isolates JB semantics from
@@ -589,8 +622,8 @@ def main():
         results.append(row)
 
         # Checkpoint — carry metadata so merge_stage02_shards.py can
-        # recover measurement_layer / measurement_position / dataset without
-        # having to consult a shard's (mutable, overwritable) final JSON.
+        # recover the graph-mode config without having to consult a shard's
+        # (mutable, overwritable) final JSON.
         save_json(
             {
                 "last_completed": i,
@@ -601,9 +634,9 @@ def main():
                 ],
                 "metadata": {
                     "measurement_layer": args.target_layer,
-                    "measurement_position": args.target_position,
-                    "measurement_mode": mode,
-                    "target_positions_loaded": positions_loaded,
+                    "modes": {
+                        name: cfg["positions"] for name, cfg in modes.items()
+                    },
                     "dataset": "controlled" if not args.legacy_dataset else "legacy",
                 },
             },
@@ -620,9 +653,7 @@ def main():
             "model": config.MODEL_NAME,
             "transcoder": config.TRANSCODER_PATH,
             "measurement_layer": args.target_layer,
-            "measurement_position": args.target_position,
-            "measurement_mode": mode,
-            "target_positions_loaded": positions_loaded,
+            "modes": {name: cfg["positions"] for name, cfg in modes.items()},
             "dataset": "controlled" if not args.legacy_dataset else "legacy",
             "elapsed_minutes": round(elapsed / 60, 1),
         },
