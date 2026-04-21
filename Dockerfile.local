@@ -12,9 +12,24 @@
 # Build:
 #   docker build -f Dockerfile.local -t refusal-lens:l15 \
 #       --build-arg HTTP_PROXY=http://proxy:port \
-#       --build-arg HTTPS_PROXY=http://proxy:port 
+#       --build-arg HTTPS_PROXY=http://proxy:port .
 #
-# Run: same as main Dockerfile.
+# Run (interactive, GPU, host-owned outputs for host-side git ops):
+#   docker run --rm -it --gpus=all --ipc=host --shm-size=16g \
+#       --user "$(id -u):$(id -g)" \
+#       -v "$PWD/outputs":/workspace/outputs \
+#       -v "$PWD/hf-cache":/workspace/hf-cache \
+#       -e HF_TOKEN="$HF_TOKEN" \
+#       -e GITHUB_TOKEN="$GITHUB_TOKEN" \
+#       -e GIT_USER_NAME="Mahmoud Shabana" \
+#       -e GIT_USER_EMAIL="algoversemechinterp@gmail.com" \
+#       -e HOME=/tmp \
+#       refusal-lens:l15
+#
+# The --user + HOME=/tmp combination makes every file written into
+# /workspace/outputs and /workspace/hf-cache owned by the host UID on the
+# host filesystem — so `git add` on the host "just works" without a chown
+# step, and without needing sudo to fix root-owned files.
 
 FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
 
@@ -98,30 +113,56 @@ VOLUME ["/workspace/outputs", "/workspace/hf-cache"]
 
 COPY <<'EOF' /usr/local/bin/entrypoint.sh
 #!/usr/bin/env bash
-set -e
+# NOTE: no `set -e`. When the container runs with --user <non-root-uid>, some
+# of the optional git-config steps below will fail (HOME unwritable, or
+# /workspace/Refusal-Lens/.git owned by root at build time). Those are
+# best-effort setup — a failure shouldn't kill the container before the user
+# even gets a prompt.
+
+# When running as --user, HOME may be /root (unwritable) or unset. Redirect
+# to a writable location so `git config --global` has somewhere to write.
+if [ -z "${HOME:-}" ] || [ ! -w "${HOME}" ]; then
+    export HOME=/tmp
+fi
 
 if [ -n "${GIT_USER_NAME:-}" ]; then
-    git config --global user.name "${GIT_USER_NAME}"
+    git config --global user.name "${GIT_USER_NAME}" 2>/dev/null || \
+        echo "  (entrypoint) note: could not set git user.name; do `git config` manually if needed"
 fi
 if [ -n "${GIT_USER_EMAIL:-}" ]; then
-    git config --global user.email "${GIT_USER_EMAIL}"
+    git config --global user.email "${GIT_USER_EMAIL}" 2>/dev/null || true
 fi
 if [ -n "${GITHUB_TOKEN:-}" ] && [ -d /workspace/Refusal-Lens/.git ]; then
     cd /workspace/Refusal-Lens
-    git remote set-url origin \
-        "https://oauth2:${GITHUB_TOKEN}@github.com/AutoInterp/Refusal-Lens.git"
+    # Only attempt to rewrite origin if we can write .git/config. Non-root
+    # containers can't (image was built as root), but that's fine — the
+    # expected workflow for non-root mode is to do git ops on the host.
+    if [ -w .git/config ]; then
+        git remote set-url origin \
+            "https://oauth2:${GITHUB_TOKEN}@github.com/AutoInterp/Refusal-Lens.git" \
+            2>/dev/null || true
+    fi
     cd /workspace
 fi
 
+# Tell the user which UID we're running as — removes confusion when they see
+# files on the host owned by something unexpected.
+echo "--- runtime ---"
+echo "uid=$(id -u)  gid=$(id -g)  HOME=${HOME}"
 if command -v nvidia-smi >/dev/null 2>&1; then
-    echo "--- nvidia-smi ---"
-    nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
-    echo "------------------"
+    nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv 2>/dev/null || true
 fi
+echo "---------------"
 
 exec "$@"
 EOF
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    # Make /workspace world-writable at the TOP level so a non-root runtime
+    # user can create subdirectories (e.g. if outputs mount is missing
+    # permissions, they fall back to /workspace/tmp). The bind-mounted
+    # subdirs (/workspace/outputs, /workspace/hf-cache) inherit their
+    # permissions from the host mount, unaffected by this.
+    && chmod 1777 /workspace
 
 ENTRYPOINT ["tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["/bin/bash"]
