@@ -50,8 +50,26 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run CLT attribution graphs")
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--n-prompts", type=int, default=50)
-    parser.add_argument("--batch-size", type=int, default=1)
-    parser.add_argument("--max-features", type=int, default=None)
+    parser.add_argument(
+        "--prompt-start", type=int, default=0,
+        help="First prompt index to attribute (inclusive). Use with --prompt-end to shard across GPUs.",
+    )
+    parser.add_argument(
+        "--prompt-end", type=int, default=None,
+        help="Last prompt index to attribute (exclusive). Default: min(n_prompts, len(dataset)).",
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=256,
+        help="Feature/target backward-pass batch size (circuit-tracer default 512). "
+             "On 48GB (RTX 6000 Ada): 256 safe, 512 borderline. "
+             "On 80GB (H100): 512 recommended. batch_size=1 is ~100x slower — do not use.",
+    )
+    parser.add_argument(
+        "--max-features", type=int, default=8000,
+        help="Cap number of features attributed per graph. Active features per prompt run "
+             "typically 10k-18k, many with near-zero attribution that the frontend prunes "
+             "anyway (node_threshold=0.8). Set to 0 for unlimited (exact prior behavior, ~2x slower).",
+    )
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
         "--dataset", type=Path, default=None,
@@ -310,17 +328,44 @@ def main():
             dataset_path=args.dataset, n_prompts=args.n_prompts,
         )
 
-    # Checkpoint support
-    checkpoint_path = out_dir / "attribution_checkpoint.json"
+    # Shard support: when running multiple Stage 02 processes across GPUs,
+    # each one handles a slice of the prompt list. prompt_start/prompt_end
+    # are interpreted BEFORE checkpoint resume, so a shard's checkpoint
+    # tracks only that shard's progress.
+    shard_start = max(args.prompt_start, 0)
+    shard_end = args.prompt_end if args.prompt_end is not None else len(prompts)
+    shard_end = min(shard_end, len(prompts))
+    if shard_start >= shard_end:
+        raise ValueError(f"empty shard: prompt_start={shard_start} >= prompt_end={shard_end}")
+
+    # Checkpoint path is shard-specific when shards are used, so concurrent
+    # shards don't clobber each other's state.
+    is_sharded = args.prompt_start != 0 or args.prompt_end is not None
+    ckpt_name = (
+        f"attribution_checkpoint_{shard_start:03d}_{shard_end:03d}.json"
+        if is_sharded else "attribution_checkpoint.json"
+    )
+    checkpoint_path = out_dir / ckpt_name
     checkpoint = load_json(checkpoint_path) if (args.resume and checkpoint_path.exists()) else None
-    start_idx = checkpoint.get("last_completed", -1) + 1 if checkpoint else 0
+    start_idx = checkpoint.get("last_completed", shard_start - 1) + 1 if checkpoint else shard_start
     results = checkpoint.get("results", []) if checkpoint else []
 
+    # Circuit-tracer treats max_feature_nodes=None as "unlimited"; our CLI
+    # default is 8000 for speed, but 0 (or any non-positive) should map to
+    # the unlimited case rather than literally zero features.
+    max_features = args.max_features if (args.max_features and args.max_features > 0) else None
+
+    print(
+        f"  Attribution config: batch_size={args.batch_size}, "
+        f"max_features={max_features if max_features else 'unlimited'}, "
+        f"shard=[{shard_start}, {shard_end})"
+    )
+
     t0 = time.time()
-    for i in range(start_idx, len(prompts)):
+    for i in range(start_idx, shard_end):
         prompt_row = prompts[i]
         prompt_text = prompt_row.get("bare") or prompt_row.get("base") or prompt_row["instruction"]
-        print(f"\n  Prompt {i + 1}/{len(prompts)}: {prompt_text[:60]}...")
+        print(f"\n  Prompt {i + 1}/{shard_end} (shard [{shard_start},{shard_end})): {prompt_text[:60]}...")
         torch.cuda.empty_cache()
 
         row = {
@@ -341,7 +386,7 @@ def main():
                     model=model,
                     attribution_targets=[target],
                     batch_size=args.batch_size,
-                    max_feature_nodes=args.max_features,
+                    max_feature_nodes=max_features,
                     measurement_layer=args.target_layer,
                     measurement_position=args.target_position,
                     verbose=False,
