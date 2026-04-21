@@ -1,0 +1,98 @@
+{
+  "dose_response_harm": {
+    "1": {
+      "flipped": 2,
+      "total": 25
+    },
+    "3": {
+      "flipped": 2,
+      "total": 25
+    },
+    "5": {
+      "flipped": 1,
+      "total": 25
+    },
+    "10": {
+      "flipped": 0,
+      "total": 25
+    }
+  },
+  "dose_response_jb": {
+    "1": {
+      "flipped": 0,
+      "total": 16
+    },
+    "3": {
+      "flipped": 0,
+      "total": 16
+    },
+    "5": {
+      "flipped": 0,
+      "total": 16
+    },
+    "10": {
+      "flipped": 1,
+      "total": 16
+    }
+  },
+  "all_classes_jb_ablation": {
+    "roleplay": {
+      "flipped": 2,
+      "total": 3
+    },
+    "fiction": {
+      "flipped": 0,
+      "total": 9
+    },
+    "analytical": {
+      "flipped": 0,
+      "total": 19
+    },
+    "completion": {
+      "flipped": 0,
+      "total": 0
+    },
+    "cognitive_reframe": {
+      "flipped": 0,
+      "total": 16
+    }
+  },
+  "every_step_comparison": {
+    "harm": {
+      "flipped": 1,
+      "total": 25
+    },
+    "jb": {
+      "flipped": 0,
+      "total": 16
+    }
+  },
+  "control": {
+    "changed": 0,
+    "total": 10
+  },
+  "harm_features_used": [
+    3220,
+    10096,
+    9576,
+    14344,
+    13354,
+    6215,
+    11372,
+    1722,
+    2803,
+    6107
+  ],
+  "jb_features_used": [
+    9739,
+    5334,
+    15317,
+    191,
+    12973,
+    5494,
+    15043,
+    14092,
+    260,
+    4465
+  ]
+}
