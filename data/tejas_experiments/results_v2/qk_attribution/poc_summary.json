@@ -1,0 +1,21 @@
+{
+  "method": "QK attribution with GemmaScope 2 resid_post SAE",
+  "sae": "resid_post_all/layer_14_width_16k_l0_small (JumpReLU)",
+  "encoding_fix": "No b_dec subtraction - correct encoding gives 1.4% error vs 200% before",
+  "reconstruction_ratio": "1.0000 with full decomposition (feat×feat + feat×bias + bias×bias + error)",
+  "component_breakdown_avg": {
+    "feature_feature": "25.5%",
+    "feature_bias": "30.6%",
+    "bias_feature": "-15.7%",
+    "bias_bias": "73.2%",
+    "error_terms": "-13.6%"
+  },
+  "key_findings": {
+    "feature_534": "UNIQUE to harmful, absent from all JBs and harmless - harm detector",
+    "feature_950": "Gradient: harmful(605)>analytical(507)>fiction(507)>cognitive(434)>harmless(304)",
+    "feature_178": "UNIQUE to harmful",
+    "feature_39": "INVERSE: harmful(302)<JBs/harmless(497-610) - higher when safe"
+  },
+  "dominant_head": "Head 5 (33-53% instruction attention)",
+  "status": "POC validated, full-scale run pending"
+}
