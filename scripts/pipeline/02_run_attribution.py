@@ -1,15 +1,24 @@
 """
 Stage 02: Run CLT Attribution Graphs
 =====================================
-For each prompt × condition (bare + 5 JB classes), compute circuit-tracer
-attribution graphs targeting the refusal direction.
+For each prompt × condition, compute circuit-tracer attribution graphs
+targeting the refusal direction at a specified (layer, position).
+
+Default target: L15 @ pos=-2 (the causally effective layer; Tejas causal
+experiments flip 95/95 JB prompts at L15, 0/10 at L32 despite L32 having
+~7x stronger separation).
+
+Dataset: Tejas's controlled dataset (refusal_lens_controlled_dataset.json)
+yields 11 conditions per prompt — bare + {jb,ctrl}_<class> for 5 classes.
+The ctrl arm is length-matched to JB so bare↔ctrl isolates prefix-token
+confounds from JB semantics (ctrl↔JB is the cleanest "JB effect" delta).
 
 Extracts ALL active features per graph (no top-k filtering) and performs
-cross-class feature comparison (shared/bare-only/cls-only/sign-flipped/
-dampened/amplified-anti).
+3-way feature comparison: bare↔JB, bare↔ctrl, ctrl↔JB.
 
-Inputs:  01_direction/refusal_direction.pt, dataset splits
-Outputs: 02_attribution/attribution_results.json, feature_comparison_aggregate.json
+Inputs:  01_direction/directions/layer_{TARGET}.pt, controlled dataset JSON
+Outputs: 02_attribution/attribution_results.json,
+         feature_comparison_aggregate.json
 """
 from __future__ import annotations
 
@@ -28,8 +37,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config
 from utils import (
     format_prompt,
+    load_controlled_dataset,
     load_experiment_dataset,
-    save_json, 
+    save_json,
     load_json,
     get_stage_dir,
     create_run_dir,
@@ -45,7 +55,20 @@ def parse_args():
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
         "--dataset", type=Path, default=None,
-        help="Path to curated dataset JSON (optional, falls back to random selection)",
+        help="Path to the controlled dataset JSON (default: config.CONTROLLED_DATASET_PATH)",
+    )
+    parser.add_argument(
+        "--legacy-dataset", action="store_true",
+        help="Use the old bare+5JB random-prefix selection path "
+             "(utils.load_experiment_dataset). Only for reproducing pre-April runs.",
+    )
+    parser.add_argument(
+        "--target-layer", type=int, default=config.MEASUREMENT_LAYER,
+        help="Transformer layer at which attribution is measured (default: 15).",
+    )
+    parser.add_argument(
+        "--target-position", type=int, default=config.MEASUREMENT_POSITION,
+        help="Token position at which attribution is measured (default: -2, the Gemma-3 'model' token).",
     )
     parser.add_argument(
         "--save-graphs", action="store_true",
@@ -56,6 +79,30 @@ def parse_args():
         help="Model dtype. Use bfloat16/float16 on 24 GB cards to avoid OOM.",
     )
     return parser.parse_args()
+
+
+# JB classes in Tejas's controlled dataset — used to enumerate the 11
+# conditions per prompt and to construct feature-comparison pairs.
+CONTROLLED_CLASSES = ("roleplay", "fiction", "analytical", "completion", "cognitive_reframe")
+
+
+def iter_conditions(prompt_row: dict):
+    """Yield (cond_name, text, prefix) tuples for a prompt from either the
+    controlled-dataset format (dict with 'conditions') or the legacy format
+    (raw harmful string under 'instruction'). Exactly one bare + 10 prefixed
+    entries for the controlled path; 1 bare + 5 random-JB entries for legacy.
+    """
+    if "conditions" in prompt_row:
+        for cond_name, entry in prompt_row["conditions"].items():
+            yield cond_name, entry["text"], entry["prefix"]
+        return
+    # Legacy fallback: bare + one random prefix from each class in config.JB_CLASSES
+    text = prompt_row["instruction"]
+    yield "bare", text, ""
+    rng = random.Random(42 + hash(text) % 10_000)
+    for cls, prefixes in config.JB_CLASSES.items():
+        prefix = rng.choice(prefixes)
+        yield f"jb_{cls}", prefix + text.lower(), prefix
 
 
 def feature_key(layer: int, feat_idx: int) -> str:
@@ -144,6 +191,74 @@ def compare_features(bare_feats: dict, cls_feats: dict) -> dict:
     }
 
 
+def _load_target_direction(run_dir: Path, target_layer: int) -> torch.Tensor:
+    """Load the per-layer refusal direction written by Stage 01.
+
+    Stage 01 writes both the normalized best_direction (at L32) and per-layer
+    directions under directions/layer_XX.pt. For attribution at L15 we need
+    the per-layer tensor; falling back to best_direction would silently use
+    the L32 direction and invalidate the target.
+    """
+    dir_path = run_dir / "01_direction" / "directions" / f"layer_{target_layer:02d}.pt"
+    if not dir_path.exists():
+        raise FileNotFoundError(
+            f"Per-layer direction not found at {dir_path}. "
+            f"Run Stage 01 with --save-per-layer (or use run_20260417_010035 "
+            f"which already emits per-layer directions)."
+        )
+    t = torch.load(dir_path, map_location="cpu", weights_only=False)
+    if isinstance(t, dict):
+        # Some older runs stored per-layer as {'direction': tensor}
+        t = t.get("direction") or t.get("r") or next(iter(t.values()))
+    return t.to(torch.float32)
+
+
+def _aggregate_comparison(results: list[dict], classes: tuple[str, ...]) -> dict:
+    """Summarize per-prompt feature-comparison stats across the corpus.
+
+    Output schema:
+        {
+          <class>: {
+            "vs_bare":   {"n_shared": {"mean":..., "std":..., "min":..., "max":...}, ...},
+            "vs_ctrl":   {...},       # None if no ctrl condition was run
+            "ctrl_vs_bare": {...},    # None if no ctrl condition was run
+          }
+        }
+    Same mean/std/min/max stat keys as before; nested one level deeper now.
+    """
+    agg: dict = {}
+    for cls in classes:
+        per_comparison: dict = {}
+        for comp_kind in ("vs_bare", "vs_ctrl", "ctrl_vs_bare"):
+            buckets = {
+                "n_shared": [], "n_bare_only": [], "n_cls_only": [],
+                "n_sign_flipped": [], "n_dampened": [], "n_amplified_anti": [],
+                "n_bare": [], "n_cls": [],
+            }
+            for row in results:
+                comp = (
+                    row.get("feature_comparison", {})
+                    .get(cls, {})
+                    .get(comp_kind)
+                )
+                if comp:
+                    for key in buckets:
+                        buckets[key].append(comp[key])
+            if buckets["n_shared"]:
+                per_comparison[comp_kind] = {
+                    k: {
+                        "mean": round(float(np.mean(v)), 1),
+                        "std": round(float(np.std(v)), 1),
+                        "min": int(min(v)),
+                        "max": int(max(v)),
+                    }
+                    for k, v in buckets.items()
+                }
+        if per_comparison:
+            agg[cls] = per_comparison
+    return agg
+
+
 def main():
     args = parse_args()
     run_dir = args.run_dir
@@ -154,19 +269,15 @@ def main():
 
     print("=" * 60)
     print("STAGE 02: Run CLT Attribution Graphs")
+    print(f"        target: L{args.target_layer} @ pos={args.target_position}")
     print("=" * 60)
 
-    # Load direction from Stage 01
-    dir_path = run_dir / "01_direction" / "refusal_direction.pt"
-    if not dir_path.exists():
-        # Fallback to pre-computed
-        dir_path = (
-            config.REPO_ROOT / "data" / "results"
-            / "meeting_experiments" / "refusal_direction_corrected.pt"
-        )
-    print(f"  Loading direction from {dir_path}")
-    dir_data = torch.load(dir_path, map_location="cpu", weights_only=False)
-    direction = dir_data["best_direction"].to(torch.float32).cuda()
+    # Load per-layer direction from Stage 01.
+    direction = _load_target_direction(run_dir, args.target_layer).cuda()
+    print(
+        f"  Loaded direction: L{args.target_layer}, ||r||={direction.norm().item():.4f}, "
+        f"shape={tuple(direction.shape)}"
+    )
 
     from circuit_tracer import ReplacementModel, attribute
     from circuit_tracer.attribution.targets import CustomTarget
@@ -188,11 +299,16 @@ def main():
     )
     print("  Ready.")
 
-    # Load dataset
-    prompts = load_experiment_dataset(
-        n_prompts=args.n_prompts, dataset_path=args.dataset,
-    )
-    print(f"  Selected {len(prompts)} diverse harmful prompts")
+    # Load dataset — prefer Tejas's controlled dataset (11 conditions/prompt).
+    if args.legacy_dataset:
+        prompts = load_experiment_dataset(
+            n_prompts=args.n_prompts, dataset_path=args.dataset,
+        )
+        print(f"  [legacy] Selected {len(prompts)} diverse harmful prompts")
+    else:
+        prompts = load_controlled_dataset(
+            dataset_path=args.dataset, n_prompts=args.n_prompts,
+        )
 
     # Checkpoint support
     checkpoint_path = out_dir / "attribution_checkpoint.json"
@@ -200,26 +316,23 @@ def main():
     start_idx = checkpoint.get("last_completed", -1) + 1 if checkpoint else 0
     results = checkpoint.get("results", []) if checkpoint else []
 
-    classes = ["bare"] + list(config.JB_CLASSES.keys())
-    rng = random.Random(42)
-
     t0 = time.time()
     for i in range(start_idx, len(prompts)):
-        prompt_text = prompts[i]["instruction"]
+        prompt_row = prompts[i]
+        prompt_text = prompt_row.get("bare") or prompt_row.get("base") or prompt_row["instruction"]
         print(f"\n  Prompt {i + 1}/{len(prompts)}: {prompt_text[:60]}...")
         torch.cuda.empty_cache()
 
-        row = {"prompt_idx": i, "prompt": prompt_text, "conditions": {}}
-        prompt_features = {}
+        row = {
+            "prompt_idx": i,
+            "prompt_id": prompt_row.get("id"),
+            "prompt": prompt_text,
+            "topic": prompt_row.get("topic"),
+            "conditions": {},
+        }
+        prompt_features: dict[str, dict] = {}
 
-        for cls in classes:
-            if cls == "bare":
-                input_text = prompt_text
-                prefix = ""
-            else:
-                prefix = rng.choice(config.JB_CLASSES[cls])
-                input_text = prefix + prompt_text.lower()
-
+        for cond_name, input_text, prefix in iter_conditions(prompt_row):
             formatted = format_prompt(tokenizer, input_text)
 
             try:
@@ -229,6 +342,8 @@ def main():
                     attribution_targets=[target],
                     batch_size=args.batch_size,
                     max_feature_nodes=args.max_features,
+                    measurement_layer=args.target_layer,
+                    measurement_position=args.target_position,
                     verbose=False,
                 )
                 summary = graph_summary(g)
@@ -243,30 +358,44 @@ def main():
                 )[:50]
                 summary["top50_features"] = {k: v["attribution"] for k, v in sorted_feats}
 
-                row["conditions"][cls] = summary
-                prompt_features[cls] = features
+                row["conditions"][cond_name] = summary
+                prompt_features[cond_name] = features
 
                 print(
-                    f"    {cls:>15}: net={summary['net']:+.3f}  "
+                    f"    {cond_name:>18}: net={summary['net']:+.3f}  "
                     f"pos={summary['pos_sum']:.1f}  neg={summary['neg_sum']:.1f}  "
                     f"n={summary['n_features']}"
                 )
                 if graphs_dir is not None:
-                    g.to_pt(str(graphs_dir / f"{i:03d}_{cls}.pt"))
+                    g.to_pt(str(graphs_dir / f"{i:03d}_{cond_name}.pt"))
                 del g
 
             except Exception as e:
-                print(f"    {cls:>15}: ERROR — {e}")
-                row["conditions"][cls] = {"error": str(e)[:200]}
+                print(f"    {cond_name:>18}: ERROR — {e}")
+                row["conditions"][cond_name] = {"error": str(e)[:200]}
 
-        # Cross-class feature comparison
+        # 3-way feature comparison per class: bare↔JB, ctrl↔JB, bare↔ctrl.
+        # bare↔JB is the legacy comparison; ctrl↔JB isolates JB semantics from
+        # prefix-token-length confounds; bare↔ctrl validates the control (should
+        # be small since both refuse).
         bare_feats = prompt_features.get("bare", {})
         if bare_feats:
-            prompt_comparison = {}
-            for cls in config.JB_CLASSES:
-                cls_feats = prompt_features.get(cls, {})
-                if cls_feats:
-                    prompt_comparison[cls] = compare_features(bare_feats, cls_feats)
+            prompt_comparison: dict = {}
+            for cls in CONTROLLED_CLASSES:
+                jb_feats = prompt_features.get(f"jb_{cls}", {})
+                ctrl_feats = prompt_features.get(f"ctrl_{cls}", {})
+                # Legacy path: condition key was the bare class name (no jb_ prefix).
+                if not jb_feats and args.legacy_dataset:
+                    jb_feats = prompt_features.get(cls, {})
+                entry: dict = {}
+                if jb_feats:
+                    entry["vs_bare"] = compare_features(bare_feats, jb_feats)
+                if jb_feats and ctrl_feats:
+                    entry["vs_ctrl"] = compare_features(ctrl_feats, jb_feats)
+                if ctrl_feats:
+                    entry["ctrl_vs_bare"] = compare_features(bare_feats, ctrl_feats)
+                if entry:
+                    prompt_comparison[cls] = entry
             row["feature_comparison"] = prompt_comparison
 
         del prompt_features
@@ -274,8 +403,14 @@ def main():
 
         # Checkpoint
         save_json(
-            {"last_completed": i, "results": results,
-            "prompts": [p["instruction"] for p in prompts]},
+            {
+                "last_completed": i,
+                "results": results,
+                "prompts": [
+                    p.get("bare") or p.get("base") or p.get("instruction")
+                    for p in prompts
+                ],
+            },
             checkpoint_path,
         )
 
@@ -288,36 +423,17 @@ def main():
             "n_prompts": len(results),
             "model": config.MODEL_NAME,
             "transcoder": config.TRANSCODER_PATH,
-            "measurement_layer": config.BEST_SEPARATION_LAYER,
+            "measurement_layer": args.target_layer,
+            "measurement_position": args.target_position,
+            "dataset": "controlled" if not args.legacy_dataset else "legacy",
             "elapsed_minutes": round(elapsed / 60, 1),
         },
         "results": results,
     }
     save_json(final, out_dir / "attribution_results.json")
 
-    # Aggregate feature comparison
-    agg = {}
-    for cls in config.JB_CLASSES:
-        cls_stats = {
-            "n_shared": [], "n_bare_only": [], "n_cls_only": [],
-            "n_sign_flipped": [], "n_dampened": [], "n_amplified_anti": [],
-            "n_bare": [], "n_cls": [],
-        }
-        for row in results:
-            comp = row.get("feature_comparison", {}).get(cls)
-            if comp:
-                for key in cls_stats:
-                    cls_stats[key].append(comp[key])
-        if cls_stats["n_shared"]:
-            agg[cls] = {
-                k: {
-                    "mean": round(float(np.mean(v)), 1),
-                    "std": round(float(np.std(v)), 1),
-                    "min": int(min(v)),
-                    "max": int(max(v)),
-                }
-                for k, v in cls_stats.items()
-            }
+    # Aggregate feature comparison across the corpus.
+    agg = _aggregate_comparison(results, CONTROLLED_CLASSES)
     save_json(agg, out_dir / "feature_comparison_aggregate.json")
 
     print(f"  Saved to {out_dir}/")

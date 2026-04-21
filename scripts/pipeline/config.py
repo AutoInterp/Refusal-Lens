@@ -12,7 +12,12 @@ from pathlib import Path
 MODEL_NAME = "google/gemma-3-4b-it"
 N_LAYERS = 34
 D_MODEL = 2560
-MEASUREMENT_LAYER = 32    # Best separation for attribution
+# Attribution targets L15 (the causally effective layer) at pos=-2. L32 has
+# ~7x stronger separation but is too late in the network to drive the refusal
+# decision — intervention at L15 flips 95/95 jailbroken prompts, L32 flips
+# 0/10 (Tejas causal experiments on cleaned dataset). We attribute against
+# the layer we can actually intervene on.
+MEASUREMENT_LAYER = 15
 MEASUREMENT_POSITION = -2 # "model" token in Gemma-3 chat template
 CAUSAL_LAYER = 15         # Best causal effectiveness (Tejas Script 16)
 
@@ -57,6 +62,10 @@ MAX_NEW_TOKENS = 200
 # ============================================================
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DATASET_DIR = REPO_ROOT / "dataset" / "refusal_direction_dataset" / "splits"
+# Tejas's controlled dataset: 50 harmful-base prompts × 5 JB classes × 2 prefix
+# variants (JB + length-matched neutral ctrl). Verified: 50/50 bare refuse,
+# 216/225 (96%) ctrl refuse, 95/95 JB flipped at L15 under Arditi intervention.
+CONTROLLED_DATASET_PATH = REPO_ROOT / "dataset" / "refusal_lens_controlled_dataset.json"
 RESULTS_BASE = REPO_ROOT / "data" / "results" / "pipeline_runs"
 
 # ============================================================

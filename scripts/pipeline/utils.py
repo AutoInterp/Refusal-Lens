@@ -105,27 +105,87 @@ def select_diverse_prompts(all_prompts: list[dict], n: int = 50, seed: int = 42)
 
     return selected[:n]
 
-def load_experiment_dataset(                                                                                                                              
+def load_experiment_dataset(
     n_prompts: int = 50,
     seed: int = 42,
     dataset_path: Path | None = None,
-  ) -> list[dict]:                                                                                                                                          
-    """                                                                                                                                                   
-    Load harmful prompts for experiments.                                                                                                                 
-                                                                                                                                                        
+  ) -> list[dict]:
+    """
+    Load harmful prompts for experiments.
+
     If dataset_path is provided, loads a curated dataset JSON directly.
-    Otherwise, falls back to random diverse selection from the training split.                                                                            
-    
-    The curated dataset JSON should be a list of dicts with at minimum                                                                                    
-    an "instruction" key per entry.                                                                                                                       
-    """                                                                                                                                                   
-    if dataset_path is not None and dataset_path.exists():                                                                                                
-        with open(dataset_path) as f:                                                                                                                     
+    Otherwise, falls back to random diverse selection from the training split.
+
+    The curated dataset JSON should be a list of dicts with at minimum
+    an "instruction" key per entry.
+    """
+    if dataset_path is not None and dataset_path.exists():
+        with open(dataset_path) as f:
             data = json.load(f)
-        print(f"  Loaded curated dataset: {len(data)} prompts from {dataset_path}")                                                                       
+        print(f"  Loaded curated dataset: {len(data)} prompts from {dataset_path}")
         return data[:n_prompts]
-                                                                                                                                                        
+
     # Fall back to diverse random selection
-    with open(config.DATASET_DIR / "harmful_train.json") as f:                                                                                            
-        all_prompts = json.load(f)                                                                                                                        
+    with open(config.DATASET_DIR / "harmful_train.json") as f:
+        all_prompts = json.load(f)
     return select_diverse_prompts(all_prompts, n=n_prompts, seed=seed)
+
+
+def load_controlled_dataset(
+    dataset_path: Path | None = None,
+    n_prompts: int | None = None,
+) -> list[dict]:
+    """Load Tejas's refusal_lens_controlled_dataset.json.
+
+    Each returned row has shape:
+        {
+          "id": int,
+          "base": str,            # the harmful instruction (== "bare")
+          "bare": str,
+          "topic": str,
+          "conditions": {
+              "bare":            {"text": str, "prefix": ""},
+              "jb_<class>":      {"text": str, "prefix": str},
+              "ctrl_<class>":    {"text": str, "prefix": str},
+              # 11 entries total: bare + 5 JB + 5 ctrl
+          },
+        }
+
+    The conditions dict flattens Tejas's nested `pairs` so downstream stages
+    can iterate a simple (cond_name → text/prefix) map instead of
+    reconstructing it each time.
+    """
+    path = dataset_path or config.CONTROLLED_DATASET_PATH
+    with open(path) as f:
+        raw = json.load(f)
+
+    expected_classes = set(raw.get("prefix_pairs", {}).keys())
+    out: list[dict] = []
+    for p in raw["prompts"]:
+        conds: dict[str, dict] = {
+            "bare": {"text": p["bare"], "prefix": ""},
+        }
+        for cls, pair in p["pairs"].items():
+            conds[f"jb_{cls}"] = {"text": pair["jb"], "prefix": pair["jb_prefix"]}
+            conds[f"ctrl_{cls}"] = {"text": pair["ctrl"], "prefix": pair["ctrl_prefix"]}
+        # Defense in depth: every prompt should have all 11 conditions.
+        # A missing class would silently produce a skewed attribution set.
+        missing = expected_classes - set(p["pairs"].keys())
+        if missing:
+            raise ValueError(
+                f"Prompt id={p.get('id')} missing classes {missing} in `pairs`"
+            )
+        out.append({
+            "id": p["id"],
+            "base": p["base"],
+            "bare": p["bare"],
+            "topic": p.get("topic", "unknown"),
+            "conditions": conds,
+        })
+
+    if n_prompts is not None:
+        out = out[:n_prompts]
+    print(f"  Loaded controlled dataset: {len(out)} prompts × "
+          f"{len(out[0]['conditions']) if out else 0} conditions = "
+          f"{len(out) * (len(out[0]['conditions']) if out else 0)} total runs")
+    return out

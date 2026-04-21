@@ -83,12 +83,64 @@ def annotate_overlap(
     return jb
 
 
+# ---------------------- subcircuit filter rules -------------------------
+# Stage 07's corpus-level subcircuit memberships are aggregated across the
+# union of top-50-per-condition feature sets. A feature can be a member of
+# `universal_refusal_core` at the corpus level (present in bare + all 5 JB
+# top-50 pools) yet still appear in a single JB graph's pruned output as
+# `jb_unique` — the feature survived pruning on that JB side but not on the
+# matched bare side for this particular prompt. Georg asked that the frontend
+# only display memberships that are consistent with each graph's own
+# `overlap_bucket`, so the UI does not paint a jb_unique node as "universal".
+
+_UNIVERSAL_CORE_BUCKETS = frozenset({"bare", "shared_with_bare"})
+_CANONICAL_BUCKETS = frozenset({"jb_unique"})
+_CLASS_EXCLUSIVE_BUCKETS = frozenset({"jb_unique"})
+# These subcircuits are orthogonal to the bare/JB axis — a feature can be a
+# "sign-flip" or "dampening specialist" in any graph where it appears,
+# regardless of whether the overlap bucket says bare, shared, or jb_unique.
+_UNFILTERED_SUBCIRCUITS = frozenset({
+    "sign_flip_convergent",
+    "dampening_specialists",
+    "anti_refusal_amplifiers",
+    "late_wave_layer24_32",
+})
+
+
+def _subcircuit_allowed(
+    sc_name: str, overlap_bucket: str | None, jb_class: str | None,
+) -> bool:
+    """Is this corpus-level subcircuit membership consistent with the per-graph
+    overlap bucket + jb class? See the rules above."""
+    if sc_name in _UNFILTERED_SUBCIRCUITS:
+        return True
+    # If overlap wasn't annotated (e.g. --skip-overlap debug run), fall back to
+    # corpus behavior rather than stripping every bucket-conditional membership.
+    if overlap_bucket is None:
+        return True
+    if sc_name == "universal_refusal_core":
+        return overlap_bucket in _UNIVERSAL_CORE_BUCKETS
+    if sc_name == "canonical_pro_refusal":
+        return overlap_bucket in _CANONICAL_BUCKETS
+    if sc_name.endswith("_exclusive"):
+        # "cognitive_reframe_exclusive" → class is "cognitive_reframe"
+        cls = sc_name.rsplit("_", 1)[0]
+        return overlap_bucket in _CLASS_EXCLUSIVE_BUCKETS and jb_class == cls
+    # Unknown subcircuit name — pass through so newly-added subcircuits in
+    # Stage 07 don't get silently dropped until this file is updated.
+    return True
+
+
 def annotate_subcircuits(graph_json_path: Path, subcircuits_json_path: Path) -> dict:
     """Attach `subcircuits: [...]` membership array to every feature node in a graph JSON.
 
     Reads Stage 07's `subcircuits.json`, builds a reverse index feature_key -> [names],
-    and writes each feature node's memberships in place. Non-feature nodes get `[]`.
-    Persists the mutated graph JSON in place and returns the dict.
+    and writes each feature node's memberships in place. Memberships are
+    filtered against the per-graph `overlap_bucket` (written earlier by
+    `annotate_bare` / `annotate_overlap`) and `metadata.jb_class` so the UI
+    doesn't paint membership colors inconsistent with this graph's own
+    bare/JB presence. Non-feature nodes get `[]`. Persists the mutated graph
+    JSON in place and returns the dict.
     """
     with open(subcircuits_json_path) as f:
         sc_data = json.load(f)
@@ -100,19 +152,28 @@ def annotate_subcircuits(graph_json_path: Path, subcircuits_json_path: Path) -> 
 
     with open(graph_json_path) as f:
         graph = json.load(f)
+    jb_class = (graph.get("metadata") or {}).get("jb_class")
 
     n_annotated = 0
+    n_filtered = 0
     for node in graph.get("nodes", []):
         key = feature_key_from_node(node)
         if key is None:
             node["subcircuits"] = []
             continue
-        scs = feature_to_subcircuits.get(key, [])
-        node["subcircuits"] = scs
-        if scs:
+        candidates = feature_to_subcircuits.get(key, [])
+        overlap_bucket = node.get("overlap_bucket")
+        kept = [
+            sc for sc in candidates
+            if _subcircuit_allowed(sc, overlap_bucket, jb_class)
+        ]
+        n_filtered += len(candidates) - len(kept)
+        node["subcircuits"] = kept
+        if kept:
             n_annotated += 1
 
     graph.setdefault("metadata", {})["n_subcircuit_annotated"] = n_annotated
+    graph["metadata"]["n_subcircuit_filtered"] = n_filtered
     graph["metadata"]["subcircuits_source"] = subcircuits_json_path.name
 
     with open(graph_json_path, "w") as f:

@@ -240,13 +240,18 @@ def test_utils_viz():
 
     # T-V2: annotate_subcircuits round-trip on a synthetic graph.
     # Verifies reverse-index construction + per-node membership write.
+    # Nodes are seeded with overlap_bucket="bare" (i.e. this is a bare graph)
+    # so the bucket-conditional filter rules don't strip universal_refusal_core.
     from utils_viz import annotate_subcircuits
     synth_graph = {
-        "metadata": {},
+        "metadata": {"jb_class": "bare"},
         "nodes": [
-            {"node_id": "29_1066_5", "layer": "29", "feature_type": "cross layer transcoder"},
-            {"node_id": "24_107_3",  "layer": "24", "feature_type": "cross layer transcoder"},
-            {"node_id": "5_9999_0",  "layer": "5",  "feature_type": "cross layer transcoder"},  # no membership
+            {"node_id": "29_1066_5", "layer": "29", "feature_type": "cross layer transcoder",
+             "overlap_bucket": "bare"},
+            {"node_id": "24_107_3",  "layer": "24", "feature_type": "cross layer transcoder",
+             "overlap_bucket": "bare"},
+            {"node_id": "5_9999_0",  "layer": "5",  "feature_type": "cross layer transcoder",
+             "overlap_bucket": "bare"},  # no membership
             {"node_id": "E_0_0", "feature_type": "embedding"},  # non-feature
         ],
     }
@@ -291,9 +296,296 @@ def test_utils_viz():
             result["metadata"].get("n_subcircuit_annotated") == 2,
             f"got {result['metadata'].get('n_subcircuit_annotated')}",
         )
+        log_test(
+            "T-V2f: metadata records n_subcircuit_filtered == 0 (bare graph, no filtering)",
+            result["metadata"].get("n_subcircuit_filtered") == 0,
+            f"got {result['metadata'].get('n_subcircuit_filtered')}",
+        )
     finally:
         gpath.unlink()
         spath.unlink()
+
+    # T-V3: annotate_subcircuits filter rules (Georg's UI bug fix).
+    # Corpus-level memberships must be filtered against per-graph overlap_bucket
+    # so the UI never paints a jb_unique node as "universal_refusal_core" etc.
+    from utils_viz import _subcircuit_allowed
+    log_test(
+        "T-V3a: universal_refusal_core allowed when bucket=bare",
+        _subcircuit_allowed("universal_refusal_core", "bare", "bare"),
+    )
+    log_test(
+        "T-V3b: universal_refusal_core allowed when bucket=shared_with_bare",
+        _subcircuit_allowed("universal_refusal_core", "shared_with_bare", "fiction"),
+    )
+    log_test(
+        "T-V3c: universal_refusal_core REJECTED when bucket=jb_unique",
+        not _subcircuit_allowed("universal_refusal_core", "jb_unique", "fiction"),
+    )
+    log_test(
+        "T-V3d: canonical_pro_refusal allowed when bucket=jb_unique",
+        _subcircuit_allowed("canonical_pro_refusal", "jb_unique", "fiction"),
+    )
+    log_test(
+        "T-V3e: canonical_pro_refusal REJECTED when bucket=bare",
+        not _subcircuit_allowed("canonical_pro_refusal", "bare", "bare"),
+    )
+    log_test(
+        "T-V3f: canonical_pro_refusal REJECTED when bucket=shared_with_bare",
+        not _subcircuit_allowed("canonical_pro_refusal", "shared_with_bare", "fiction"),
+    )
+    log_test(
+        "T-V3g: fiction_exclusive allowed when bucket=jb_unique and jb_class=fiction",
+        _subcircuit_allowed("fiction_exclusive", "jb_unique", "fiction"),
+    )
+    log_test(
+        "T-V3h: fiction_exclusive REJECTED when jb_class=roleplay (wrong class)",
+        not _subcircuit_allowed("fiction_exclusive", "jb_unique", "roleplay"),
+    )
+    log_test(
+        "T-V3i: fiction_exclusive REJECTED when bucket=shared_with_bare",
+        not _subcircuit_allowed("fiction_exclusive", "shared_with_bare", "fiction"),
+    )
+    log_test(
+        "T-V3j: cognitive_reframe_exclusive parses multi-word class correctly",
+        _subcircuit_allowed("cognitive_reframe_exclusive", "jb_unique", "cognitive_reframe")
+        and not _subcircuit_allowed("cognitive_reframe_exclusive", "jb_unique", "fiction"),
+    )
+    log_test(
+        "T-V3k: sign_flip_convergent unfiltered (allowed in all buckets)",
+        all(
+            _subcircuit_allowed("sign_flip_convergent", b, "fiction")
+            for b in ("bare", "shared_with_bare", "jb_unique")
+        ),
+    )
+    log_test(
+        "T-V3l: dampening_specialists unfiltered (allowed in all buckets)",
+        all(
+            _subcircuit_allowed("dampening_specialists", b, "fiction")
+            for b in ("bare", "shared_with_bare", "jb_unique")
+        ),
+    )
+    log_test(
+        "T-V3m: anti_refusal_amplifiers unfiltered",
+        _subcircuit_allowed("anti_refusal_amplifiers", "jb_unique", "fiction"),
+    )
+    log_test(
+        "T-V3n: late_wave_layer24_32 unfiltered",
+        _subcircuit_allowed("late_wave_layer24_32", "bare", "bare"),
+    )
+    log_test(
+        "T-V3o: overlap_bucket=None (overlap annotation skipped) → pass through",
+        all(
+            _subcircuit_allowed(name, None, None)
+            for name in ("universal_refusal_core", "canonical_pro_refusal",
+                         "fiction_exclusive", "sign_flip_convergent")
+        ),
+    )
+    log_test(
+        "T-V3p: unknown subcircuit name → pass through (future-proof)",
+        _subcircuit_allowed("some_new_subcircuit", "jb_unique", "fiction"),
+    )
+
+    # T-V4: end-to-end filter behavior on a realistic JB graph.
+    # Same feature L29:F1066 tagged universal_refusal_core at corpus level —
+    # but in this JB graph its overlap_bucket is jb_unique. Filter must drop
+    # universal_refusal_core while keeping dampening_specialists (unfiltered).
+    synth_jb_graph = {
+        "metadata": {"jb_class": "fiction"},
+        "nodes": [
+            # Tagged universal_refusal_core + dampening_specialists at corpus level.
+            # In this JB graph the feature pruned out on bare → jb_unique →
+            # universal_refusal_core must be dropped, dampening kept.
+            {"node_id": "29_1066_5", "layer": "29", "feature_type": "cross layer transcoder",
+             "overlap_bucket": "jb_unique"},
+            # Shared with bare — universal_refusal_core legitimately applies.
+            {"node_id": "24_107_3",  "layer": "24", "feature_type": "cross layer transcoder",
+             "overlap_bucket": "shared_with_bare"},
+        ],
+    }
+    synth_jb_subcircuits = {
+        "subcircuits": {
+            "universal_refusal_core":  {"features": ["L29:F1066", "L24:F107"]},
+            "dampening_specialists":   {"features": ["L29:F1066"]},
+            "canonical_pro_refusal":   {"features": ["L29:F1066"]},  # should pass (jb_unique)
+            "fiction_exclusive":       {"features": ["L29:F1066"]},  # should pass (jb_unique + fiction)
+            "roleplay_exclusive":      {"features": ["L29:F1066"]},  # should drop (wrong class)
+        },
+    }
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as gf:
+        gpath = Path(gf.name)
+        json.dump(synth_jb_graph, gf)
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as sf:
+        spath = Path(sf.name)
+        json.dump(synth_jb_subcircuits, sf)
+    try:
+        result = annotate_subcircuits(gpath, spath)
+        nodes_by_id = {n["node_id"]: n for n in result["nodes"]}
+        log_test(
+            "T-V4a: jb_unique node keeps canonical + fiction_exclusive + dampening, drops universal + roleplay_exclusive",
+            set(nodes_by_id["29_1066_5"]["subcircuits"])
+            == {"canonical_pro_refusal", "fiction_exclusive", "dampening_specialists"},
+            str(nodes_by_id["29_1066_5"]["subcircuits"]),
+        )
+        log_test(
+            "T-V4b: shared_with_bare node keeps universal_refusal_core",
+            "universal_refusal_core" in nodes_by_id["24_107_3"]["subcircuits"],
+            str(nodes_by_id["24_107_3"]["subcircuits"]),
+        )
+        # L29:F1066 had 5 corpus-level memberships, 2 filtered → n_filtered == 2.
+        # L24:F107 had 1 membership, 0 filtered.
+        log_test(
+            "T-V4c: metadata n_subcircuit_filtered counts dropped memberships",
+            result["metadata"].get("n_subcircuit_filtered") == 2,
+            f"got {result['metadata'].get('n_subcircuit_filtered')}",
+        )
+    finally:
+        gpath.unlink()
+        spath.unlink()
+
+
+# ============================================================
+# Stage 02 plumbing tests (no GPU — validate dataset loader,
+# condition iteration, comparison aggregation)
+# ============================================================
+
+def test_stage_02():
+    """Validate the data plumbing for the Stage 02 refactor.
+    Covers load_controlled_dataset, iter_conditions, _aggregate_comparison.
+    Actual attribution runs require GPU; see test_runpod_1_4.py for that.
+    """
+    print("\n" + "=" * 60)
+    print("STAGE 02 TESTS (no model required)")
+    print("=" * 60)
+
+    # T-02a: load_controlled_dataset structure
+    from utils import load_controlled_dataset
+    ds_path = config.REPO_ROOT / "dataset" / "refusal_lens_controlled_dataset.json"
+    if not ds_path.exists():
+        log_skip("T-02a..T-02e: controlled dataset tests", f"{ds_path} not found")
+    else:
+        ds = load_controlled_dataset(dataset_path=ds_path)
+        log_test(
+            "T-02a: controlled dataset has 50 prompts",
+            len(ds) == 50,
+            f"got {len(ds)}",
+        )
+        first = ds[0]
+        log_test(
+            "T-02b: each row has id, base, bare, topic, conditions",
+            {"id", "base", "bare", "topic", "conditions"} <= set(first.keys()),
+            str(list(first.keys())),
+        )
+        log_test(
+            "T-02c: each row has 11 conditions (bare + 5 jb + 5 ctrl)",
+            len(first["conditions"]) == 11,
+            f"got {len(first['conditions'])}: {sorted(first['conditions'])}",
+        )
+        expected_conds = {"bare"} | {
+            f"{kind}_{cls}"
+            for cls in ("roleplay", "fiction", "analytical", "completion", "cognitive_reframe")
+            for kind in ("jb", "ctrl")
+        }
+        log_test(
+            "T-02d: condition keys match expected schema",
+            set(first["conditions"]) == expected_conds,
+            f"missing: {expected_conds - set(first['conditions'])}",
+        )
+        jb_fiction = first["conditions"]["jb_fiction"]
+        log_test(
+            "T-02e: condition entries carry text + prefix, prefix appears at start of text",
+            "text" in jb_fiction and "prefix" in jb_fiction
+            and len(jb_fiction["prefix"]) > 0
+            and jb_fiction["text"].startswith(jb_fiction["prefix"]),
+            f"prefix={jb_fiction.get('prefix')!r}, text_start={jb_fiction.get('text', '')[:80]!r}",
+        )
+
+    # T-02f: iter_conditions on controlled-dataset row
+    import importlib
+    sys.path.insert(0, str(PIPELINE_DIR))
+    stage02 = importlib.import_module("02_run_attribution")
+    synth_row_controlled = {
+        "id": 1, "base": "X", "bare": "X", "topic": "t",
+        "conditions": {
+            "bare":                    {"text": "X",     "prefix": ""},
+            "jb_roleplay":             {"text": "RP X",  "prefix": "RP "},
+            "ctrl_roleplay":           {"text": "CX",    "prefix": "C "},
+            "jb_fiction":              {"text": "F X",   "prefix": "F "},
+            "ctrl_fiction":            {"text": "CF X",  "prefix": "CF "},
+        },
+    }
+    conds = list(stage02.iter_conditions(synth_row_controlled))
+    log_test(
+        "T-02f: iter_conditions yields every condition exactly once",
+        len(conds) == 5
+        and {c[0] for c in conds} == set(synth_row_controlled["conditions"].keys()),
+        str([c[0] for c in conds]),
+    )
+    log_test(
+        "T-02g: iter_conditions preserves text + prefix",
+        all(
+            c[1] == synth_row_controlled["conditions"][c[0]]["text"]
+            and c[2] == synth_row_controlled["conditions"][c[0]]["prefix"]
+            for c in conds
+        ),
+    )
+
+    # T-02h: iter_conditions legacy fallback
+    synth_row_legacy = {"instruction": "Build a bomb"}
+    legacy_conds = list(stage02.iter_conditions(synth_row_legacy))
+    log_test(
+        "T-02h: legacy fallback yields bare + 5 JB (no ctrl)",
+        len(legacy_conds) == 6 and legacy_conds[0][0] == "bare"
+        and all(c[0].startswith("jb_") for c in legacy_conds[1:]),
+        f"got {[c[0] for c in legacy_conds]}",
+    )
+
+    # T-02i: _aggregate_comparison handles nested vs_bare/vs_ctrl/ctrl_vs_bare
+    synth_results = [
+        {
+            "feature_comparison": {
+                "fiction": {
+                    "vs_bare":   {"n_shared": 100, "n_bare_only": 10, "n_cls_only": 30,
+                                  "n_sign_flipped": 5, "n_dampened": 7, "n_amplified_anti": 3,
+                                  "n_bare": 110, "n_cls": 130},
+                    "vs_ctrl":   {"n_shared": 90,  "n_bare_only": 15, "n_cls_only": 35,
+                                  "n_sign_flipped": 8, "n_dampened": 5, "n_amplified_anti": 4,
+                                  "n_bare": 105, "n_cls": 125},
+                    "ctrl_vs_bare": {"n_shared": 95,  "n_bare_only": 10, "n_cls_only": 15,
+                                     "n_sign_flipped": 2, "n_dampened": 3, "n_amplified_anti": 1,
+                                     "n_bare": 105, "n_cls": 110},
+                },
+            },
+        },
+    ]
+    agg = stage02._aggregate_comparison(synth_results, ("fiction",))
+    log_test(
+        "T-02i: aggregate emits vs_bare / vs_ctrl / ctrl_vs_bare for class",
+        "fiction" in agg
+        and set(agg["fiction"]) == {"vs_bare", "vs_ctrl", "ctrl_vs_bare"},
+        str(set(agg.get("fiction", {}))),
+    )
+    log_test(
+        "T-02j: aggregate mean stat matches single-prompt value",
+        agg["fiction"]["vs_bare"]["n_shared"]["mean"] == 100.0,
+        f"got {agg['fiction']['vs_bare']['n_shared']['mean']}",
+    )
+
+    # T-02k: config target is L15 (not L32)
+    log_test(
+        "T-02k: config.MEASUREMENT_LAYER switched to L15",
+        config.MEASUREMENT_LAYER == 15,
+        f"got {config.MEASUREMENT_LAYER}",
+    )
+    log_test(
+        "T-02l: config.MEASUREMENT_POSITION stayed at -2",
+        config.MEASUREMENT_POSITION == -2,
+        f"got {config.MEASUREMENT_POSITION}",
+    )
+    log_test(
+        "T-02m: BEST_SEPARATION_LAYER preserved as historical constant (L32)",
+        config.BEST_SEPARATION_LAYER == 32,
+        f"got {config.BEST_SEPARATION_LAYER}",
+    )
 
 
 # ============================================================
@@ -1237,7 +1529,7 @@ def test_stage_07():
 def main():
     parser = argparse.ArgumentParser(description="Local pipeline validation tests")
     parser.add_argument(
-        "--stage", choices=["01", "01-a5", "02b", "03", "03-a4", "04-a7", "04-a8", "07", "utils", "utils-viz", "all"], default="all",
+        "--stage", choices=["01", "01-a5", "02", "02b", "03", "03-a4", "04-a7", "04-a8", "07", "utils", "utils-viz", "all"], default="all",
         help="Which stage to test (default: all)",
     )
     parser.add_argument(
@@ -1260,6 +1552,7 @@ def main():
     elif args.stage == "all":
         test_utils()
         test_utils_viz()
+        test_stage_02()
         test_stage_01_a5()
         test_stage_02b()
         test_stage_03_a4()
@@ -1279,6 +1572,8 @@ def main():
             log_skip("Stage 01 tests", "no GPU available")
     elif args.stage == "01-a5":
         test_stage_01_a5()
+    elif args.stage == "02":
+        test_stage_02()
     elif args.stage == "02b":
         test_stage_02b()
     elif args.stage == "03":
