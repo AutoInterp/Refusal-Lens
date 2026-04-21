@@ -1,0 +1,7 @@
+{
+  "content_only_l0_small": {"fvu": 6.10, "rel_l2": 2.80, "active": 23.7, "n_vectors": 230},
+  "content_only_l0_big": {"fvu": 4.06, "rel_l2": 2.31, "active": 110.9, "n_vectors": 230},
+  "pos2_only_l0_small": {"fvu": 155.81, "rel_l2": 3.18, "n_vectors": 20},
+  "pos2_only_l0_big": {"fvu": 135.96, "rel_l2": 2.97, "n_vectors": 20},
+  "note": "FVU>100% at pos=-2 means SAE error exceeds between-sample variance. SAE cannot resolve small differences between model tokens. Ablation results may be noise-dominated."
+}
