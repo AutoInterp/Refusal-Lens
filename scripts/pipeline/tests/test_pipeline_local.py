@@ -1435,18 +1435,21 @@ def test_stage_02b():
     else:
         log_skip("T-A5h/i: cosine heatmap", "cosine_matrix not populated (run --stage 01-a5 first)")
     
-    # A6: bare-vs-JB distribution plot                                                                                          
-    dist = run_dir / "02b_stats" / "distribution_by_class.png"
-    log_test(                                                                                                                   
-        "T-A6a: distribution_by_class.png exists",
-        dist.exists(),                                                                                                          
-        str(dist.relative_to(run_dir)) if dist.exists() else "missing",
-    )                                                                                                                           
-    if dist.exists():
-        log_test(                                                                                                               
-            "T-A6b: distribution_by_class.png non-trivial (>5KB)",                                                              
-            dist.stat().st_size > 5_000,
-            f"size={dist.stat().st_size} bytes",                                                                                
+    # A6: bare-vs-JB distribution plot (legacy name OR the new mode-suffixed names)
+    dist_legacy = run_dir / "02b_stats" / "distribution_by_class.png"
+    dist_multi = run_dir / "02b_stats" / "distribution_by_class_multi.png"
+    dist_single = run_dir / "02b_stats" / "distribution_by_class_single.png"
+    found = next((d for d in (dist_legacy, dist_multi, dist_single) if d.exists()), None)
+    log_test(
+        "T-A6a: distribution_by_class[_multi/_single].png exists",
+        found is not None,
+        str(found.relative_to(run_dir)) if found else "none of _multi / _single / legacy present",
+    )
+    if found is not None:
+        log_test(
+            "T-A6b: distribution_by_class plot non-trivial (>5KB)",
+            found.stat().st_size > 5_000,
+            f"size={found.stat().st_size} bytes",
         )
 
 def test_stage_03_a4():
@@ -1733,12 +1736,17 @@ def test_stage_04_a7():
     log_test("T-A7c: feature_class_sets.json exists", sets_path.exists())
     if sets_path.exists():                                                                                                      
         fs = json.loads(sets_path.read_text())
-        log_test(                                                                                                               
-            "T-A7d: 5 classes detected",
-            fs.get("n_classes") == 5,                                                                                           
+        # Legacy schema tags bucket entries with bare class names ("fiction") → 5.
+        # New 11-cond schema tags with full condition names ("jb_fiction"/"ctrl_fiction") → 10.
+        # Either is correct depending on which dataset the Stage 04 run consumed.
+        legacy_classes = 5
+        new_classes = 10
+        log_test(
+            "T-A7d: 5 (legacy) or 10 (new 11-cond) classes detected",
+            fs.get("n_classes") in (legacy_classes, new_classes),
             f"got {fs.get('n_classes')}",
-        )                                                                                                                       
-        log_test(                                                                                                               
+        )
+        log_test(
             "T-A7e: combined.total is a positive int",
             isinstance(fs.get("combined", {}).get("total"), int) and fs["combined"]["total"] > 0,                               
         )                                                                                                                       
@@ -1953,22 +1961,37 @@ def test_stage_07():
         sizes["universal_refusal_core"] > 50,                                                                                   
         f"got {sizes['universal_refusal_core']}",                                                                               
     )                                                                                                                           
-    log_test(                                                                                                                   
-        "T-07g: late_wave_layer24_32 is largest bucket",                                                                        
-        max(sizes.values()) == sizes["late_wave_layer24_32"],                                                                   
-        f"max={max(sizes, key=sizes.get)}",                                                                                     
-    )                                                                                                                           
-                                                                                                                                
-    # Sizes on reference run match probe predictions
-    log_test(
-        "T-07h: sizes match probe predictions within ±2",
-        abs(sizes["universal_refusal_core"] - 83) <= 2
-        and abs(sizes["canonical_pro_refusal"] - 56) <= 2
-        and abs(sizes["dampening_specialists"] - 52) <= 2
-        and abs(sizes["anti_refusal_amplifiers"] - 50) <= 2,
-        f"uni={sizes['universal_refusal_core']}, can={sizes['canonical_pro_refusal']}, "
-        f"damp={sizes['dampening_specialists']}, amp={sizes['anti_refusal_amplifiers']}",
-    )
+    # T-07g and T-07h are calibrated on the L32-measurement reference run
+    # (run_20260417_010035). On L15-measurement runs, late_wave_layer24_32 is
+    # EMPTY (attribution doesn't reach past L15), and absolute subcircuit sizes
+    # differ because the measurement target moved. Reference-run-specific.
+    is_legacy_reference = run_dir.name == "run_20260417_010035"
+    if is_legacy_reference:
+        log_test(
+            "T-07g: late_wave_layer24_32 is largest bucket (legacy L32 run)",
+            max(sizes.values()) == sizes["late_wave_layer24_32"],
+            f"max={max(sizes, key=sizes.get)}",
+        )
+        log_test(
+            "T-07h: sizes match probe predictions within ±2 (legacy L32 run)",
+            abs(sizes["universal_refusal_core"] - 83) <= 2
+            and abs(sizes["canonical_pro_refusal"] - 56) <= 2
+            and abs(sizes["dampening_specialists"] - 52) <= 2
+            and abs(sizes["anti_refusal_amplifiers"] - 50) <= 2,
+            f"uni={sizes['universal_refusal_core']}, can={sizes['canonical_pro_refusal']}, "
+            f"damp={sizes['dampening_specialists']}, amp={sizes['anti_refusal_amplifiers']}",
+        )
+    else:
+        log_test(
+            "T-07g: late_wave_layer24_32 empty on L15-measurement run",
+            sizes["late_wave_layer24_32"] == 0,
+            f"got {sizes['late_wave_layer24_32']} (expected 0 when target layer <= L23)",
+        )
+        log_test(
+            "T-07h: universal_refusal_core is non-empty on L15-measurement run",
+            sizes["universal_refusal_core"] > 0,
+            f"got {sizes['universal_refusal_core']}",
+        )
 
     # Ctrl-aware metadata field present; legacy-path invariants
     # (ctrl-available path covered by test_stage_07_synthetic_ctrl)
@@ -2160,6 +2183,130 @@ def test_stage_07_synthetic_ctrl():
             )
 
 
+def test_stage_06():
+    """T-S6: Stage 06 causal intervention — hook math, schema, CLI.
+
+    No GPU required. The model-loaded full run is exercised on RunPod, not here.
+    """
+    print("\n" + "=" * 60)
+    print("STAGE 06 TESTS (causal intervention, no GPU)")
+    print("=" * 60)
+
+    import importlib
+
+    # T-S6a: hook math — add direction pointwise, tuple-output case
+    try:
+        import torch
+    except ImportError:
+        log_skip("T-S6: torch not installed", "cannot test hook math")
+        return
+
+    from utils import make_intervention_hook
+
+    r = torch.tensor([1.0, -2.0, 3.0], dtype=torch.float32)
+    h = torch.zeros(1, 4, 3, dtype=torch.float32)  # batch=1, seq=4, d=3
+
+    add_hook = make_intervention_hook(r, "add")
+    sub_hook = make_intervention_hook(r, "sub")
+
+    # Mimic PyTorch's hook signature: (module, input, output)
+    out_add = add_hook(None, None, h.clone())
+    out_sub = sub_hook(None, None, h.clone())
+
+    log_test(
+        "T-S6a: add hook produces h + r at every position",
+        torch.allclose(out_add, r.expand(1, 4, 3)),
+        f"got {out_add}",
+    )
+    log_test(
+        "T-S6b: sub hook produces h - r at every position",
+        torch.allclose(out_sub, -r.expand(1, 4, 3)),
+        f"got {out_sub}",
+    )
+
+    # T-S6c: tuple-output case (Gemma decoder layers return tuples)
+    h_tup = torch.zeros(1, 4, 3, dtype=torch.float32)
+    tup_out = add_hook(None, None, (h_tup, "extra"))
+    log_test(
+        "T-S6c: tuple-wrapped output keeps the trailing element",
+        isinstance(tup_out, tuple) and tup_out[1] == "extra"
+        and torch.allclose(tup_out[0], r.expand(1, 4, 3)),
+    )
+
+    # T-S6d: bad sign raises
+    try:
+        make_intervention_hook(r, "multiply")
+        raised = False
+    except ValueError:
+        raised = True
+    log_test("T-S6d: make_intervention_hook rejects unknown sign", raised)
+
+    # T-S6e: aggregate_summary shape from a synthetic results list
+    stage06 = importlib.import_module("06_causal_intervention")
+    synth_results = [
+        {
+            "prompt_id": 1,
+            "baseline": {
+                "bare":        {"cls": "REFUSE", "coherent": True, "response": "no"},
+                "jb_fiction":  {"cls": "COMPLY", "coherent": True, "response": "yes"},
+                "jb_roleplay": {"cls": "COMPLY", "coherent": True, "response": "yes"},
+                "jb_analytical":    {"cls": "REFUSE", "coherent": True, "response": "no"},
+                "jb_completion":    {"cls": "REFUSE", "coherent": True, "response": "no"},
+                "jb_cognitive_reframe": {"cls": "REFUSE", "coherent": True, "response": "no"},
+            },
+            "interventions": {
+                "L15_pro_refusal_add": {
+                    "jb_fiction":  {"cls": "REFUSE", "coherent": True,
+                                    "response": "I can't", "flipped_toward_refuse": True},
+                    "jb_roleplay": {"cls": "COMPLY", "coherent": True,
+                                    "response": "sure", "flipped_toward_refuse": False},
+                },
+                "L15_anti_refusal_sub": {
+                    "bare": {"cls": "COMPLY", "coherent": True,
+                             "response": "sure", "flipped_toward_comply": True},
+                },
+            },
+        }
+    ]
+    summary = stage06.aggregate_summary(synth_results, layer=15, skip_anti=False)
+    log_test(
+        "T-S6e: aggregate_summary has both pro_refusal_add and anti_refusal_sub blocks",
+        "L15_pro_refusal_add" in summary and "L15_anti_refusal_sub" in summary,
+    )
+    pro = summary["L15_pro_refusal_add"]
+    log_test(
+        "T-S6f: pro_refusal counts jb_fiction flip correctly (1 of 2 comply-baseline)",
+        pro["n_jb_comply_baseline"] == 2
+        and pro["n_flipped_to_refuse"] == 1
+        and abs(pro["flip_rate"] - 0.5) < 1e-9,
+        f"got {pro['n_flipped_to_refuse']}/{pro['n_jb_comply_baseline']} rate={pro['flip_rate']}",
+    )
+    anti = summary["L15_anti_refusal_sub"]
+    log_test(
+        "T-S6g: anti_refusal counts bare flip correctly (1/1)",
+        anti["n_bare_refuse_baseline"] == 1
+        and anti["n_flipped_to_comply"] == 1
+        and abs(anti["flip_rate"] - 1.0) < 1e-9,
+    )
+
+    # T-S6h: skip_anti path omits the anti block
+    summary_pro_only = stage06.aggregate_summary(synth_results, layer=15, skip_anti=True)
+    log_test(
+        "T-S6h: skip_anti=True omits L15_anti_refusal_sub from summary",
+        "L15_anti_refusal_sub" not in summary_pro_only
+        and "L15_pro_refusal_add" in summary_pro_only,
+    )
+
+    # T-S6i: per-class rate math
+    pro_per = pro["per_class"]
+    log_test(
+        "T-S6i: per-class rate for fiction=1.0, roleplay=0.0, others=0.0 (no comply baseline)",
+        pro_per["fiction"]["rate"] == 1.0
+        and pro_per["roleplay"]["rate"] == 0.0
+        and pro_per["analytical"]["rate"] == 0.0,
+    )
+
+
 # ============================================================
 # Main
 # ============================================================
@@ -2167,7 +2314,7 @@ def test_stage_07_synthetic_ctrl():
 def main():
     parser = argparse.ArgumentParser(description="Local pipeline validation tests")
     parser.add_argument(
-        "--stage", choices=["01", "01-a5", "02", "02b", "03", "03-a4", "04-a7", "04-a8", "04-schema", "07", "07-ctrl", "utils", "utils-viz", "all"], default="all",
+        "--stage", choices=["01", "01-a5", "02", "02b", "03", "03-a4", "04-a7", "04-a8", "04-schema", "06", "07", "07-ctrl", "utils", "utils-viz", "all"], default="all",
         help="Which stage to test (default: all)",
     )
     parser.add_argument(
@@ -2199,6 +2346,7 @@ def main():
         test_stage_04_schema()
         test_stage_07()
         test_stage_07_synthetic_ctrl()
+        test_stage_06()
         if check_gpu():
             test_stage_01()
             test_stage_03()
@@ -2234,6 +2382,8 @@ def main():
         test_stage_07_synthetic_ctrl()
     elif args.stage == "07-ctrl":
         test_stage_07_synthetic_ctrl()
+    elif args.stage == "06":
+        test_stage_06()
     elif args.stage == "utils-viz":
         test_utils_viz()
 

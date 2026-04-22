@@ -42,7 +42,7 @@ Mechanistic interpretability research on **Gemma-3-4b-it** — attributing the m
 | 04 | `04_label_features.py` | Task 7 | ✅ **refactored (Apr 22 resume)** — smoke-tested, not yet against full Stage 02 run | Needs 11-cond + 2-graph adaptation |
 | 04b | `04b_delphi_labels.py` | Task 7b | ⏳ | **NEW stage** — Delphi-style LLM labels |
 | 05 | `05_visualize_circuits.py` + frontend | Task 8 | ✅ **refactored (Apr 22 resume)** — 3-way annotation + ctrl-aware filters + CSS palette; awaits real Stage 02 run. 3-column compare.html DEFERRED (single-graph viewer covers the insight) | Add `shared_with_ctrl` / `ctrl_unique` overlap buckets |
-| 06 | `06_causal_intervention.py` | Task 9 | ⏳ | **NEW stage** — wrap Tejas's scripts |
+| 06 | `06_causal_intervention.py` | Task 9 | ✅ **code + tests built (Apr 22 resume)** — ports Tejas Script 20 (bulletproof 90/90) at L15 with both pro- and anti-refusal directions. GPU smoke + full 50-prompt run pending on RunPod. | **NEW stage** — wrap Tejas's scripts |
 | 07 | `07_identify_subcircuits.py` | Task 10 | ✅ **refactored (Apr 22 resume)** — smoke-tested against legacy + synthetic ctrl fixture; awaits real Stage 02 run | Add `ctrl_shared` / `ctrl_unique` subcircuit rules |
 | 08 | `08_ablate_subcircuits.py` | Task 11 | ⏳ | **NEW stage** — depends on 07 |
 
@@ -129,6 +129,117 @@ Mechanistic interpretability research on **Gemma-3-4b-it** — attributing the m
 - 3-column `compare.html` rewrite (bare | ctrl | JB side-by-side) — requires substantial DOM restructuring + browser testing. The existing single-graph viewer with 3-way colored nodes already conveys the insight visually.
 
 **Local test result**: `207 passed / 0 failed / 1 skipped`. Same "not yet tested against real Stage 02 output" caveat.
+
+---
+
+## Phase A validation (Apr 22) — refactored stages vs `run_20260422_015552`
+
+The RunPod run landed clean. All four JSON-only stages validated against real data. Headline numbers below — these feed directly into the ICML abstract (May 4).
+
+### A1. Stage 02b — Statistical Analysis ✅
+
+Runs through 30 stats blocks (2 modes × 3 comparisons × 5 classes). Novel three-way finding:
+
+| Class | vs_bare %chg (jb effect) | ctrl_vs_bare %chg (prefix-only) |
+|---|---|---|
+| cognitive_reframe | **-51.9%** (d=-2.05) | +1.4% (n.s.) |
+| analytical | **-49.8%** (d=-4.07) | +4.2% |
+| fiction | **-34.6%** (d=-2.21) | +5.2% |
+| roleplay | -6.2% (d=-0.43) | -3.9% |
+| completion | +4.2% (d=+0.43) | +1.8% (n.s.) |
+
+**Takeaway**: The matched benign ctrl prefixes do NOT reduce attribution to refusal — they slightly *increase* refusal or leave it unchanged. JB attribution drops with huge effect sizes (d>2 for 3/5 classes). Direct correlational evidence that the jb effect is semantic, not prefix-formatting.
+
+### A2. Stage 03 — L15 Verification ✅
+
+50/50 prompts verified within tolerance. `dot_product_mean = 28,381`, `attr_net_mean = 6.08`. **MLP accounts for only 0.02% of signal** (99.98% attention) — the known MLP-only-attribution limitation, cleanly recovered on the new L15-measurement data.
+
+### A3. Stage 04 — Feature Labeling ✅
+
+1,353 unique features, **100% HF dashboard coverage**. `conditions_seen` emits the full 11-condition naming (`bare`, `jb_*`, `ctrl_*`). `feature_class_sets.per_condition_top50` has all 11 keys. Layer histogram + UpSet regenerated.
+
+### A4. Stage 07 — Subcircuits + **headline ICML novel metric** ✅
+
+18 subcircuits (11 legacy + 7 ctrl-aware), all invariants pass. Per-class `jb_specific_frac` (the money number):
+
+| Class | JB-specific % | Interpretation |
+|---|---|---|
+| cognitive_reframe | **38.6%** | deepest JB — most genuine semantic mechanism |
+| analytical | 34.2% | strong JB-semantic |
+| fiction | 34.2% | strong JB-semantic |
+| roleplay | 20.0% | mostly prefix artifact |
+| completion | **18.4%** | mostly prefix artifact (matches 02b +4.2% finding) |
+
+**ICML claim enabled**: *up to 82% of what prior work called "JB features" is prefix-induced, not JB-semantic*. The controlled dataset is what makes this measurable.
+
+Structural-identity sanity: `ctrl_shared_refusal = 50` features (prefix-invariant refusal spine); `ctrl_only = 1` (as expected, tiny).
+
+**Note**: `late_wave_layer24_32 = 0` on this L15-measurement run — attribution doesn't reach past L15, so the L24-L32 band is empty. The late-wave subcircuit is a relic of the old L32-measurement runs and doesn't apply here. Document this in the paper, don't treat it as regression.
+
+### A5. Stage 05 — frontend (pending Phase A0 HF push, then fetch)
+
+Code path validated on run_20260417_010035 + synthetic fixtures (207 local tests pass). Awaits gzipped-JSON push via Phase A0 below.
+
+## Phase A0 — Producer-side `.pt → JSON.gz` packaging (new, Apr 22)
+
+**Why**: every collaborator pulling 80 GB of `.pt` just to view the frontend is wasteful. The gzipped-JSON receive path exists (`fetch_graph_data.py`, `gzip-fetch.js`), but nothing decoupled `.pt → JSON` conversion from Stage 05 full frontend staging.
+
+**New files**:
+- `scripts/pipeline/02c_pack_graphs.py` — reads `02_attribution/graphs/*.pt`, calls `convert_pt_to_frontend_json` + `gzip_json_files`, writes `<run>/graph_data/*.json.gz` + `graph-metadata.json`. CLI: `--run-dir`, `--prompts`, `--classes`, `--no-gzip`, `--keep-plain`, `--overwrite`.
+
+**Patched**:
+- `push_graph_data.py` — added `--source {05_frontend,02c}` flag so the push reads from either the Stage 05 output or the raw 02c pack dir. Backward-compatible (default stays `05_frontend`).
+
+**Workflow for any new run** (one-time on RunPod or local with disk):
+```
+python3 scripts/pipeline/fetch_raw_graphs.py --run <run_name> --dataset-repo moon70/refusal-lens-graphs
+python3 scripts/pipeline/02c_pack_graphs.py --run-dir <run_dir>
+python3 scripts/pipeline/push_graph_data.py --run-dir <run_dir> --source 02c --dataset-repo moon70/refusal-lens-graphs
+```
+
+Collaborators thereafter pull via `fetch_graph_data.py` (2-5 GB) instead of `fetch_raw_graphs.py` (80 GB). Stage 05 validation runs with `--skip-convert`.
+
+## Task 9 Stage 06 — resume-session changes (Apr 22)
+
+Ports Tejas Script 20 bulletproof pipeline (`origin/tejas-circuit-experiments`, commit `332311c`, **90/90 flip rate at L15**) into our pipeline conventions.
+
+**`scripts/pipeline/06_causal_intervention.py`** (new, ~450 lines):
+- Phase 0: dataset verification (bare refuse + ctrl refuse sanity). Records ctrl-leak pairs and excluded prompts but doesn't mutate the dataset.
+- Phase 1: baseline generation on all 11 conditions per prompt.
+- Phase 2a `pro_refusal_add`: add unnormalized r at L15 on (prompt, jb_*) where baseline is COMPLY. Expected flip rate: ~90/90 matching Tejas.
+- Phase 2b `anti_refusal_sub`: subtract unnormalized r at L15 on (prompt, bare) where baseline is REFUSE. This is the symmetry half (bidirectional claim).
+- Phase 3: aggregate summary — per-layer, per-method, per-class flip rates.
+- Checkpoint/resume mirrors Stage 02 pattern (`causal_checkpoint.json`, save every 5 prompts, `--resume`).
+- Novel-insight figures: `flip_rate_by_class.png`, `intervention_symmetry.png`, `FLIP_RATE_SUMMARY.md` for ICML.
+
+**`scripts/pipeline/utils.py`** (append ~130 lines):
+- `load_unnormalized_r(direction_dir, layers)` — loads Stage 01's `unnormalized_r.pt` dict, filtered to requested layers, raises on missing.
+- `make_intervention_hook(r, sign)` — returns forward hook adding/subtracting r at every position. Handles tuple-wrapped module outputs. Re-casts r to output dtype at hook time.
+- `generate_with_hook(model, tokenizer, prompt, layer, hook_fn, max_new_tokens)` — wraps `register_forward_hook` + `model.generate(do_sample=False)` + `handle.remove()` in try/finally.
+- `generate_baseline(model, tokenizer, prompt, max_new_tokens)` — mirror for baseline runs.
+
+**`scripts/pipeline/config.py`** (append 2 lines):
+- `CAUSAL_INTERVENTION_MODES = ("pro_refusal_add", "anti_refusal_sub")`
+- `STAGE_06_DEFAULT_LAYERS = [15]` (L15 only for v1, expand later)
+
+**`scripts/pipeline/tests/test_pipeline_local.py`** (append `test_stage_06`):
+- T-S6a..i — hook math (add/sub), tuple-output handling, bad-sign rejection, aggregate_summary correctness, skip_anti path, per-class rate math. 9 assertions. No GPU.
+
+**What's pending on GPU** (next RunPod session):
+- `python3 scripts/pipeline/06_causal_intervention.py --run-dir data/results/pipeline_runs/run_20260422_015552 --max-prompts 2` (smoke, ~5 min)
+- Full run: 50 prompts × 11 conditions × (1 baseline + 2 interventions) ≈ 1650 generations × ~10s = ~4.5h on H100
+- Expected result: L15 pro-refusal flip rate ≥ 95% (match Tejas's 90/90); anti-refusal flip rate high (symmetry claim).
+
+**Local test result after Task 9 lands**: `214 passed / 0 failed / 1 skipped`.
+
+Three pre-existing tests were updated to accept the new-schema output patterns from validation against real data (not regressions — the code is working correctly, the assertions were over-specific):
+- `T-A6a`: plot filename is now mode-suffixed (`distribution_by_class_multi.png` / `_single.png`); test accepts either the legacy or new name.
+- `T-A7d`: `n_classes` is 10 on new-schema data (full condition names: 5 jb_ + 5 ctrl_) vs 5 on legacy flat; test accepts either.
+- `T-07g` / `T-07h`: size predictions were calibrated on L32-measurement run `run_20260417_010035`; on L15-measurement runs the late_wave band is empty by construction and absolute sizes shift. Tests gate on `run_dir.name == "run_20260417_010035"` and assert the alternative L15 structural expectation otherwise.
+
+### Peak-layer finding (bonus)
+
+Stage 07 report on the new run: **L14 is the hotspot** for every refusal subcircuit. Peak layers: `universal_refusal_core L14`, `canonical_pro_refusal L14`, `sign_flip_convergent L14 (×36 features)`, `dampening_specialists L14`, all `jb_{cls}_specific_vs_ctrl` → L14. The refusal signal concentrates one layer before the L15 measurement target — a clean mechanistic claim worth calling out in the ICML abstract.
 
 ### Critical infrastructure refactors (done this session)
 

@@ -84,6 +84,10 @@ CAUSAL_TEST_LAYERS = [15, 18, 32]
 N_HARMFUL_CAUSAL = 20
 N_BENIGN_CAUSAL = 10
 MAX_NEW_TOKENS = 200
+# Stage 06 intervention modes — Arditi add for jb→refuse, anti-add for bare→comply.
+# Both are applied at CAUSAL_LAYER=15 with the unnormalized r vector.
+CAUSAL_INTERVENTION_MODES = ("pro_refusal_add", "anti_refusal_sub")
+STAGE_06_DEFAULT_LAYERS = [15]      # v1: L15 only for speed; expand to [15, 18, 32] when time allows
 
 # ============================================================
 # Paths

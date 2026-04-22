@@ -189,3 +189,118 @@ def load_controlled_dataset(
           f"{len(out[0]['conditions']) if out else 0} conditions = "
           f"{len(out) * (len(out[0]['conditions']) if out else 0)} total runs")
     return out
+
+
+# ====================================================================
+# Stage 06 causal-intervention helpers (Task 9, ported from Tejas Script 20)
+# ====================================================================
+
+def load_unnormalized_r(direction_dir: Path, layers):
+    """Load unnormalized per-layer refusal directions written by Stage 01.
+
+    `unnormalized_r.pt` is a dict `{layer_idx: tensor}`. For causal intervention
+    via Arditi addition the magnitude is load-bearing — do NOT normalize.
+    """
+    import torch
+
+    path = Path(direction_dir) / "unnormalized_r.pt"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} does not exist. Causal intervention needs Stage 01's "
+            f"unnormalized_r.pt. Run Stage 01 first."
+        )
+    all_dirs = torch.load(path, map_location="cpu", weights_only=False)
+    out: dict = {}
+    for layer in layers:
+        if layer not in all_dirs:
+            raise KeyError(
+                f"Layer {layer} missing from unnormalized_r.pt "
+                f"(have {sorted(all_dirs.keys())}). Re-run Stage 01 with "
+                f"--layers including {layer}."
+            )
+        out[layer] = all_dirs[layer].to(torch.float32)
+    return out
+
+
+def make_intervention_hook(r, sign: str = "add"):
+    """Return a PyTorch forward_hook that adds (or subtracts) `r` at every position.
+
+    Matches Tejas Script 20's Arditi intervention: `h[:, :, :] ± r_bf16`.
+    The hook handles both tensor and tuple-wrapped module outputs (Gemma
+    decoder layers return a tuple). The `r` tensor is cast to the hook-time
+    output dtype so we don't force fp32 math inside a bf16 model.
+
+    Args:
+        r: 1-D direction vector (unnormalized) on the target device.
+        sign: "add" → pro-refusal push; "sub" → anti-refusal push.
+
+    Returns a hook_fn suitable for `module.register_forward_hook(hook_fn)`.
+    """
+    if sign not in ("add", "sub"):
+        raise ValueError(f"sign must be 'add' or 'sub', got {sign!r}")
+
+    def hook_fn(module, input, output):
+        h = output[0] if isinstance(output, tuple) else output
+        # Cast to match h's dtype (typically bfloat16) at intervention time
+        r_cast = r.to(dtype=h.dtype, device=h.device)
+        if sign == "add":
+            h[:, :, :] = h[:, :, :] + r_cast
+        else:
+            h[:, :, :] = h[:, :, :] - r_cast
+        return (h,) + output[1:] if isinstance(output, tuple) else h
+    return hook_fn
+
+
+def generate_with_hook(model, tokenizer, prompt: str, layer: int,
+                       hook_fn, max_new_tokens: int | None = None) -> str:
+    """Generate from `prompt` with `hook_fn` registered on layer `layer`.
+
+    Wraps `register_forward_hook` + `model.generate(do_sample=False)` +
+    `handle.remove()` in try/finally so a generation error can't leak a
+    live hook into the next prompt. Skips the echo of the input in the
+    decoded output (generation start == input_ids.shape[1]).
+    """
+    import torch
+
+    if max_new_tokens is None:
+        max_new_tokens = config.MAX_NEW_TOKENS
+    formatted = format_prompt(tokenizer, prompt)
+    input_ids = tokenizer(formatted, return_tensors="pt")["input_ids"].to(model.device)
+
+    # Path into the decoder layer list on Gemma-3 (post-LM-head wrapper).
+    # This matches Tejas Script 20: `model.model.language_model.layers[LAYER]`.
+    target = model.model.language_model.layers[layer]
+    handle = target.register_forward_hook(hook_fn)
+    try:
+        with torch.no_grad():
+            out = model.generate(
+                input_ids=input_ids,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+                pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
+            )
+        resp = tokenizer.decode(out[0, input_ids.shape[1]:], skip_special_tokens=True)
+    finally:
+        handle.remove()
+    return resp
+
+
+def generate_baseline(model, tokenizer, prompt: str,
+                      max_new_tokens: int | None = None) -> str:
+    """Generate without any intervention. Mirror of generate_with_hook but
+    hook-free, kept separate so callers can't accidentally forget to disable
+    a prior hook."""
+    import torch
+
+    if max_new_tokens is None:
+        max_new_tokens = config.MAX_NEW_TOKENS
+    formatted = format_prompt(tokenizer, prompt)
+    input_ids = tokenizer(formatted, return_tensors="pt")["input_ids"].to(model.device)
+    with torch.no_grad():
+        out = model.generate(
+            input_ids=input_ids,
+            max_new_tokens=max_new_tokens,
+            do_sample=False,
+            pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
+        )
+    return tokenizer.decode(out[0, input_ids.shape[1]:], skip_special_tokens=True)
