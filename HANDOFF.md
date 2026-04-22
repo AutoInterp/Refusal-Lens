@@ -1,6 +1,15 @@
 # Refusal-Lens — Pipeline State & Remaining Tasks
 
-**Handoff doc, 2026-04-21.** Written for a fresh Claude session to resume pipeline work while a full attribution run executes on RunPod.
+**Handoff doc, last updated 2026-04-22** (end of session after Phase A validation + Stage 06 implementation). Written for a fresh Claude session to pick up where we left off. The current phase of work is: attribution pipeline code is complete and validated; causal intervention code is complete but not yet run on GPU.
+
+**TL;DR for a fresh session**:
+- All refactored pipeline stages (01 / 02 / 02b / 03 / 04 / 05-code / 07) landed + validated against the real RunPod run `run_20260422_015552` on the `l15-refactor` branch.
+- Stage 06 (Task 9) causal intervention code is written and has 9 local tests passing; smoke + full run on RunPod H100 pending.
+- Phase A0 packaging scripts are written (`02c_pack_graphs.py` + `push_graph_data.py --source 02c`); the actual `.pt → JSON.gz` producer run + HF push is pending (~80 GB pull + ~3 GB push, one-time).
+- Local test suite: **214 passed / 0 failed / 1 skipped**.
+- ICML headline numbers are in hand (see "Phase A validation findings" below).
+
+Skip straight to the **"Immediate next steps for new session"** section at the bottom if you want the punch list.
 
 ---
 
@@ -14,37 +23,40 @@ Mechanistic interpretability research on **Gemma-3-4b-it** — attributing the m
 
 ### Team
 - **Mahmoud** (user): correlational attribution, Stages 01–05 + 07, frontend
-- **Tejas**: causal intervention work on `tejas-circuit-experiments` branch. Scripts at `data/tejas_experiments/scripts/` — especially `16_causal_arditi.py`, `17_causal_georg_arditi.py`, and cleaned-dataset experiments (95/95 causal flip proven at L15).
+- **Tejas**: causal intervention work on `tejas-circuit-experiments` branch. The *current* source-of-truth script is **`20_bulletproof_pipeline.py`** on the remote branch (commit `332311c`), which landed 50/50 bare refuse + 250/250 ctrl refuse + **90/90 JB-flipped** at L15. Scripts 16/17 are older and superseded. **Port from `git show origin/tejas-circuit-experiments:...`, not from the stale local `data/tejas_experiments/scripts/` copies** — see the audit note in the Stage 06 block.
 - **Georg**: mentor
-- **Ruqiya**: Neuronpedia feature-label extraction (Stage 04b input)
+- **Ruqiya**: Neuronpedia feature-label extraction (Stage 04b input, still pending)
 
 ### Deadlines
-- **Apr 23 12 PM PST** — Algoverse symposium (5-min talk). Slides use OLD run `run_20260417_010035` data (L32 single-position); the new L15 multi-position run won't be ready in time.
-- **May 4** — ICML workshop abstract. Target for the new-data results.
+- **Apr 23 12 PM PST** — Algoverse symposium (5-min talk). Slides use OLD run `run_20260417_010035` data (L32 single-position).
+- **May 4** — ICML workshop abstract. Target for the NEW-data results. Headline numbers (all ready): Stage 07 `jb_specific_frac` per class, Stage 02b ctrl-aware effect-size table, Stage 06 L15 flip rates (pending GPU), L14 peak-layer finding.
 
 ---
 
 ## Current pipeline state
 
-### Stages that are REFACTORED and tested locally
+### Stage-by-stage status (Apr 22, post-validation)
 
-| # | Stage | Status | Notes |
-|---|---|---|---|
-| 01 | `01_compute_direction.py` | ✅ | Per-layer (34 layers at pos=-2) + per-position at L15 (positions -1..-15). Matches Tejas's direction at cos=0.9991. |
-| 02 | `02_run_attribution.py` | ✅ | L15 target, 11 conditions, two-graph scheme (**multi** = positions [-5,-3,-2] template anchors, **single** = [-2] causally-verified). Per-position directions, multi-target attribute() call. |
-| 02b | `02b_statistical_analysis.py` | ✅ | 2 modes × 3 comparisons (`vs_bare`, `vs_ctrl`, `ctrl_vs_bare`) × 5 classes. Schema-aware + legacy-fallback. 7 tests pass. |
-| 03 | `03_verify_attribution.py` | ✅ | L15 per-position direction loading, multi-target dot product verification. A4 tests still pass. |
-
-### Stages that NEED REFACTORING (pending work)
-
-| # | Stage | Task | Status | Dependency |
+| # | Stage | Code status | Validated against `run_20260422_015552`? | Notes |
 |---|---|---|---|---|
-| 04 | `04_label_features.py` | Task 7 | ✅ **refactored (Apr 22 resume)** — smoke-tested, not yet against full Stage 02 run | Needs 11-cond + 2-graph adaptation |
-| 04b | `04b_delphi_labels.py` | Task 7b | ⏳ | **NEW stage** — Delphi-style LLM labels |
-| 05 | `05_visualize_circuits.py` + frontend | Task 8 | ✅ **refactored (Apr 22 resume)** — 3-way annotation + ctrl-aware filters + CSS palette; awaits real Stage 02 run. 3-column compare.html DEFERRED (single-graph viewer covers the insight) | Add `shared_with_ctrl` / `ctrl_unique` overlap buckets |
-| 06 | `06_causal_intervention.py` | Task 9 | ✅ **code + tests built (Apr 22 resume)** — ports Tejas Script 20 (bulletproof 90/90) at L15 with both pro- and anti-refusal directions. GPU smoke + full 50-prompt run pending on RunPod. | **NEW stage** — wrap Tejas's scripts |
-| 07 | `07_identify_subcircuits.py` | Task 10 | ✅ **refactored (Apr 22 resume)** — smoke-tested against legacy + synthetic ctrl fixture; awaits real Stage 02 run | Add `ctrl_shared` / `ctrl_unique` subcircuit rules |
-| 08 | `08_ablate_subcircuits.py` | Task 11 | ⏳ | **NEW stage** — depends on 07 |
+| 01 | `01_compute_direction.py` | ✅ | ✅ direction artifacts regenerated | Per-layer (34 layers @ pos=-2) + per-position at L15 (-1..-15). `unnormalized_r.pt` drives Stage 06. |
+| 02 | `02_run_attribution.py` | ✅ | ✅ 50×11×2 graphs produced on RunPod, 0 errors | L15 target, two-graph scheme (multi `[-5,-3,-2]` + single `[-2]`). |
+| 02b | `02b_statistical_analysis.py` | ✅ | ✅ **30 stats blocks**, novel ctrl_vs_bare effect sizes captured | See Phase A1 table below. |
+| 03 | `03_verify_attribution.py` | ✅ | ✅ 50/50 within tolerance | MLP contributes 0.02% of signal (known limitation). |
+| 04 | `04_label_features.py` | ✅ | ✅ 1353 features, 100% HF coverage | `per_condition_top50` has all 11 keys. |
+| 04b | `04b_delphi_labels.py` | ⏳ not started | — | LLM labels via Claude API (~$2, CPU). |
+| 05 | `05_visualize_circuits.py` + patches | ✅ | ⏳ awaits Phase A0 JSON push | 3-way bucket logic, ctrl-aware filters, CSS palette in place. |
+| 06 | `06_causal_intervention.py` | ✅ code + 9 tests | ⏳ awaits RunPod GPU | Ports Tejas Script 20. |
+| 07 | `07_identify_subcircuits.py` | ✅ | ✅ 18 subcircuits, `jb_vs_ctrl_contrast` novel metric computed | See Phase A4 table below. |
+| 08 | `08_ablate_subcircuits.py` | ⏳ not started | — | Depends on Stage 06 + 07. |
+
+### Phase A0 — producer-side packaging (new this session)
+
+| # | Script | Status | Notes |
+|---|---|---|---|
+| 02c | `02c_pack_graphs.py` | ✅ code | Converts `.pt → JSON.gz`, writes `<run>/graph_data/`. |
+| — | `push_graph_data.py --source 02c` | ✅ patch | Uploads the 02c pack dir to HF (`runs/<name>/graph_data/`). |
+| — | The actual `.pt` pull + pack + push for `run_20260422_015552` | ⏳ pending | One-time: ~80 GB fetch + ~3 GB push. Run on a machine with disk+bandwidth. |
 
 ### Task 7 Stage 04 — resume-session changes (Apr 22)
 
@@ -250,9 +262,9 @@ Stage 07 report on the new run: **L14 is the hotspot** for every refusal subcirc
 - **Docker**: `Dockerfile` (git-clone path) + `Dockerfile.local` (COPY path for restricted networks). Proxy build-args. Non-root `--user` support with `USER=runtime` baked to prevent `getpwuid()` failures.
 - **HF upload helper** (`scripts/pipeline/push_run.py`): uploads an entire run dir (directions + graphs + JSONs) to HF in one call.
 
-### What's running RIGHT NOW
+### What's running RIGHT NOW (Apr 22, end of session)
 
-Mahmoud is on RunPod (2× RTX 5090 Blackwell, 1 TB volume, torch 2.11 + CUDA 13) running the full 50-prompt × 11-condition × 2-graph attribution with `--max-features 0` (unlimited features) per Georg's explicit ask. Expected wall-clock ~20-40 min on Blackwell. After completion: HF push (~30-90 min for ~530 GB) + git commit of JSON summaries.
+**Nothing active.** The RunPod attribution run is DONE (`run_20260422_015552`) and its JSON summaries are committed locally. The attribution `.pt` files are on HF at `moon70/refusal-lens-graphs/runs/run_20260422_015552/`. No active compute jobs.
 
 ---
 
@@ -387,14 +399,14 @@ CONTROLLED_DATASET_PATH = REPO_ROOT / "dataset" / "refusal_lens_controlled_datas
 Local tests (no GPU required):
 ```bash
 PYTHONPATH=src python3 scripts/pipeline/tests/test_pipeline_local.py --stage <stage>
-# Options: 01, 01-a5, 02, 02b, 03, 03-a4, 04-a7, 04-a8, 07, utils, utils-viz, all
+# Options: 01, 01-a5, 02, 02b, 03, 03-a4, 04-a7, 04-a8, 04-schema, 06, 07, 07-ctrl, utils, utils-viz, all
 ```
 Conda python with numpy/torch/etc:
 ```bash
 PYTHONPATH=src /opt/anaconda3/bin/python3 scripts/pipeline/tests/test_pipeline_local.py --stage all
 ```
 
-Current test count: **170 passing / 0 failing / 1 skipped** as of Apr 22 resume session. The previously noted `test_stage_04_a8` MockArgs bug is fixed; `test_stage_01` MockArgs was also missing `update_metadata`/per-position fields (fixed). Skip is a pre-existing `T-A3c` snapshot reset, unrelated.
+Current test count: **214 passing / 0 failing / 1 skipped** (end of Apr 22 session). The skip is a pre-existing `T-A3c` snapshot reset, unrelated. Several `MockArgs` bugs in pre-existing tests (`test_stage_04_a8`, `test_stage_01`) were fixed earlier this session.
 
 ### Code style
 - Every Python file starts with `from __future__ import annotations`
@@ -421,183 +433,27 @@ No mocks. Real tests. `pytest.importorskip("torch")` for GPU gating.
 
 ## Remaining tasks — detailed implementation plans
 
-### Task 7 — Stage 04 + 04b feature labeling **(in progress, top priority)**
+*(Tasks 7 / 8 / 9 / 10 are DONE — see the per-task "resume-session changes" blocks earlier in this file for what landed. Only 04b and 08 still need implementation.)*
 
-**Goal**: adapt HuggingFace Gemma Scope labeling (Stage 04) to the new 11-cond × 2-graph schema. Build a new Stage 04b for Delphi-style LLM labels that emits a persistent hashmap (`feature_id → {explanation, detection_score}`).
+### Task 7b — Stage 04b Delphi/LLM feature labels (pending)
 
-**Files**:
-- `scripts/pipeline/04_label_features.py` — refactor
-- `scripts/pipeline/04b_delphi_labels.py` — **new** (currently doesn't exist)
+**Goal**: build a new Stage 04b for LLM-generated feature labels, emitting a persistent hashmap (`feature_id → {llm_label, detection_score}`).
 
-**Stage 04 changes needed**:
-1. Read from new schema `conditions[cond].graphs.{multi,single}.top50_features` + `feature_comparison[cls].{vs_bare,vs_ctrl,ctrl_vs_bare}`.
-2. Build the union of unique features from:
-   - All 11 conditions' `top50_features` (multi graph — the canonical source)
-   - All `vs_bare` / `vs_ctrl` / `ctrl_vs_bare` comparison buckets (`sign_flipped`, `dampened`, `amplified_anti`) per class
-3. Output `feature_labels.json` + `feature_class_sets.json` with a **`conditions_seen`** field that now includes the `bare / jb_{cls} / ctrl_{cls}` names (not just the legacy `bare / fiction / ...`).
-4. Fix the pre-existing `test_stage_04_a8` MockArgs bug (add `upset_only = False`).
+**File**: `scripts/pipeline/04b_delphi_labels.py` — **new** (currently doesn't exist)
 
-**Stage 04b (new) spec** (from `scripts/pipeline/PIPELINE_PLAN.md` notes):
-- For each unique feature, assemble `(top_logits, bottom_logits, activation_examples, top-5 incoming + outgoing edges)` from the HF dashboard binary (already decoded in Stage 04)
-- Claude API call (Haiku 4.5) for each → 5–10 word `llm_label`
-- Estimated cost: ~$2 total for ~876 features × 1 shot call, no caching needed
-- Output: `feature_labels_llm.json` — same schema as Stage 04's feature_labels + adds `llm_label` field
-- Merge with Ruqiya's Delphi hashmap if present (format TBD — ask user)
-- `utils_viz.py` should consume `llm_label` into each graph's `clerp` field at staging time so the frontend shows human-readable names
+**Spec** (from `scripts/pipeline/PIPELINE_PLAN.md` notes):
+- For each unique feature in `04_labels/feature_labels.json`, assemble `(top_logits, bottom_logits, activation_examples, top-5 incoming + outgoing edges)` from the HF dashboard binary (already decoded in Stage 04).
+- Claude API call (Haiku 4.5) for each → 5–10 word `llm_label`.
+- Estimated cost: ~$2 total for ~1350 features × 1-shot call, no caching needed.
+- Output: `feature_labels_llm.json` — same schema as `feature_labels.json` + adds `llm_label` field.
+- Merge with Ruqiya's Delphi hashmap if present (format TBD — ask user).
+- `utils_viz.py` should consume `llm_label` into each graph's `clerp` field at staging time so the frontend shows human-readable names.
 
-**Dependencies**: waits on full Stage 02 run (to have the feature universe)
+**Dependencies**: Stage 04 outputs (done on `run_20260422_015552`).
 
 **Tests to add**:
-- T-S4a: `feature_class_sets.json` has `conditions_seen` keys covering `bare`, `jb_fiction`, `ctrl_fiction`, etc. (not legacy `fiction`)
-- T-S4b: counts match (n_unique_features from features collected ≈ len(feature_labels))
-- T-S4c: Delphi schema sanity — every feature has `llm_label` populated
-
----
-
-### Task 10 — Stage 07 subcircuits on new data + ctrl buckets
-
-**Goal**: run rule-based subcircuit identification on the new 11-cond data, adding ctrl-aware rules.
-
-**File**: `scripts/pipeline/07_identify_subcircuits.py`
-
-**Existing subcircuits** (from `07_identify_subcircuits.py` header):
-- `universal_refusal_core` — features in bare + all 5 JB
-- `canonical_pro_refusal` — features in all 5 JB, not in bare
-- `sign_flip_convergent` — sign_flipped in ≥3 JB classes
-- `dampening_specialists` — dampened in ≥3 JB classes
-- `anti_refusal_amplifiers` — amplified_anti in ≥3 JB classes
-- `late_wave_layer24_32` — all features in L24–L32
-- `{class}_exclusive` (×5) — features in exactly one JB class
-
-**New subcircuits to add** (ctrl-aware):
-- `ctrl_shared_refusal` — features present in bare AND all 5 ctrl (but NOT all 5 JB). "Features the refusal circuit uses regardless of prefix."
-- `ctrl_only` — features in all 5 ctrl but not in bare or any JB. (Probably tiny — if non-empty, indicates that token-matched control prefixes recruit distinct features.)
-- `jb_specific_vs_ctrl` — for each class, features in `jb_{cls}`'s top-50 but NOT in `ctrl_{cls}`'s top-50. This is the **cleanest** JB-semantic subcircuit and should be surfaced prominently.
-
-**Schema update**: `feature_class_sets.json` output from Stage 04 needs to provide per-class sets for `jb_{cls}` AND `ctrl_{cls}` top-50s separately (not just JB vs bare). Task 7 must emit this structure for Task 10 to consume.
-
-**Expected outputs** (preserve backward compat):
-- `subcircuits.json` — same shape, with new subcircuit names added
-- `subcircuits_summary.json` — pairwise overlap matrix
-- `subcircuits_treemap.png`, `subcircuits_by_layer.png`, `subcircuits_overlap.png`
-- `SUBCIRCUITS_REPORT.md`
-
-**Key finding to reproduce**: the two 85% structural identities
-- `canonical_pro_refusal ∩ sign_flip_convergent = 48/56 (86%)` — "JB-recruited refusal = sign-flipped refusal"
-- `universal_refusal_core ∩ dampening_specialists = 44/52 (85%)` — "dampening attacks the canonical core"
-- `canonical ∩ dampening = 2/52 (4%)` — disjoint mechanisms
-
-**Dependencies**: waits on Task 7 (Stage 04 output)
-
-**Tests**: T-S7a through T-S7e already exist, focused on rule correctness. Add new T-S7f..T-S7j for the new ctrl-aware rules.
-
----
-
-### Task 8 — Stage 05 3-way frontend overlap
-
-**Goal**: extend the circuit viewer to show bare / ctrl / JB distinctions, not just bare / JB.
-
-**Files**:
-- `scripts/pipeline/utils_viz.py` — extend `annotate_overlap()` to 3-way
-- `scripts/pipeline/05_visualize_circuits.py` — pass ctrl condition references
-- `scripts/pipeline/05_frontend_patches/overlap-colors.css` — new palette entries
-- `scripts/pipeline/05_frontend_patches/overlap-annotate.js` — new bucket handling
-- `scripts/pipeline/05_frontend_patches/compare.html` — 3-column layout (bare | ctrl | JB) instead of bare | JB
-
-**Current overlap buckets** (from `utils_viz.py:OVERLAP_BUCKETS`):
-```python
-("shared_with_bare", "jb_unique", "bare_only", "bare", "non_feature")
-```
-
-**New buckets** to add:
-```python
-("shared_with_ctrl", "ctrl_unique", "ctrl", "shared_with_bare_and_ctrl")
-```
-
-**Rule logic** (for a JB graph being annotated against both bare and ctrl graphs):
-- Feature in bare AND ctrl AND jb → `shared_with_bare_and_ctrl` (green, strongest stability)
-- Feature in bare AND jb, not in ctrl → `shared_with_bare` (existing)
-- Feature in ctrl AND jb, not in bare → `shared_with_ctrl` (new — interesting signal!)
-- Feature in jb only → `jb_unique`
-
-For a ctrl graph being annotated:
-- Feature in bare AND ctrl → `shared_with_bare`
-- Feature in ctrl only → `ctrl_unique`
-
-**Subcircuit filter bug fix (already done, from Georg TODO 1)**: the `annotate_subcircuits()` function already filters corpus memberships against per-graph `overlap_bucket`. Need to extend the filter rules for new subcircuits from Task 10:
-- `ctrl_shared_refusal` → only if `overlap_bucket in {bare, ctrl, shared_with_bare, shared_with_ctrl, shared_with_bare_and_ctrl}`
-- `jb_specific_vs_ctrl` → only if `overlap_bucket == jb_unique`
-- `ctrl_only` → only if `overlap_bucket == ctrl_unique`
-
-**Dependencies**: needs Task 10's subcircuit names finalized; Task 8 itself doesn't depend on the full GPU run (only frontend JS/CSS + annotation function)
-
-**Tests**: extend `T-V3*` and `T-V4*` to cover the new bucket rules.
-
----
-
-### Task 9 — Stage 06 causal intervention (Tejas integration)
-
-**Goal**: wrap Tejas's causal intervention scripts into a proper pipeline stage that reproduces his 95/95 JB flip + 10/10 benign force-refusal on the cleaned dataset.
-
-**Source material** (on branch `tejas-circuit-experiments`):
-- `data/tejas_experiments/scripts/16_causal_arditi.py` — Arditi method (add unnormalized r at all positions every forward step) → 32/32 flipped
-- `data/tejas_experiments/scripts/17_causal_georg_arditi.py` — Georg's exact-magnitude variant → 8/32
-- `data/tejas_experiments/scripts/18_cleaned_dataset.py` (or similar) — the 95/95 result on the controlled dataset
-- `data/tejas_experiments/scripts/19_disentangle_2x2.py` — 2×2 disentangle showing "every-step" is the critical factor
-
-**New file**: `scripts/pipeline/06_causal_intervention.py`
-
-**Must follow pipeline conventions**:
-- `config.py` constants (MODEL_NAME, MEASUREMENT_LAYER, etc.)
-- `get_stage_dir(run_dir, "06_causal")` for output
-- `utils.load_controlled_dataset` for dataset
-- Resume-able checkpoint (same pattern as Stage 02)
-
-**Core logic** (Arditi method, from Tejas's Script 16):
-1. For each prompt × condition (bare, jb_{cls}, ctrl_{cls}):
-   - Generate baseline (no intervention). Classify refused/complied (use `utils.classify_response`)
-2. For each (prompt, jb_{cls}) where baseline is complied AND ctrl_{cls} refused:
-   - Run intervention: add `r_L15 @ pos=-2` unnormalized direction at every forward step
-   - Regenerate. Classify.
-   - Record as `jb_flipped` if originally complied now refuses
-3. For each (prompt, bare) where baseline refused:
-   - Run anti-intervention: subtract r_L15 to force non-refusal (force-comply)
-   - Record as `bare_comply` if originally refused now complies
-4. Also run the control: generate under ctrl_{cls} baseline (should refuse in 96% of cases, matches Tejas).
-
-**Output schema** (`06_causal/causal_results.json`):
-```json
-{
-  "metadata": {...},
-  "results": [
-    {
-      "prompt_idx": 0,
-      "baseline": {
-        "bare":                {"refused": true, "coherent": true, "response": "I can't..."},
-        "jb_fiction":          {"refused": false, "coherent": true, "response": "..."},
-        "ctrl_fiction":        {"refused": true, ...}
-      },
-      "intervention": {
-        "jb_fiction":          {"flipped": true, "response_after": "..."},
-        ...
-      }
-    }
-  ],
-  "summary": {
-    "total_jb_complied": 95,
-    "total_jb_flipped": 95,
-    "flip_rate": 1.0,
-    "per_class": {"fiction": {...}, "roleplay": {...}, ...}
-  }
-}
-```
-
-**Dependencies**: needs Stage 01 outputs (per-layer unnormalized directions for L15); independent of Stage 02.
-
-**Tests**:
-- T-S6a: output schema sanity
-- T-S6b: small smoke test: 2 prompts × 2 classes × bare + ctrl + jb → baseline generation works, intervention flips a known example
-- Can't test on CPU; mark GPU-required
+- T-S4b-a: every feature in `feature_labels_llm.json` has non-empty `llm_label`.
+- T-S4b-b: schema sanity — identical key set to `feature_labels.json`.
 
 ---
 
@@ -649,16 +505,66 @@ For a ctrl graph being annotated:
 
 ---
 
-## Suggested order for a parallel session
+## Immediate next steps for new session (priority order)
 
-While the RunPod run executes (~25 min compute + 30-90 min HF upload), work through these in order. Tasks with no GPU dependency can land before the run finishes.
+### 1. Stage 06 GPU smoke test (RunPod, ~5 min)
 
-1. **Task 7 Stage 04 refactor** (no GPU) — can ship against the smoke JSON at `data/results/pipeline_runs/attribution_results_test.json`. The full 50-prompt run will just scale it up.
-2. **Task 7 Stage 04b new** (GPU optional — Haiku API calls) — parallel to Stage 04 refactor; the Claude-API labeling step is CPU-bound.
-3. **Task 10 Stage 07 refactor** (no GPU) — needs Task 7's output schema to be finalized. Can be started against smoke data once Task 7 lands.
-4. **Task 8 Stage 05 frontend** (no GPU) — pure JS/CSS/Python annotation changes. Can ship independently.
-5. **Task 9 Stage 06 causal** (needs GPU for smoke; code design can start now) — review Tejas's scripts first, produce a design doc, then implement + test smoke on RunPod.
-6. **Task 11 Stage 08 ablation** (needs GPU) — last because it depends on 10's definitions + 9's baseline.
+First confirm the hook wiring works on real hardware:
+```bash
+# On RunPod H100:
+PYTHONPATH=src python3 scripts/pipeline/06_causal_intervention.py \
+    --run-dir data/results/pipeline_runs/run_20260422_015552 \
+    --max-prompts 2
+```
+Expect: at least one `jb_*` condition flips to REFUSE, tiny `causal_results.json` written to `06_causal/`, <5 min wall clock. If it crashes with a dtype / device mismatch, inspect `utils.make_intervention_hook` — the hook recasts `r` to the output dtype at call time, but model-parallel device placement can still bite.
+
+### 2. Stage 06 full production run (RunPod, ~4.5 h overnight)
+
+After smoke passes:
+```bash
+PYTHONPATH=src python3 scripts/pipeline/06_causal_intervention.py \
+    --run-dir data/results/pipeline_runs/run_20260422_015552
+```
+Outputs at `06_causal/`: `causal_results.json`, `causal_summary.json`, `flip_rate_by_class.png`, `intervention_symmetry.png`, `FLIP_RATE_SUMMARY.md`.
+
+**Expected headline** (ICML claim): L15 pro_refusal_add flip rate ≈ 95–100% matching Tejas's 90/90 bulletproof; anti_refusal_sub flip rate high (symmetry = "L15 r is THE refusal axis"). Record these two numbers immediately.
+
+### 3. Phase A0 packaging run (one-time, any machine with ~100 GB free)
+
+Converts `.pt → JSON.gz` and uploads to HF so downstream viewers pull a ~3 GB bundle instead of 80 GB raw:
+```bash
+python3 scripts/pipeline/fetch_raw_graphs.py \
+    --run run_20260422_015552 --dataset-repo moon70/refusal-lens-graphs
+python3 scripts/pipeline/02c_pack_graphs.py \
+    --run-dir data/results/pipeline_runs/run_20260422_015552
+python3 scripts/pipeline/push_graph_data.py \
+    --run-dir data/results/pipeline_runs/run_20260422_015552 \
+    --source 02c --dataset-repo moon70/refusal-lens-graphs
+```
+After this, local `.pt` files can be deleted — HF has them.
+
+### 4. Stage 05 validation (after A0)
+
+```bash
+python3 scripts/pipeline/fetch_graph_data.py \
+    --run run_20260422_015552 --dataset-repo moon70/refusal-lens-graphs
+python3 scripts/pipeline/05_visualize_circuits.py \
+    --run-dir data/results/pipeline_runs/run_20260422_015552 \
+    --subcircuits-run data/results/pipeline_runs/run_20260422_015552 \
+    --mode single --skip-convert --gzip
+cd data/results/pipeline_runs/run_20260422_015552/05_frontend && python3 -m http.server 8000
+```
+Spot-check: `shared_with_ctrl` gold nodes distinct from `jb_unique` orange nodes on a `jb_fiction` graph.
+
+### 5. Then (low priority, ICML-adjacent)
+
+- **Task 7b Stage 04b** — LLM labels via Claude API (~$2, CPU). Makes frontend features human-readable.
+- **Task 11 Stage 08** — Subcircuit ablation. Depends on Stage 06 baseline + Stage 07 subcircuits (both now done). Design: ablate `canonical_pro_refusal` / `jb_{cls}_specific_vs_ctrl` / `dampening_specialists` and measure flip-rate delta vs Stage 06 baseline.
+- **ICML abstract writing** (May 4 deadline) — numbers are in hand: see "Phase A validation findings" section for the three headline tables.
+
+### Gotcha for step 1 — file placement on the run dir
+
+The attribution_results JSONs for `run_20260422_015552` were originally at the run-dir root (as the RunPod save path wrote them); this session moved them into `02_attribution/` (canonical location). If the user creates a NEW run from RunPod, check the layout before running Stage 02b — it expects `<run>/02_attribution/attribution_results.json`, not `<run>/attribution_results.json`.
 
 ---
 
@@ -674,12 +580,18 @@ While the RunPod run executes (~25 min compute + 30-90 min HF upload), work thro
 | Direction computation reference | `scripts/pipeline/README.md` |
 | Design decisions | `scripts/pipeline/PIPELINE_PLAN.md` |
 | Subcircuit findings (latest) | `data/results/pipeline_runs/run_20260417_010035/07_subcircuits/SUBCIRCUITS_REPORT.md` |
-| Tejas's README | `git show origin/tejas-circuit-experiments:data/tejas_experiments/README.md` |
-| Tejas's causal scripts | `git show origin/tejas-circuit-experiments:data/tejas_experiments/scripts/16_causal_arditi.py` |
-| HF push helper | `scripts/pipeline/push_run.py` |
-| Parallel launcher | `scripts/pipeline/run_stage02_parallel.sh` + `merge_stage02_shards.py` |
+| Tejas's README (latest) | `git show origin/tejas-circuit-experiments:data/tejas_experiments/README.md` |
+| **Tejas's bulletproof causal script** (source of truth for Stage 06) | `git show origin/tejas-circuit-experiments:data/tejas_experiments/scripts/20_bulletproof_pipeline.py` |
+| Latest RunPod run (this session) | `data/results/pipeline_runs/run_20260422_015552/` |
+| Subcircuit findings (real data) | `data/results/pipeline_runs/run_20260422_015552/07_subcircuits/SUBCIRCUITS_REPORT.md` |
+| Legacy L32 reference run (for size-calibration tests) | `data/results/pipeline_runs/run_20260417_010035/` |
+| HF push helper (entire run, .pt + JSON) | `scripts/pipeline/push_run.py` |
+| HF push helper (JSON.gz bundle for frontend) | `scripts/pipeline/push_graph_data.py` |
+| `.pt → JSON.gz` packer | `scripts/pipeline/02c_pack_graphs.py` |
+| Parallel GPU launcher (Stage 02) | `scripts/pipeline/run_stage02_parallel.sh` + `merge_stage02_shards.py` |
 | Dockerfiles | `/Dockerfile` (git-clone), `/Dockerfile.local` (COPY-based) |
 | Smoke test JSON (schema reference) | `data/results/pipeline_runs/attribution_results_test.json` |
+| Session plan file (if needed for provenance) | `/home/m00n/.claude/plans/enchanted-wibbling-thompson.md` |
 
 ---
 
@@ -697,9 +609,11 @@ While the RunPod run executes (~25 min compute + 30-90 min HF upload), work thro
 
 6. **Don't git-commit raw graphs**: `.gitignore` excludes `data/results/pipeline_runs/**/02_attribution/graphs/`. But DO commit everything else in a run dir (01_direction, 02_attribution/*.json, config.json).
 
-7. **Pre-existing test bug** (`test_stage_04_a8`): MockArgs doesn't set `upset_only`. Unrelated to any current refactor. Task 7 is a natural place to fix it since it's in Stage 04.
+7. **Tejas's branch has drift**: `tejas-circuit-experiments` is based off an older point in history. Don't try to merge it into `l15-refactor` directly — `git show origin/tejas-circuit-experiments:<path>` to read individual scripts. The local `data/tejas_experiments/scripts/` copies are STALE (pre-Script-20). Remote `20_bulletproof_pipeline.py` is the current source of truth for causal work.
 
-8. **Tejas's branch has drift**: `tejas-circuit-experiments` is based off an older point in history. Don't try to merge it into `l15-refactor` directly — cherry-pick the scripts you need for Task 9 instead.
+8. **Stage 02 RunPod output placement**: when the RunPod shard launcher writes attribution JSONs, they can end up at run-dir root instead of under `02_attribution/`. Stage 02b expects `<run>/02_attribution/attribution_results.json`. If you see `ERROR: ... attribution_results.json not found`, move the files into the subdirectory (we had to do this once for `run_20260422_015552`).
+
+9. **L15 measurement → `late_wave_layer24_32` is empty**: the "late wave" subcircuit rule was calibrated on L32-measurement data. On L15-measurement runs, attribution doesn't propagate past the measurement layer, so the L24-L32 band holds zero features. This is correct, not a bug. `test_stage_07`'s T-07g/h are gated on `run_dir.name == "run_20260417_010035"` (the legacy reference) to avoid false failures.
 
 ---
 
@@ -709,15 +623,15 @@ While the RunPod run executes (~25 min compute + 30-90 min HF upload), work thro
 # Local
 PYTHONPATH=src /opt/anaconda3/bin/python3 scripts/pipeline/tests/test_pipeline_local.py --stage all
 
-# Expected: 86 pass, 1 skip (upsetplot not installed), 1 fail (test_stage_04_a8 pre-existing)
+# Expected (Apr 22): 214 passed, 0 failed, 1 skipped (T-A3c snapshot reset — unrelated)
 ```
 
-If any of those change without the task being intentional, something regressed.
+If the counts drift below 214 / 0 / 1 without the change being intentional, something regressed.
 
 ---
 
 ## Final note
 
-The full RunPod attribution run will finish in ~30 min (batch=512 on Blackwell). HF push takes another ~30-90 min depending on upload speed. By the time all Tasks 7-11 code lands, the new-dataset `.pt` graphs will be on HF ready to be consumed end-to-end.
+Correlational pipeline (Stages 01 / 02 / 02b / 03 / 04 / 07) is complete and validated on real data. Stage 05 frontend code is complete and awaits the Phase A0 packaging run. Stage 06 causal intervention code is complete and awaits a GPU run on RunPod. ICML headline numbers are in hand.
 
 Tests first, feature second. If a stage's local tests don't pass against the smoke JSON, it won't pass against the full run either.
