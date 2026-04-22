@@ -1,0 +1,27 @@
+{
+  "encoding_verification": {
+    "method_A_correct": "x @ W_enc + b_enc (no b_dec subtraction)",
+    "sae_lens_confirms": "apply_b_dec_to_input = False for GemmaScope Gemma 3",
+    "normalize_activations": "none (identity)",
+    "reshape_fn_in": "identity (resid_post, not hook_z)"
+  },
+  "double_bos_bug": {
+    "found": true,
+    "impact": "cosine 0.999983 — negligible",
+    "fix": "add_special_tokens=False"
+  },
+  "l0_analysis": {
+    "content_l0_mean": 107.5,
+    "content_l0_target": 120,
+    "model_token_l0_mean": 35.7,
+    "model_token_pairwise_cosine": 0.999903
+  },
+  "fvu_results": {
+    "content_only": {"fvu_pct": 3.5, "n_vectors": 110, "mse": 496824, "var": 14180786},
+    "model_token_same_group": {"fvu_pct": 134.2, "mse": 604595, "var": 450473},
+    "model_token_harmful_plus_harmless": {"fvu_pct": 34.0, "var": 2097612},
+    "note": "Model tokens nearly identical (cosine 0.9999), SAE error exceeds within-group variance. Between-group (harmful vs harmless) variance is larger, giving FVU=34%."
+  },
+  "w_dec_norms": {"mean": 1.0, "min": 1.0, "max": 1.0},
+  "conclusion": "No encoding bug. FVU numbers are extreme but explainable by model token uniformity and low prompt diversity."
+}
