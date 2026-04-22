@@ -37,14 +37,98 @@ Mechanistic interpretability research on **Gemma-3-4b-it** — attributing the m
 
 ### Stages that NEED REFACTORING (pending work)
 
-| # | Stage | Task | Dependency |
-|---|---|---|---|
-| 04 | `04_label_features.py` | Task 7 | Needs 11-cond + 2-graph adaptation |
-| 04b | `04b_delphi_labels.py` | Task 7 | **NEW stage** — Delphi-style LLM labels |
-| 05 | `05_visualize_circuits.py` + frontend | Task 8 | Add `shared_with_ctrl` / `ctrl_unique` overlap buckets |
-| 06 | `06_causal_intervention.py` | Task 9 | **NEW stage** — wrap Tejas's scripts |
-| 07 | `07_identify_subcircuits.py` | Task 10 | Add `ctrl_shared` / `ctrl_unique` subcircuit rules |
-| 08 | `08_ablate_subcircuits.py` | Task 11 | **NEW stage** — depends on 07 |
+| # | Stage | Task | Status | Dependency |
+|---|---|---|---|---|
+| 04 | `04_label_features.py` | Task 7 | ✅ **refactored (Apr 22 resume)** — smoke-tested, not yet against full Stage 02 run | Needs 11-cond + 2-graph adaptation |
+| 04b | `04b_delphi_labels.py` | Task 7b | ⏳ | **NEW stage** — Delphi-style LLM labels |
+| 05 | `05_visualize_circuits.py` + frontend | Task 8 | ✅ **refactored (Apr 22 resume)** — 3-way annotation + ctrl-aware filters + CSS palette; awaits real Stage 02 run. 3-column compare.html DEFERRED (single-graph viewer covers the insight) | Add `shared_with_ctrl` / `ctrl_unique` overlap buckets |
+| 06 | `06_causal_intervention.py` | Task 9 | ⏳ | **NEW stage** — wrap Tejas's scripts |
+| 07 | `07_identify_subcircuits.py` | Task 10 | ✅ **refactored (Apr 22 resume)** — smoke-tested against legacy + synthetic ctrl fixture; awaits real Stage 02 run | Add `ctrl_shared` / `ctrl_unique` subcircuit rules |
+| 08 | `08_ablate_subcircuits.py` | Task 11 | ⏳ | **NEW stage** — depends on 07 |
+
+### Task 7 Stage 04 — resume-session changes (Apr 22)
+
+**`scripts/pipeline/04_label_features.py`**:
+- `_top50_for_condition(cond)` — reads `cond.graphs.multi.top50_features` (canonical) with `single` + legacy-flat fallback.
+- `_comparison_sub_buckets(cls, cls_comp)` — descends into `vs_bare` / `vs_ctrl` / `ctrl_vs_bare` sub-buckets, tagging each with `jb_{cls}` or `ctrl_{cls}`. Legacy fallback preserved.
+- `collect_all_features` rewritten: emits both `conditions_seen` (union across sources, full names `bare` / `jb_*` / `ctrl_*`) AND `top50_conditions` (top-50 multi-graph memberships only).
+- `collect_comparison_features` rewritten: descends into 3 sub-buckets; `classes` field on each entry uses full condition names.
+- New `build_per_condition_sets(all_features)` — emits `{bare, jb_*, ctrl_* → sorted feature keys}`. Consumed by Stage 07 Task 10 rules.
+- `main()` now writes `top50_conditions` into each `feature_labels.json` entry and merges `per_condition_top50` into `feature_class_sets.json` (under new top-level key `per_condition_top50`). `--upset-only` path regenerates per-condition sets when the attribution JSON is present.
+
+**`scripts/pipeline/tests/test_pipeline_local.py`**:
+- New `test_stage_04_schema` — 10 assertions (T-S4a…j) against the smoke JSON. Runs without a live pipeline-run directory.
+- Fixed pre-existing MockArgs bugs: `test_stage_04_a8` (missing `upset_only`) and `test_stage_01` (missing `update_metadata` + per-position fields).
+- New `--stage 04-schema` CLI flag; added to `--stage all` sequence.
+
+**Local test result**: `170 passed / 0 failed / 1 skipped` (skip = pre-existing snapshot reset, unrelated). **Not yet verified against real Stage 02 output** — the RunPod 50-prompt attribution run is still writing graphs; once `attribution_results.json` lands, re-run Stage 04 end-to-end on that to confirm HF dashboard fetch + outputs.
+
+**Downstream consumers of the new schema** (needed by follow-on tasks):
+- `feature_labels.json[key].top50_conditions`  →  Stage 07 Task 10 per-condition subcircuit rules
+- `feature_class_sets.json["per_condition_top50"]`  →  Stage 07 Task 10 `jb_specific_vs_ctrl` rule
+- `feature_labels.json[key].conditions_seen`  →  Stage 05 Task 8 frontend `shared_with_ctrl` bucketing
+
+### Task 10 Stage 07 — resume-session changes (Apr 22)
+
+**`scripts/pipeline/07_identify_subcircuits.py`**:
+- Schema-tolerant helpers: `_jb_classes_seen`, `_classify_bucket_classes` (legacy flat + new `jb_*`/`ctrl_*` both accepted).
+- Existing rules rewritten via helpers — **no regression** on legacy data (sizes 83/56/179/52/50/689 reproduced exactly on `run_20260417_010035`).
+- New ctrl-aware rules (require `feature_class_sets.per_condition_top50`):
+  - `ctrl_shared_refusal` — prefix-invariant refusal spine: `bare ∩ all 5 ctrl_*_top50 − all 5 jb_*_top50`.
+  - `ctrl_only` — benign-prefix-exclusive features: `all 5 ctrl_*_top50 − bare − any jb_*_top50`.
+  - `jb_{cls}_specific_vs_ctrl` ×5 — true per-class JB-semantic machinery: `jb_{cls}_top50 − ctrl_{cls}_top50`.
+- `has_ctrl_data(class_sets)` — gate that checks for per_condition_top50 block; legacy JSONs skip ctrl-aware rules cleanly.
+- `metadata.ctrl_available` flag persisted to `subcircuits.json`.
+- **Novel headline metric (`compute_jb_vs_ctrl_contrast`)**: per-class recruitment contrast — `jb_top50`, `ctrl_top50`, `intersection` (prefix-driven), `jb_specific` (true JB-semantic), `ctrl_specific`, `jb_specific_frac`, `overlap_frac`. Answers *"what fraction of each JB's machinery is genuinely JB-semantic vs. a prefix-inflation artifact?"* — old L32 data couldn't compute this.
+- Novel figures added (generated only when ctrl data available):
+  - `jb_vs_ctrl_contrast.png` — per-class stacked bar, jb_specific above / shared mirrored / ctrl_specific below, with `jb_specific %` annotation per class.
+  - `jb_specific_by_layer.png` — layer distribution of JB-semantic features stacked by class; reveals whether the L24–L32 band holds up after controlling for prefix.
+- Extended `SUBCIRCUITS_REPORT.md` with "JB-vs-Ctrl recruitment contrast" section and updated Stage 08 ablation-target list (adds `jb_{cls}_specific_vs_ctrl` dissociation test, `ctrl_shared_refusal` negative control).
+
+**`scripts/pipeline/tests/test_pipeline_local.py`**:
+- `test_stage_07` updated: expects 18 subcircuits (11 legacy + 7 ctrl-aware), new T-07i/j/k for metadata flag + legacy-path empty-ctrl invariants.
+- New `test_stage_07_synthetic_ctrl` — builds a deterministic 6-feature × 11-condition fixture in a tempdir, runs Stage 07 against it, verifies each ctrl-aware rule produces the correct set AND contrast arithmetic is consistent. Exercises the ctrl-available branch without a real run.
+- New `--stage 07-ctrl` CLI flag.
+
+**Local test result**: `184 passed / 0 failed / 1 skipped`. **Still not tested against real Stage 02 output** — pending RunPod run completion.
+
+### Task 8 Stage 05 — resume-session changes (Apr 22)
+
+**`scripts/pipeline/utils_viz.py`**:
+- `OVERLAP_BUCKETS` extended to 9 values: `shared_with_bare_and_ctrl`, `shared_with_bare`, `shared_with_ctrl`, `jb_unique`, `ctrl`, `ctrl_unique`, `bare`, `bare_only`, `non_feature`.
+- **New** `annotate_overlap_3way(jb, bare, ctrl, jb_class, idx)` — tags each feature node against BOTH bare and ctrl keys. Produces the headline `shared_with_ctrl` bucket (features in ctrl+jb but NOT bare → **prefix-induced, not JB-semantic**). Writes `overlap_counts` summary into metadata.
+- **New** `annotate_ctrl(ctrl, bare_or_None, ctrl_class, idx)` — analog of `annotate_bare` for ctrl graphs. When bare is provided, splits features into `shared_with_bare` (stable) vs `ctrl_unique` (benign-prefix-only).
+- `annotate_overlap` (legacy 2-way) preserved for backward compat; now writes `overlap_mode = "2way"` into metadata.
+- `_subcircuit_allowed` extended with three new rule families for Task 10 ctrl-aware subcircuits:
+  - `ctrl_shared_refusal` allowed only in bare-like buckets ({bare, ctrl, shared_*}); rejected on jb_unique / ctrl_unique.
+  - `ctrl_only` allowed only in ctrl-unique buckets.
+  - `jb_{cls}_specific_vs_ctrl` allowed only in {jb_unique, shared_with_bare} for the matching class — **rejected on shared_with_ctrl** (feature being in ctrl contradicts the subcircuit definition).
+- `_UNIVERSAL_CORE_BUCKETS` extended to include `shared_with_bare_and_ctrl` and `ctrl`.
+- `_CANONICAL_BUCKETS` / `_CLASS_EXCLUSIVE_BUCKETS` extended to include `shared_with_ctrl`.
+
+**`scripts/pipeline/05_visualize_circuits.py`**:
+- New `parse_slug(stem)` — handles both legacy `{idx}_{class}` and new `{idx}_{cond_name}_{mode}` slug formats.
+- `select_pt_files` gained `mode_filter` parameter; new `--mode` CLI flag (default: `single`; choices: `multi`, `single`, `both`).
+- New `group_by_prompt_structured(json_paths)` — `{idx: {cond_name: {mode_key: path}}}` for clean 3-way lookup.
+- Step 2 (overlap annotation) rewritten: annotates bare + ctrl_{cls} + jb_{cls} per prompt per mode; prefers 3-way annotation when matched ctrl exists, falls back to 2-way for legacy runs. Prints corpus-level bucket totals.
+- Step 3 (subcircuit annotation) iterates the structured map (all modes), reports sample bare/mode tag.
+
+**`scripts/pipeline/05_frontend_patches/overlap-colors.css`**:
+- 7 color rules added/updated: shared_with_bare_and_ctrl (dark green), shared_with_bare (teal — existing), shared_with_ctrl (gold — **new prefix-induced bucket**), jb_unique (orange — existing), bare (slate), ctrl (blue-grey), ctrl_unique (purple).
+- Legend container extended with `.note` subline so bucket descriptions show their interpretation (e.g. "PREFIX-induced (not JB-semantic)").
+
+**`scripts/pipeline/05_frontend_patches/overlap-annotate.js`**:
+- Rewrote legend logic: pulls per-bucket counts from D3's `__data__` and rebuilds the panel on every tick, showing only buckets that actually have features in the current graph. Bucket metadata (color, label, note) centralised in a `BUCKET_META` map.
+
+**`scripts/pipeline/tests/test_pipeline_local.py`**:
+- Updated T-V1d (OVERLAP_BUCKETS completeness) for the 9-bucket schema.
+- New T-V5a..k — 3-way annotation round-trip on a synthetic 6-feature fixture across bare/ctrl/jb graphs; verifies each bucket assignment, overlap_counts metadata, annotate_ctrl behavior.
+- New T-V6a..l — ctrl-aware subcircuit filter rules: `ctrl_shared_refusal` / `ctrl_only` / `jb_{cls}_specific_vs_ctrl` accept/reject semantics across all bucket/class combinations.
+
+**Deferred** (explicitly scoped out of this pass):
+- 3-column `compare.html` rewrite (bare | ctrl | JB side-by-side) — requires substantial DOM restructuring + browser testing. The existing single-graph viewer with 3-way colored nodes already conveys the insight visually.
+
+**Local test result**: `207 passed / 0 failed / 1 skipped`. Same "not yet tested against real Stage 02 output" caveat.
 
 ### Critical infrastructure refactors (done this session)
 
@@ -199,7 +283,7 @@ Conda python with numpy/torch/etc:
 PYTHONPATH=src /opt/anaconda3/bin/python3 scripts/pipeline/tests/test_pipeline_local.py --stage all
 ```
 
-Current test count: **86 passing**, 1 pre-existing failure in `test_stage_04_a8` (MockArgs missing `upset_only` attribute — Task 7 should fix in passing).
+Current test count: **170 passing / 0 failing / 1 skipped** as of Apr 22 resume session. The previously noted `test_stage_04_a8` MockArgs bug is fixed; `test_stage_01` MockArgs was also missing `update_metadata`/per-position fields (fixed). Skip is a pre-existing `T-A3c` snapshot reset, unrelated.
 
 ### Code style
 - Every Python file starts with `from __future__ import annotations`

@@ -1,6 +1,6 @@
 # Subcircuits Report (Rule-Based)
 
-Each subcircuit is defined by a precise set-logic rule over the features observed across bare + 5 JB classes. No ML fitting — fully interpretable.
+Each subcircuit is defined by a precise set-logic rule over the features observed across bare + 5 JB classes (original rules) and bare + 5 jb_* + 5 ctrl_* conditions (new Apr 22 ctrl-aware rules). No ML fitting — fully interpretable.
 
 ## Summary table
 
@@ -17,6 +17,13 @@ Each subcircuit is defined by a precise set-logic rule over the features observe
 | `analytical_exclusive` | 54 | L26 (×7) | 18 | 0.0046 |
 | `dampening_specialists` | 52 | L30 (×8) | 13 | 0.0031 |
 | `anti_refusal_amplifiers` | 50 | L25 (×8) | 14 | 0.0078 |
+| `ctrl_shared_refusal` | 0 | — | 0 | N/A |
+| `ctrl_only` | 0 | — | 0 | N/A |
+| `jb_analytical_specific_vs_ctrl` | 0 | — | 0 | N/A |
+| `jb_cognitive_reframe_specific_vs_ctrl` | 0 | — | 0 | N/A |
+| `jb_completion_specific_vs_ctrl` | 0 | — | 0 | N/A |
+| `jb_fiction_specific_vs_ctrl` | 0 | — | 0 | N/A |
+| `jb_roleplay_specific_vs_ctrl` | 0 | — | 0 | N/A |
 
 ## Subcircuit definitions and top features
 
@@ -174,6 +181,34 @@ Features in the **amplified_anti** bucket of ≥3 JB classes. Anti-refusal featu
 | `L29:F2642` | L29 | 3.059 | 'Hew', ' lie', ' atelier' |
 | `L29:F257` | L29 | 3.036 | ' utilised', ' frontier', '厉' |
 
+### `ctrl_shared_refusal` — n=0
+
+Features in **bare ∩ all 5 ctrl_*_top50** but **NOT in all 5 jb_*_top50**. The prefix-invariant refusal spine: machinery the refusal circuit uses regardless of whether the prefix carries JB-semantics or matched benign content. These are NOT JB-semantic — they define the baseline that survives a long-prefix perturbation without JB intent.
+
+### `ctrl_only` — n=0
+
+Features in **all 5 ctrl_*_top50** but not in bare or any jb_*_top50. Usually tiny; if non-empty, it signals that matched benign prefixes recruit features neither bare-harmful nor any jailbreak uses — typically benign-content semantic features triggered by the ctrl prefix text itself.
+
+### `jb_analytical_specific_vs_ctrl` — n=0
+
+Features in **jb_analytical_top50 − ctrl_analytical_top50**. The cleanest JB-semantic subcircuit for `analytical`: after controlling for prefix length/structure via the matched benign ctrl prefix, what remains is features the JB *semantic* content genuinely recruits. Complements canonical_pro_refusal (which finds cross-class intersection) by isolating per-class mechanism.
+
+### `jb_cognitive_reframe_specific_vs_ctrl` — n=0
+
+Features in **jb_cognitive_reframe_top50 − ctrl_cognitive_reframe_top50**. The cleanest JB-semantic subcircuit for `cognitive_reframe`: after controlling for prefix length/structure via the matched benign ctrl prefix, what remains is features the JB *semantic* content genuinely recruits. Complements canonical_pro_refusal (which finds cross-class intersection) by isolating per-class mechanism.
+
+### `jb_completion_specific_vs_ctrl` — n=0
+
+Features in **jb_completion_top50 − ctrl_completion_top50**. The cleanest JB-semantic subcircuit for `completion`: after controlling for prefix length/structure via the matched benign ctrl prefix, what remains is features the JB *semantic* content genuinely recruits. Complements canonical_pro_refusal (which finds cross-class intersection) by isolating per-class mechanism.
+
+### `jb_fiction_specific_vs_ctrl` — n=0
+
+Features in **jb_fiction_top50 − ctrl_fiction_top50**. The cleanest JB-semantic subcircuit for `fiction`: after controlling for prefix length/structure via the matched benign ctrl prefix, what remains is features the JB *semantic* content genuinely recruits. Complements canonical_pro_refusal (which finds cross-class intersection) by isolating per-class mechanism.
+
+### `jb_roleplay_specific_vs_ctrl` — n=0
+
+Features in **jb_roleplay_top50 − ctrl_roleplay_top50**. The cleanest JB-semantic subcircuit for `roleplay`: after controlling for prefix length/structure via the matched benign ctrl prefix, what remains is features the JB *semantic* content genuinely recruits. Complements canonical_pro_refusal (which finds cross-class intersection) by isolating per-class mechanism.
+
 ## Pairwise overlap (top 10 by normalized intersection)
 
 Normalized overlap = |A ∩ B| / min(|A|, |B|). High values mean the smaller set is largely contained in the larger. `late_wave_layer24_32` naturally absorbs many.
@@ -194,8 +229,10 @@ Normalized overlap = |A ∩ B| / min(|A|, |B|). High values mean the smaller set
 ## Suggested Stage 08 ablation targets (causal-impact order)
 
 1. `canonical_pro_refusal` — JB-specific pro-refusal recruitment. Ablation should *strengthen* JB bypass (removes the JB-only refusal boost).
-2. `sign_flip_convergent` — robust direction reversals. Ablation should partially restore bare behavior under JB.
-3. `dampening_specialists` — weakened pro-refusal features. Restoring them to bare strength should counter fiction/analytical bypass.
-4. `anti_refusal_amplifiers` — JB-amplified bypass signal. Suppressing them should increase refusal under JB.
-5. `universal_refusal_core` — shared baseline. Ablation should break refusal on bare *and* JB (control — proves the subcircuits matter).
+2. `jb_{cls}_specific_vs_ctrl` (per class) — the cleanest per-class JB-semantic mechanism. Ablating one should selectively restore ctrl-like behavior on that class (dissociation test).
+3. `sign_flip_convergent` — robust direction reversals. Ablation should partially restore bare behavior under JB.
+4. `dampening_specialists` — weakened pro-refusal features. Restoring them to bare strength should counter fiction/analytical bypass.
+5. `anti_refusal_amplifiers` — JB-amplified bypass signal. Suppressing them should increase refusal under JB.
+6. `ctrl_shared_refusal` — the prefix-invariant spine. Ablation should break refusal on BOTH ctrl and bare — a negative control proving these aren't JB-specific.
+7. `universal_refusal_core` — shared baseline. Ablation should break refusal on bare *and* JB (control — proves the subcircuits matter).
 

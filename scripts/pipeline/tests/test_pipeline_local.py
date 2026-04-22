@@ -234,8 +234,12 @@ def test_utils_viz():
         }) is None,
     )
     log_test(
-        "T-V1d: buckets constant is complete",
-        set(OVERLAP_BUCKETS) == {"shared_with_bare", "jb_unique", "bare_only", "bare", "non_feature"},
+        "T-V1d: buckets constant is complete (3-way schema, Apr 22)",
+        set(OVERLAP_BUCKETS) == {
+            "shared_with_bare_and_ctrl", "shared_with_bare", "shared_with_ctrl",
+            "jb_unique", "ctrl", "ctrl_unique", "bare", "bare_only", "non_feature",
+        },
+        f"got {sorted(OVERLAP_BUCKETS)}",
     )
 
     # T-V2: annotate_subcircuits round-trip on a synthetic graph.
@@ -441,6 +445,172 @@ def test_utils_viz():
     finally:
         gpath.unlink()
         spath.unlink()
+
+    # T-V5: annotate_overlap_3way + annotate_ctrl (Task 8, Apr 22)
+    # Synthetic 3-graph fixture: bare / ctrl / jb. Features constructed so each
+    # 3-way bucket has a known member.
+    from utils_viz import annotate_overlap_3way, annotate_ctrl
+
+    def _graph(feature_keys: list[tuple[str, str]]) -> dict:
+        return {
+            "metadata": {},
+            "nodes": [
+                {"node_id": nid, "layer": nid.split("_")[0],
+                 "feature_type": "cross layer transcoder"}
+                for nid, _ in feature_keys
+            ] + [{"node_id": "E_0_0", "feature_type": "embedding"}],
+        }
+
+    # Feature plan for 3-way test (fiction class):
+    #  fA (L10:F1) in bare + ctrl + jb → shared_with_bare_and_ctrl
+    #  fB (L11:F2) in bare + jb, not ctrl → shared_with_bare
+    #  fC (L12:F3) in ctrl + jb, not bare → shared_with_ctrl (PREFIX-INDUCED)
+    #  fD (L13:F4) in jb only → jb_unique (TRUE JB-SEMANTIC)
+    #  fE (L14:F5) in bare + ctrl only (not jb — doesn't appear in jb graph)
+    #  fF (L15:F6) in ctrl only
+    fA = ("10_1_0", "L10:F1")
+    fB = ("11_2_0", "L11:F2")
+    fC = ("12_3_0", "L12:F3")
+    fD = ("13_4_0", "L13:F4")
+    fE = ("14_5_0", "L14:F5")
+    fF = ("15_6_0", "L15:F6")
+    bare_g = _graph([fA, fB, fE])
+    ctrl_g = _graph([fA, fC, fE, fF])
+    jb_g = _graph([fA, fB, fC, fD])
+
+    paths = {}
+    try:
+        for name, g in (("bare", bare_g), ("ctrl", ctrl_g), ("jb", jb_g)):
+            with tempfile.NamedTemporaryFile(suffix=f"_{name}.json", delete=False, mode="w") as f:
+                json.dump(g, f)
+                paths[name] = Path(f.name)
+
+        result = annotate_overlap_3way(paths["jb"], paths["bare"], paths["ctrl"],
+                                       "fiction", 0)
+        nodes = {n["node_id"]: n for n in result["nodes"]}
+        log_test(
+            "T-V5a: fA in bare+ctrl+jb → shared_with_bare_and_ctrl",
+            nodes[fA[0]]["overlap_bucket"] == "shared_with_bare_and_ctrl",
+            nodes[fA[0]]["overlap_bucket"],
+        )
+        log_test(
+            "T-V5b: fB in bare+jb (not ctrl) → shared_with_bare",
+            nodes[fB[0]]["overlap_bucket"] == "shared_with_bare",
+            nodes[fB[0]]["overlap_bucket"],
+        )
+        log_test(
+            "T-V5c: fC in ctrl+jb (not bare) → shared_with_ctrl (PREFIX-INDUCED)",
+            nodes[fC[0]]["overlap_bucket"] == "shared_with_ctrl",
+            nodes[fC[0]]["overlap_bucket"],
+        )
+        log_test(
+            "T-V5d: fD in jb only → jb_unique (TRUE JB-SEMANTIC)",
+            nodes[fD[0]]["overlap_bucket"] == "jb_unique",
+            nodes[fD[0]]["overlap_bucket"],
+        )
+        log_test(
+            "T-V5e: non-feature node → non_feature",
+            nodes["E_0_0"]["overlap_bucket"] == "non_feature",
+        )
+        log_test(
+            "T-V5f: overlap_mode metadata = '3way'",
+            result["metadata"].get("overlap_mode") == "3way",
+        )
+        # Counts recorded in metadata
+        counts = result["metadata"].get("overlap_counts", {})
+        log_test(
+            "T-V5g: overlap_counts has correct per-bucket sizes",
+            counts.get("shared_with_bare_and_ctrl") == 1
+            and counts.get("shared_with_bare") == 1
+            and counts.get("shared_with_ctrl") == 1
+            and counts.get("jb_unique") == 1,
+            f"got {counts}",
+        )
+
+        # annotate_ctrl: vs bare path (fF only in ctrl → ctrl_unique; fA/fE in bare+ctrl → shared_with_bare)
+        result_ctrl = annotate_ctrl(paths["ctrl"], paths["bare"], "fiction", 0)
+        ctrl_nodes = {n["node_id"]: n for n in result_ctrl["nodes"]}
+        log_test(
+            "T-V5h: annotate_ctrl fA (bare+ctrl) → shared_with_bare",
+            ctrl_nodes[fA[0]]["overlap_bucket"] == "shared_with_bare",
+        )
+        log_test(
+            "T-V5i: annotate_ctrl fC (ctrl+jb, not bare) → ctrl_unique",
+            ctrl_nodes[fC[0]]["overlap_bucket"] == "ctrl_unique",
+        )
+        log_test(
+            "T-V5j: annotate_ctrl fF (ctrl only) → ctrl_unique",
+            ctrl_nodes[fF[0]]["overlap_bucket"] == "ctrl_unique",
+        )
+        log_test(
+            "T-V5k: annotate_ctrl writes ctrl_class + overlap_mode metadata",
+            result_ctrl["metadata"].get("ctrl_class") == "fiction"
+            and result_ctrl["metadata"].get("overlap_mode") == "ctrl_vs_bare",
+        )
+    finally:
+        for p in paths.values():
+            if p.exists():
+                p.unlink()
+
+    # T-V6: ctrl-aware subcircuit filter rules (Task 10 feedthrough into Stage 05)
+    from utils_viz import _subcircuit_allowed
+    log_test(
+        "T-V6a: ctrl_shared_refusal allowed in {bare, ctrl, shared_*}",
+        all(
+            _subcircuit_allowed("ctrl_shared_refusal", b, None)
+            for b in ("bare", "ctrl", "shared_with_bare",
+                      "shared_with_bare_and_ctrl", "shared_with_ctrl")
+        ),
+    )
+    log_test(
+        "T-V6b: ctrl_shared_refusal REJECTED when bucket=jb_unique",
+        not _subcircuit_allowed("ctrl_shared_refusal", "jb_unique", "fiction"),
+    )
+    log_test(
+        "T-V6c: ctrl_shared_refusal REJECTED when bucket=ctrl_unique",
+        not _subcircuit_allowed("ctrl_shared_refusal", "ctrl_unique", None),
+    )
+    log_test(
+        "T-V6d: ctrl_only allowed when bucket=ctrl_unique",
+        _subcircuit_allowed("ctrl_only", "ctrl_unique", None),
+    )
+    log_test(
+        "T-V6e: ctrl_only REJECTED when bucket in {jb_unique, shared_*, bare}",
+        not any(
+            _subcircuit_allowed("ctrl_only", b, "fiction")
+            for b in ("jb_unique", "shared_with_bare", "shared_with_ctrl",
+                      "shared_with_bare_and_ctrl", "bare")
+        ),
+    )
+    log_test(
+        "T-V6f: jb_fiction_specific_vs_ctrl allowed when bucket=jb_unique + jb_class=fiction",
+        _subcircuit_allowed("jb_fiction_specific_vs_ctrl", "jb_unique", "fiction"),
+    )
+    log_test(
+        "T-V6g: jb_fiction_specific_vs_ctrl allowed when bucket=shared_with_bare + jb_class=fiction",
+        _subcircuit_allowed("jb_fiction_specific_vs_ctrl", "shared_with_bare", "fiction"),
+    )
+    log_test(
+        "T-V6h: jb_fiction_specific_vs_ctrl REJECTED when bucket=shared_with_ctrl (feature IS in ctrl)",
+        not _subcircuit_allowed("jb_fiction_specific_vs_ctrl", "shared_with_ctrl", "fiction"),
+    )
+    log_test(
+        "T-V6i: jb_fiction_specific_vs_ctrl REJECTED for wrong class",
+        not _subcircuit_allowed("jb_fiction_specific_vs_ctrl", "jb_unique", "roleplay"),
+    )
+    log_test(
+        "T-V6j: jb_cognitive_reframe_specific_vs_ctrl parses multi-word class",
+        _subcircuit_allowed("jb_cognitive_reframe_specific_vs_ctrl", "jb_unique", "cognitive_reframe")
+        and not _subcircuit_allowed("jb_cognitive_reframe_specific_vs_ctrl", "jb_unique", "fiction"),
+    )
+    log_test(
+        "T-V6k: existing universal_refusal_core accepts new shared_with_bare_and_ctrl bucket",
+        _subcircuit_allowed("universal_refusal_core", "shared_with_bare_and_ctrl", "fiction"),
+    )
+    log_test(
+        "T-V6l: canonical_pro_refusal accepts shared_with_ctrl (prefix-induced still not bare)",
+        _subcircuit_allowed("canonical_pro_refusal", "shared_with_ctrl", "fiction"),
+    )
 
 
 # ============================================================
@@ -818,6 +988,10 @@ def test_stage_01():
             n_samples = 4
             layers = [15, 32]
             recompute = True
+            update_metadata = False
+            per_position_layer = 15
+            per_position_positions = [-2]
+            skip_per_position = True
 
         mock_args = MockArgs()
         mock_args.run_dir = run_dir
@@ -1453,6 +1627,7 @@ def test_stage_04_a8():
         n_examples = 3
         n_logits = 10
         histogram_only = True
+        upset_only = False
 
     mock = MockArgs()
     mock.run_dir = run_dir
@@ -1568,9 +1743,119 @@ def test_stage_04_a7():
             isinstance(fs.get("combined", {}).get("total"), int) and fs["combined"]["total"] > 0,                               
         )                                                                                                                       
         # Sanity: every key in combined.features has non-empty class list
-        features = fs.get("combined", {}).get("features", {})                                                                   
-        all_tagged = all(isinstance(v, list) and len(v) > 0 for v in features.values())                                         
+        features = fs.get("combined", {}).get("features", {})
+        all_tagged = all(isinstance(v, list) and len(v) > 0 for v in features.values())
         log_test("T-A7f: every combined feature has ≥1 class", all_tagged)
+
+def test_stage_04_schema():
+    """T-S4: Stage 04 schema-aware collection (new 11-cond × 2-graph schema).
+
+    Runs against the committed smoke JSON at
+    data/results/pipeline_runs/attribution_results_test.json — no pipeline run needed.
+    Verifies:
+      - collect_all_features reads graphs.multi.top50_features (not legacy flat)
+      - conditions_seen contains full condition names (bare, jb_*, ctrl_*)
+      - top50_conditions ⊆ conditions_seen
+      - build_per_condition_sets emits bare + 5 jb_* + 5 ctrl_* keys
+      - collect_comparison_features traverses vs_bare/vs_ctrl/ctrl_vs_bare
+    """
+    print("\n" + "=" * 60)
+    print("STAGE 04 SCHEMA TESTS (T-S4*)")
+    print("=" * 60)
+
+    smoke_path = (
+        config.REPO_ROOT / "data" / "results" / "pipeline_runs" / "attribution_results_test.json"
+    )
+    if not smoke_path.exists():
+        log_skip("T-S4: Stage 04 schema", f"smoke JSON missing at {smoke_path}")
+        return
+    print(f"  Using smoke JSON: {smoke_path.relative_to(config.REPO_ROOT)}")
+
+    import importlib
+    stage04 = importlib.import_module("04_label_features")
+
+    raw = json.loads(smoke_path.read_text())
+    results = raw["results"] if isinstance(raw, dict) else raw
+
+    features = stage04.collect_all_features(results)
+    log_test(
+        "T-S4a: collect_all_features returns non-empty dict",
+        isinstance(features, dict) and len(features) > 0,
+        f"got {len(features)} features",
+    )
+
+    # conditions_seen uses new full-condition naming
+    all_conds = set()
+    for info in features.values():
+        all_conds.update(info.get("conditions_seen", []))
+    expected_conds = {
+        "bare",
+        "jb_fiction", "ctrl_fiction",
+        "jb_roleplay", "ctrl_roleplay",
+    }
+    log_test(
+        "T-S4b: conditions_seen contains full condition names (bare, jb_*, ctrl_*)",
+        expected_conds.issubset(all_conds),
+        f"missing: {sorted(expected_conds - all_conds)}",
+    )
+
+    # top50_conditions field is populated + subset of conditions_seen
+    all_top50_cond = set()
+    for info in features.values():
+        all_top50_cond.update(info.get("top50_conditions", []))
+    log_test(
+        "T-S4c: top50_conditions populated",
+        len(all_top50_cond) > 0,
+        f"got {len(all_top50_cond)} distinct conditions",
+    )
+    subset_ok = all(
+        set(info.get("top50_conditions", [])).issubset(set(info.get("conditions_seen", [])))
+        for info in features.values()
+    )
+    log_test("T-S4d: top50_conditions ⊆ conditions_seen for every feature", subset_ok)
+
+    # per_condition_top50 keyed by condition name
+    per_cond = stage04.build_per_condition_sets(features)
+    jb_keys = {k for k in per_cond if k.startswith("jb_")}
+    ctrl_keys = {k for k in per_cond if k.startswith("ctrl_")}
+    log_test(
+        "T-S4e: per_condition_top50 has 'bare'",
+        "bare" in per_cond,
+        f"got keys: {sorted(per_cond.keys())[:12]}",
+    )
+    log_test(
+        "T-S4f: per_condition_top50 has 5 jb_* + 5 ctrl_* classes",
+        len(jb_keys) == 5 and len(ctrl_keys) == 5,
+        f"jb: {sorted(jb_keys)}, ctrl: {sorted(ctrl_keys)}",
+    )
+    log_test(
+        "T-S4g: per_condition_top50 values are sorted feature-key lists",
+        all(isinstance(v, list) and (len(v) == 0 or isinstance(v[0], str))
+            for v in per_cond.values()),
+    )
+
+    # collect_comparison_features traverses the 3 sub-buckets
+    comp = stage04.collect_comparison_features(results)
+    log_test(
+        "T-S4h: collect_comparison_features returns 3 categories",
+        set(comp.keys()) == {"sign_flipped", "dampened", "amplified_anti"},
+        f"got {sorted(comp.keys())}",
+    )
+    # At least one category should have non-empty entries
+    has_any = any(len(v) > 0 for v in comp.values())
+    log_test("T-S4i: at least one comparison category is non-empty", has_any)
+    # Classes on comparison entries use full condition names (jb_*, ctrl_*)
+    example_classes = set()
+    for cat_data in comp.values():
+        for info in cat_data.values():
+            example_classes.update(info.get("classes", []))
+    prefixed = any(c.startswith("jb_") or c.startswith("ctrl_") for c in example_classes)
+    log_test(
+        "T-S4j: comparison 'classes' use full condition names",
+        prefixed,
+        f"saw: {sorted(example_classes)[:10]}",
+    )
+
 
 def test_stage_07():                                                                                                            
     print("\n" + "=" * 60)                                                                                                      
@@ -1624,17 +1909,24 @@ def test_stage_07():
         return                               
     data = json.loads(sc_path.read_text())         
                                                                                                                                 
-    expected_names = {                             
-        "universal_refusal_core", "canonical_pro_refusal",                                                                      
+    expected_legacy = {
+        "universal_refusal_core", "canonical_pro_refusal",
         "sign_flip_convergent", "dampening_specialists",
-        "anti_refusal_amplifiers", "late_wave_layer24_32",                                                                      
+        "anti_refusal_amplifiers", "late_wave_layer24_32",
         "analytical_exclusive", "cognitive_reframe_exclusive",
-        "completion_exclusive", "fiction_exclusive", "roleplay_exclusive",                                                      
-    }                                                                                                                           
+        "completion_exclusive", "fiction_exclusive", "roleplay_exclusive",
+    }
+    expected_ctrl = {
+        "ctrl_shared_refusal", "ctrl_only",
+        "jb_analytical_specific_vs_ctrl", "jb_cognitive_reframe_specific_vs_ctrl",
+        "jb_completion_specific_vs_ctrl", "jb_fiction_specific_vs_ctrl",
+        "jb_roleplay_specific_vs_ctrl",
+    }
+    expected_names = expected_legacy | expected_ctrl
     actual_names = set(data["subcircuits"].keys())
-    log_test(                                                                                                                   
-        "T-07b: all 11 subcircuits present", 
-        actual_names == expected_names,                                                                                         
+    log_test(
+        "T-07b: all 18 subcircuits present (11 legacy + 7 ctrl-aware)",
+        actual_names == expected_names,
         f"missing={expected_names - actual_names}; extra={actual_names - expected_names}",
     )                                                                                                                           
                                             
@@ -1667,16 +1959,206 @@ def test_stage_07():
         f"max={max(sizes, key=sizes.get)}",                                                                                     
     )                                                                                                                           
                                                                                                                                 
-    # Sizes on reference run match probe predictions                                                                            
-    log_test(                                                                                                                   
+    # Sizes on reference run match probe predictions
+    log_test(
         "T-07h: sizes match probe predictions within ±2",
-        abs(sizes["universal_refusal_core"] - 83) <= 2                                                                          
-        and abs(sizes["canonical_pro_refusal"] - 56) <= 2                                                                       
-        and abs(sizes["dampening_specialists"] - 52) <= 2                                                                       
-        and abs(sizes["anti_refusal_amplifiers"] - 50) <= 2,                                                                    
-        f"uni={sizes['universal_refusal_core']}, can={sizes['canonical_pro_refusal']}, "                                        
+        abs(sizes["universal_refusal_core"] - 83) <= 2
+        and abs(sizes["canonical_pro_refusal"] - 56) <= 2
+        and abs(sizes["dampening_specialists"] - 52) <= 2
+        and abs(sizes["anti_refusal_amplifiers"] - 50) <= 2,
+        f"uni={sizes['universal_refusal_core']}, can={sizes['canonical_pro_refusal']}, "
         f"damp={sizes['dampening_specialists']}, amp={sizes['anti_refusal_amplifiers']}",
     )
+
+    # Ctrl-aware metadata field present; legacy-path invariants
+    # (ctrl-available path covered by test_stage_07_synthetic_ctrl)
+    ctrl_available = data.get("metadata", {}).get("ctrl_available", False)
+    log_test(
+        "T-07i: metadata.ctrl_available field present",
+        "ctrl_available" in data.get("metadata", {}),
+        f"got ctrl_available={ctrl_available}",
+    )
+    if not ctrl_available:
+        ctrl_sizes = {n: sizes[n] for n in expected_ctrl}
+        log_test(
+            "T-07j: legacy data → all 7 ctrl-aware subcircuits empty",
+            all(s == 0 for s in ctrl_sizes.values()),
+            f"nonzero: {[(n, s) for n, s in ctrl_sizes.items() if s > 0]}",
+        )
+        log_test(
+            "T-07k: legacy data → jb_vs_ctrl_contrast is empty dict",
+            data.get("jb_vs_ctrl_contrast", "absent") == {},
+            f"got {type(data.get('jb_vs_ctrl_contrast')).__name__}",
+        )
+
+
+def test_stage_07_synthetic_ctrl():
+    """T-S7ctrl: ctrl-aware Stage 07 rules exercised against a synthetic fixture.
+
+    The legacy run directory has no per_condition_top50 block, so the ctrl-aware
+    branch never fires in test_stage_07. This test builds a minimal synthetic
+    feature_class_sets.json + feature_labels.json with known top-50 memberships
+    across all 11 conditions, invokes Stage 07, and verifies each ctrl-aware
+    rule produces the expected feature set.
+    """
+    import importlib
+    import tempfile
+
+    print("\n" + "=" * 60)
+    print("STAGE 07 CTRL-AWARE TESTS (synthetic fixture, T-S7ctrl)")
+    print("=" * 60)
+
+    stage07 = importlib.import_module("07_identify_subcircuits")
+
+    JB_CLASSES = ["analytical", "cognitive_reframe", "completion", "fiction", "roleplay"]
+
+    # Construct feature keys with known membership patterns
+    # fA: in bare + all 5 jb + all 5 ctrl            → universal_core, NOT canonical
+    # fB: in bare + all 5 ctrl, NOT all 5 jb (miss fiction) → ctrl_shared_refusal
+    # fC: in all 5 ctrl only (not bare, not any jb)  → ctrl_only
+    # fD: in all 5 jb, not bare                      → canonical_pro_refusal
+    # fE: in jb_fiction only (not ctrl_fiction, not other conds) → fiction_exclusive + jb_fiction_specific_vs_ctrl
+    # fF: in jb_roleplay AND ctrl_roleplay            → NOT jb_specific_vs_ctrl (filtered by ctrl)
+    per_condition_top50 = {"bare": ["fA", "fB"]}
+    for cls in JB_CLASSES:
+        jb_keys = ["fA", "fD"]
+        ctrl_keys = ["fA", "fB", "fC"]
+        if cls == "fiction":
+            jb_keys = jb_keys + ["fE"]              # fE in jb_fiction only
+            # fB missing from jb_fiction intentionally — makes fB ctrl_shared (not universal)
+        if cls == "roleplay":
+            jb_keys = jb_keys + ["fF"]
+            ctrl_keys = ctrl_keys + ["fF"]           # fF in both jb_roleplay and ctrl_roleplay
+        per_condition_top50[f"jb_{cls}"] = sorted(set(jb_keys))
+        per_condition_top50[f"ctrl_{cls}"] = sorted(set(ctrl_keys))
+
+    # For each feature, compute its conditions_seen from the per_condition sets above
+    conds_seen = {}
+    for cond, keys in per_condition_top50.items():
+        for k in keys:
+            conds_seen.setdefault(k, set()).add(cond)
+
+    feature_labels = {
+        k: {
+            "layer": 20,
+            "feature_idx": i,
+            "max_abs_attribution": 1.0,
+            "conditions_seen": sorted(conds_seen[k]),
+            "top50_conditions": sorted(conds_seen[k]),
+            "top_logits": [],
+            "bottom_logits": [],
+            "activation_frequency": 0.01,
+            "examples": [],
+            "labeled": False,
+        }
+        for i, k in enumerate(["fA", "fB", "fC", "fD", "fE", "fF"])
+    }
+
+    class_sets = {
+        "n_classes": 5,
+        "classes": sorted(JB_CLASSES),
+        "by_bucket": {
+            "sign_flipped": {"total": 0, "features": {}},
+            "dampened": {"total": 0, "features": {}},
+            "amplified_anti": {"total": 0, "features": {}},
+        },
+        "combined": {"total": 0, "features": {}},
+        "per_condition_top50": per_condition_top50,
+    }
+
+    with tempfile.TemporaryDirectory() as td:
+        run_dir = Path(td) / "synthetic_run"
+        labels_dir = run_dir / "04_labels"
+        labels_dir.mkdir(parents=True)
+        (labels_dir / "feature_labels.json").write_text(json.dumps(feature_labels))
+        (labels_dir / "feature_class_sets.json").write_text(json.dumps(class_sets))
+
+        class MockArgs:
+            convergent_min = 3
+            late_wave_start = 24
+            late_wave_end = 32
+        mock = MockArgs()
+        mock.run_dir = run_dir
+        orig = stage07.parse_args
+        stage07.parse_args = lambda: mock
+        try:
+            stage07.main()
+        finally:
+            stage07.parse_args = orig
+
+        out = json.loads((run_dir / "07_subcircuits" / "subcircuits.json").read_text())
+        sc = out["subcircuits"]
+
+        log_test(
+            "T-S7ctrl-a: metadata.ctrl_available=True on synthetic fixture",
+            out.get("metadata", {}).get("ctrl_available") is True,
+        )
+        # Expected memberships (by construction above):
+        # fA in bare + all 5 jb + all 5 ctrl  → universal_core
+        log_test(
+            "T-S7ctrl-b: universal_refusal_core == {fA}",
+            set(sc["universal_refusal_core"]["features"]) == {"fA"},
+            f"got {sc['universal_refusal_core']['features']}",
+        )
+        # fD in all 5 jb, not bare → canonical_pro_refusal
+        log_test(
+            "T-S7ctrl-c: canonical_pro_refusal == {fD}",
+            set(sc["canonical_pro_refusal"]["features"]) == {"fD"},
+            f"got {sc['canonical_pro_refusal']['features']}",
+        )
+        # fB in bare + all 5 ctrl, missing jb_fiction → ctrl_shared_refusal
+        log_test(
+            "T-S7ctrl-d: ctrl_shared_refusal == {fB}",
+            set(sc["ctrl_shared_refusal"]["features"]) == {"fB"},
+            f"got {sc['ctrl_shared_refusal']['features']}",
+        )
+        # fC in all 5 ctrl only → ctrl_only
+        log_test(
+            "T-S7ctrl-e: ctrl_only == {fC}",
+            set(sc["ctrl_only"]["features"]) == {"fC"},
+            f"got {sc['ctrl_only']['features']}",
+        )
+        # fE in jb_fiction only; fD in all jb but never ctrl → jb_fiction_specific = {fD, fE}
+        log_test(
+            "T-S7ctrl-f: jb_fiction_specific_vs_ctrl == {fD, fE}",
+            set(sc["jb_fiction_specific_vs_ctrl"]["features"]) == {"fD", "fE"},
+            f"got {sc['jb_fiction_specific_vs_ctrl']['features']}",
+        )
+        # fF in jb_roleplay AND ctrl_roleplay → fF filtered; fD remains jb-only → {fD}
+        log_test(
+            "T-S7ctrl-g: jb_roleplay_specific_vs_ctrl == {fD} (fF filtered by ctrl match)",
+            set(sc["jb_roleplay_specific_vs_ctrl"]["features"]) == {"fD"},
+            f"got {sc['jb_roleplay_specific_vs_ctrl']['features']}",
+        )
+
+        # jb_vs_ctrl_contrast arithmetic + values
+        contrast = out.get("jb_vs_ctrl_contrast", {})
+        fiction = contrast.get("fiction", {})
+        # jb_fiction top-50 = [fA, fD, fE]; ctrl_fiction = [fA, fB, fC]; inter = [fA]
+        # jb_specific = [fD, fE] = 2; overlap = [fA] = 1; jb_top50 = 3
+        log_test(
+            "T-S7ctrl-h: fiction contrast: jb=3, ctrl=3, intersection=1, jb_specific=2",
+            fiction.get("jb_top50") == 3
+            and fiction.get("ctrl_top50") == 3
+            and fiction.get("intersection") == 1
+            and fiction.get("jb_specific") == 2,
+            f"got {fiction}",
+        )
+        # jb_specific_frac = 2/3 ≈ 0.667
+        log_test(
+            "T-S7ctrl-i: fiction jb_specific_frac ≈ 0.667",
+            abs(fiction.get("jb_specific_frac", 0) - 0.667) < 0.01,
+            f"got {fiction.get('jb_specific_frac')}",
+        )
+        # Novel-insight figures
+        for fig in ["jb_vs_ctrl_contrast.png", "jb_specific_by_layer.png"]:
+            p = run_dir / "07_subcircuits" / fig
+            log_test(
+                f"T-S7ctrl-j: {fig} generated in ctrl-available path",
+                p.exists() and p.stat().st_size > 3_000,
+                f"size={p.stat().st_size if p.exists() else 'missing'}",
+            )
+
 
 # ============================================================
 # Main
@@ -1685,7 +2167,7 @@ def test_stage_07():
 def main():
     parser = argparse.ArgumentParser(description="Local pipeline validation tests")
     parser.add_argument(
-        "--stage", choices=["01", "01-a5", "02", "02b", "03", "03-a4", "04-a7", "04-a8", "07", "utils", "utils-viz", "all"], default="all",
+        "--stage", choices=["01", "01-a5", "02", "02b", "03", "03-a4", "04-a7", "04-a8", "04-schema", "07", "07-ctrl", "utils", "utils-viz", "all"], default="all",
         help="Which stage to test (default: all)",
     )
     parser.add_argument(
@@ -1714,7 +2196,9 @@ def main():
         test_stage_03_a4()
         test_stage_04_a7()
         test_stage_04_a8()
+        test_stage_04_schema()
         test_stage_07()
+        test_stage_07_synthetic_ctrl()
         if check_gpu():
             test_stage_01()
             test_stage_03()
@@ -1739,12 +2223,17 @@ def main():
             log_skip("Stage 03 tests", "no GPU available")
     elif args.stage == "03-a4":
         test_stage_03_a4()
-    elif args.stage == "04-a7":        
+    elif args.stage == "04-a7":
         test_stage_04_a7()
     elif args.stage == "04-a8":
         test_stage_04_a8()
-    elif args.stage == "07":                                                                                                        
+    elif args.stage == "04-schema":
+        test_stage_04_schema()
+    elif args.stage == "07":
         test_stage_07()
+        test_stage_07_synthetic_ctrl()
+    elif args.stage == "07-ctrl":
+        test_stage_07_synthetic_ctrl()
     elif args.stage == "utils-viz":
         test_utils_viz()
 

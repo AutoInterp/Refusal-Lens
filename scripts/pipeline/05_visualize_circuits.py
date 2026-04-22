@@ -60,14 +60,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config  # noqa: F401
 from utils_viz import (
     annotate_bare,
+    annotate_ctrl,
     annotate_overlap,
+    annotate_overlap_3way,
     annotate_subcircuits,
     convert_pt_to_frontend_json,
     gzip_json_files,
     stage_frontend,
 )
 
+# Legacy default class list (used only when user doesn't pass --classes and all
+# slugs are in the old flat format). New-schema runs use cond_names like
+# bare / jb_fiction / ctrl_fiction — picked up automatically from the .pt names.
 DEFAULT_CLASSES = ("bare", "roleplay", "fiction", "analytical", "completion", "cognitive_reframe")
+GRAPH_MODES = ("multi", "single")
 
 
 def parse_args():
@@ -88,40 +94,92 @@ def parse_args():
     p.add_argument("--gzip", action="store_true")
     p.add_argument("--node-threshold", type=float, default=0.8)
     p.add_argument("--edge-threshold", type=float, default=0.98)
+    p.add_argument("--mode", type=str, choices=["multi", "single", "both"], default="single",
+                   help="Which graph mode to stage for the new-schema two-graph scheme "
+                        "(multi = template-anchors [-5,-3,-2], single = causally-verified [-2]). "
+                        "'both' stages each mode side-by-side with distinct slugs. "
+                        "Ignored for legacy runs without mode-suffixed .pt files.")
     return p.parse_args()
+
+
+def parse_slug(stem: str) -> tuple[int, str, str | None]:
+    """Return (prompt_idx, cond_name, mode_or_None) for a .pt stem.
+
+    Supports both schemas:
+      legacy flat: '013_fiction'             → (13, 'fiction', None)
+      new nested:  '013_jb_fiction_multi'    → (13, 'jb_fiction', 'multi')
+                   '013_ctrl_fiction_single' → (13, 'ctrl_fiction', 'single')
+                   '013_bare_multi'          → (13, 'bare', 'multi')
+    """
+    parts = stem.split("_")
+    idx = int(parts[0])
+    if len(parts) >= 3 and parts[-1] in GRAPH_MODES:
+        mode = parts[-1]
+        cond_name = "_".join(parts[1:-1])
+    else:
+        mode = None
+        cond_name = "_".join(parts[1:])
+    return idx, cond_name, mode
 
 
 def select_pt_files(
     graphs_dir: Path,
     prompt_filter: set[int] | None,
     class_filter: set[str] | None,
+    mode_filter: set[str] | None = None,
 ) -> list[Path]:
-    """Return sorted .pt files matching the filters. Expects `{idx:03d}_{class}.pt`."""
+    """Return sorted .pt files matching the filters.
+
+    Accepts both legacy `{idx}_{class}.pt` and new `{idx}_{cond_name}_{mode}.pt`
+    naming. If mode_filter is set (e.g. {'single'}), legacy files pass through
+    (mode=None) and new files are filtered by the mode suffix.
+    """
     selected = []
     for pt in sorted(graphs_dir.glob("*.pt")):
-        parts = pt.stem.split("_", 1)
-        if len(parts) != 2:
-            continue
         try:
-            idx = int(parts[0])
-        except ValueError:
+            idx, cond_name, mode = parse_slug(pt.stem)
+        except (ValueError, IndexError):
             continue
-        cls = parts[1]
         if prompt_filter is not None and idx not in prompt_filter:
             continue
-        if class_filter is not None and cls not in class_filter:
+        if class_filter is not None and cond_name not in class_filter:
+            continue
+        if mode_filter is not None and mode is not None and mode not in mode_filter:
             continue
         selected.append(pt)
     return selected
 
 
 def group_by_prompt(json_paths: dict[str, Path]) -> dict[int, dict[str, Path]]:
-    """Group {slug: path} by prompt index. Slug = `{idx:03d}_{class}`."""
+    """Group {slug: path} by prompt index. Keys = full cond_name+mode slug tail.
+
+    Returns {idx: {slug_tail: path}} where slug_tail is the part after '{idx}_'
+    (e.g. 'fiction' legacy or 'jb_fiction_multi' new). Downstream 3-way logic
+    reconstructs (cond_name, mode) via parse_slug on the original stem.
+    """
     by_prompt: dict[int, dict[str, Path]] = defaultdict(dict)
     for slug, path in json_paths.items():
-        idx_str, cls = slug.split("_", 1)
-        by_prompt[int(idx_str)][cls] = path
+        idx_str, _, tail = slug.partition("_")
+        by_prompt[int(idx_str)][tail] = path
     return by_prompt
+
+
+def group_by_prompt_structured(json_paths: dict[str, Path]) -> dict[int, dict[str, dict[str, Path]]]:
+    """Group {slug: path} by (prompt_idx, cond_name, mode).
+
+    Returns {idx: {cond_name: {mode_or_'_nomode': path}}}. For legacy-slug
+    files mode_key is '_nomode'. Consumers pick paths via
+        by_prompt[idx]['jb_fiction'].get('single') or by_prompt[idx]['fiction'].get('_nomode')
+    """
+    out: dict[int, dict[str, dict[str, Path]]] = defaultdict(lambda: defaultdict(dict))
+    for slug, path in json_paths.items():
+        try:
+            idx, cond_name, mode = parse_slug(slug)
+        except (ValueError, IndexError):
+            continue
+        mode_key = mode if mode is not None else "_nomode"
+        out[idx][cond_name][mode_key] = path
+    return out
 
 
 def main():
@@ -145,6 +203,10 @@ def main():
     class_filter = (
         set(args.classes.split(",")) if args.classes else None
     )
+    mode_filter = (
+        set(GRAPH_MODES) if args.mode == "both"
+        else {args.mode}
+    )
 
     print("=" * 60)
     print("STAGE 05: Frontend orchestration")
@@ -163,7 +225,7 @@ def main():
               f"Did Stage 02 run with --save-graphs?")
         sys.exit(1)
 
-    pt_files = select_pt_files(graphs_pt_dir, prompt_filter, class_filter)
+    pt_files = select_pt_files(graphs_pt_dir, prompt_filter, class_filter, mode_filter)
     if not pt_files:
         print("\n  ERROR: no .pt files match the filters.")
         sys.exit(1)
@@ -215,29 +277,64 @@ def main():
     print(f"  graph-metadata.json: {metadata_path.stat().st_size} bytes")
 
     # ------------------------------------------------------------------
-    # Step 2: annotate overlap (bare + JB vs bare per prompt)
+    # Step 2: annotate overlap (3-way: bare / ctrl / jb per prompt, per mode).
+    # Falls back to 2-way annotation on legacy runs (no ctrl conditions).
     # ------------------------------------------------------------------
-    by_prompt = group_by_prompt(json_paths)
+    structured = group_by_prompt_structured(json_paths)
     if args.skip_overlap:
         print("\n  Step 2: skipping overlap annotation (--skip-overlap)")
     else:
-        print(f"\n  Step 2: Annotating overlap for {len(by_prompt)} prompts...")
-        n_bare, n_jb, n_skip = 0, 0, 0
-        for idx, conds in sorted(by_prompt.items()):
-            bare_path = conds.get("bare")
-            if bare_path is not None:
+        print(f"\n  Step 2: Annotating overlap for {len(structured)} prompts...")
+        n_bare = n_ctrl = n_jb_3way = n_jb_2way = n_skip = 0
+        bucket_totals: dict[str, int] = defaultdict(int)
+        for idx, conds in sorted(structured.items()):
+            bare_modes = conds.get("bare", {})
+            for mode_key, bare_path in bare_modes.items():
                 annotate_bare(bare_path, idx)
                 n_bare += 1
-            for cls, jb_path in conds.items():
-                if cls == "bare":
+
+            # Annotate ctrl_{cls} graphs (per mode) vs bare. Extracts class name
+            # from cond_name when it starts with 'ctrl_'.
+            for cond_name, mode_map in conds.items():
+                if not cond_name.startswith("ctrl_"):
                     continue
-                if bare_path is None:
-                    print(f"    WARN: no bare for prompt {idx:03d}, skipping {cls}")
-                    n_skip += 1
+                cls = cond_name.removeprefix("ctrl_")
+                for mode_key, ctrl_path in mode_map.items():
+                    bare_path = bare_modes.get(mode_key)
+                    annotate_ctrl(ctrl_path, bare_path, cls, idx)
+                    n_ctrl += 1
+
+            # Annotate jb_{cls} graphs. Prefer 3-way (with matched ctrl) when
+            # ctrl_{cls} is available for the same mode; else fall back to 2-way.
+            # Also annotate legacy-flat jb classes (e.g. 'fiction' without jb_ prefix).
+            for cond_name, mode_map in conds.items():
+                if cond_name == "bare" or cond_name.startswith("ctrl_"):
                     continue
-                annotate_overlap(jb_path, bare_path, cls, idx)
-                n_jb += 1
-        print(f"    Annotated {n_bare} bare + {n_jb} JB graphs (skipped {n_skip})")
+                cls = cond_name.removeprefix("jb_") if cond_name.startswith("jb_") else cond_name
+                ctrl_map = conds.get(f"ctrl_{cls}", {})
+                for mode_key, jb_path in mode_map.items():
+                    bare_path = bare_modes.get(mode_key)
+                    ctrl_path = ctrl_map.get(mode_key)
+                    if bare_path is None:
+                        print(f"    WARN: no bare for prompt {idx:03d}/{mode_key}, skipping {cond_name}")
+                        n_skip += 1
+                        continue
+                    if ctrl_path is not None:
+                        g = annotate_overlap_3way(jb_path, bare_path, ctrl_path, cls, idx)
+                        n_jb_3way += 1
+                        for b, c in (g.get("metadata", {}).get("overlap_counts") or {}).items():
+                            bucket_totals[b] += c
+                    else:
+                        annotate_overlap(jb_path, bare_path, cls, idx)
+                        n_jb_2way += 1
+        print(f"    Annotated {n_bare} bare + {n_ctrl} ctrl + {n_jb_3way} jb (3-way) "
+              f"+ {n_jb_2way} jb (2-way legacy) graphs  (skipped {n_skip})")
+        if bucket_totals:
+            print("    Corpus-level overlap bucket totals (3-way jb graphs):")
+            for b in ("shared_with_bare_and_ctrl", "shared_with_bare",
+                      "shared_with_ctrl", "jb_unique"):
+                if bucket_totals.get(b):
+                    print(f"      {b:28s} {bucket_totals[b]:5d}")
 
     # ------------------------------------------------------------------
     # Step 3: annotate subcircuits (Stage 07 memberships)
@@ -250,15 +347,18 @@ def main():
     else:
         print(f"\n  Step 3: Annotating subcircuits from {subcircuits_json.relative_to(sc_run_dir.parent)}...")
         n_ok = 0
-        for idx, conds in sorted(by_prompt.items()):
-            for cls, path in conds.items():
-                result = annotate_subcircuits(path, subcircuits_json)
-                n_ok += 1
-                if idx == sorted(by_prompt)[0] and cls == "bare":
-                    count = result["metadata"].get("n_subcircuit_annotated", 0)
-                    total_nodes = len(result.get("nodes", []))
-                    print(f"    sample (prompt {idx:03d}/bare): "
-                          f"{count}/{total_nodes} nodes tagged")
+        sample_logged = False
+        for idx, conds in sorted(structured.items()):
+            for cond_name, mode_map in conds.items():
+                for mode_key, path in mode_map.items():
+                    result = annotate_subcircuits(path, subcircuits_json)
+                    n_ok += 1
+                    if not sample_logged and cond_name == "bare":
+                        count = result["metadata"].get("n_subcircuit_annotated", 0)
+                        total_nodes = len(result.get("nodes", []))
+                        print(f"    sample (prompt {idx:03d}/bare/{mode_key}): "
+                              f"{count}/{total_nodes} nodes tagged")
+                        sample_logged = True
         print(f"    Annotated subcircuits on {n_ok} graphs")
 
     # ------------------------------------------------------------------

@@ -6,7 +6,25 @@ import json
 import shutil
 from pathlib import Path
 
-OVERLAP_BUCKETS = ("shared_with_bare", "jb_unique", "bare_only", "bare", "non_feature")
+OVERLAP_BUCKETS = (
+    # JB-graph viewpoints (set by annotate_overlap_3way or annotate_overlap):
+    "shared_with_bare_and_ctrl",   # in bare ∩ ctrl ∩ jb — most stable refusal core
+    "shared_with_bare",            # in bare ∩ jb, not ctrl — JB + harmful baseline share
+    #                                (also used by annotate_ctrl when feature is in bare too)
+    "shared_with_ctrl",            # in ctrl ∩ jb, not bare — PREFIX-INDUCED, not JB-semantic
+    "jb_unique",                   # only in the jb graph — true JB-semantic signal
+
+    # Ctrl-graph viewpoints (set by annotate_ctrl):
+    "ctrl",                        # ctrl-graph baseline tag (analog of 'bare')
+    "ctrl_unique",                 # only in this ctrl graph — benign-prefix-induced
+
+    # Bare-graph viewpoint:
+    "bare",
+
+    # Legacy / leftover:
+    "bare_only",
+    "non_feature",
+)
 
 # Circuit-tracer browser frontend lives at vendor/circuit-tracer/circuit_tracer/frontend/assets/
 # (NOT the parent `frontend/` dir, which contains Python helpers).
@@ -56,7 +74,11 @@ def annotate_overlap(
     jb_json_path: Path, bare_json_path: Path, jb_class: str, prompt_idx: int,
 ) -> dict:
     """Load a JB graph JSON, annotate each feature node with overlap_bucket
-    relative to the bare graph, persist in-place, and return the mutated dict."""
+    relative to the bare graph, persist in-place, and return the mutated dict.
+
+    2-way (legacy) viewpoint: shared_with_bare | jb_unique | non_feature.
+    For 3-way bare/ctrl/jb visualization use `annotate_overlap_3way` instead.
+    """
     with open(jb_json_path) as f:
         jb = json.load(f)
     with open(bare_json_path) as f:
@@ -77,10 +99,122 @@ def annotate_overlap(
 
     jb["metadata"]["jb_class"] = jb_class
     jb["metadata"]["prompt_idx"] = prompt_idx
+    jb["metadata"]["overlap_mode"] = "2way"
 
     with open(jb_json_path, "w") as f:
         json.dump(jb, f, indent=2)
     return jb
+
+
+def annotate_overlap_3way(
+    jb_json_path: Path, bare_json_path: Path, ctrl_json_path: Path,
+    jb_class: str, prompt_idx: int,
+) -> dict:
+    """Annotate a JB graph node-by-node against BOTH bare and ctrl_{cls} graphs.
+
+    Buckets (jb-graph viewpoint):
+        shared_with_bare_and_ctrl  — feature in bare ∩ ctrl ∩ jb  (highest stability)
+        shared_with_bare           — in bare ∩ jb, NOT in ctrl
+        shared_with_ctrl           — in ctrl ∩ jb, NOT in bare    (PREFIX-INDUCED — NOT JB-semantic)
+        jb_unique                  — only in the jb graph         (TRUE JB-SEMANTIC signal)
+        non_feature                — non-feature nodes
+
+    `shared_with_ctrl` is the diagnostic bucket: features that appear under the
+    matched benign ctrl prefix — they're recruited by the prefix itself, not
+    by the JB-semantic content. Distinguishing this from `jb_unique` is the
+    core novel insight of the 11-condition ctrl-balanced dataset.
+    """
+    with open(jb_json_path) as f:
+        jb = json.load(f)
+    with open(bare_json_path) as f:
+        bare = json.load(f)
+    with open(ctrl_json_path) as f:
+        ctrl = json.load(f)
+
+    bare_keys = {
+        k for k in (feature_key_from_node(n) for n in bare["nodes"]) if k is not None
+    }
+    ctrl_keys = {
+        k for k in (feature_key_from_node(n) for n in ctrl["nodes"]) if k is not None
+    }
+
+    counts = {b: 0 for b in
+              ("shared_with_bare_and_ctrl", "shared_with_bare", "shared_with_ctrl",
+               "jb_unique", "non_feature")}
+
+    for node in jb["nodes"]:
+        key = feature_key_from_node(node)
+        if key is None:
+            node["overlap_bucket"] = "non_feature"
+        else:
+            in_bare = key in bare_keys
+            in_ctrl = key in ctrl_keys
+            if in_bare and in_ctrl:
+                node["overlap_bucket"] = "shared_with_bare_and_ctrl"
+            elif in_bare:
+                node["overlap_bucket"] = "shared_with_bare"
+            elif in_ctrl:
+                node["overlap_bucket"] = "shared_with_ctrl"
+            else:
+                node["overlap_bucket"] = "jb_unique"
+        counts[node["overlap_bucket"]] += 1
+
+    jb["metadata"]["jb_class"] = jb_class
+    jb["metadata"]["prompt_idx"] = prompt_idx
+    jb["metadata"]["overlap_mode"] = "3way"
+    jb["metadata"]["overlap_counts"] = counts
+
+    with open(jb_json_path, "w") as f:
+        json.dump(jb, f, indent=2)
+    return jb
+
+
+def annotate_ctrl(
+    ctrl_json_path: Path, bare_json_path: Path | None, ctrl_class: str, prompt_idx: int,
+) -> dict:
+    """Tag a ctrl graph's features with their ctrl-viewpoint buckets.
+
+    Buckets (ctrl-graph viewpoint):
+        ctrl                 — every feature in this ctrl graph (when bare_json_path is None)
+        shared_with_bare     — feature appears in bare AND ctrl
+        ctrl_unique          — feature only in ctrl (not bare)
+        non_feature          — non-feature nodes
+
+    Pass `bare_json_path=None` to just mark everything as `ctrl` (analog of
+    the legacy `annotate_bare` flow). Passing bare enables the standalone
+    2-way view of the ctrl graph.
+    """
+    with open(ctrl_json_path) as f:
+        ctrl = json.load(f)
+
+    if bare_json_path is not None:
+        with open(bare_json_path) as f:
+            bare = json.load(f)
+        bare_keys = {
+            k for k in (feature_key_from_node(n) for n in bare["nodes"]) if k is not None
+        }
+    else:
+        bare_keys = None
+
+    for node in ctrl["nodes"]:
+        key = feature_key_from_node(node)
+        if key is None:
+            node["overlap_bucket"] = "non_feature"
+        elif bare_keys is None:
+            node["overlap_bucket"] = "ctrl"
+        elif key in bare_keys:
+            node["overlap_bucket"] = "shared_with_bare"
+        else:
+            node["overlap_bucket"] = "ctrl_unique"
+
+    ctrl["metadata"]["jb_class"] = f"ctrl_{ctrl_class}"
+    ctrl["metadata"]["ctrl_class"] = ctrl_class
+    ctrl["metadata"]["prompt_idx"] = prompt_idx
+    ctrl["metadata"]["overlap_mode"] = "ctrl" if bare_keys is None else "ctrl_vs_bare"
+
+    with open(ctrl_json_path, "w") as f:
+        json.dump(ctrl, f, indent=2)
+    return ctrl
 
 
 # ---------------------- subcircuit filter rules -------------------------
@@ -93,10 +227,36 @@ def annotate_overlap(
 # only display memberships that are consistent with each graph's own
 # `overlap_bucket`, so the UI does not paint a jb_unique node as "universal".
 
-_UNIVERSAL_CORE_BUCKETS = frozenset({"bare", "shared_with_bare"})
-_CANONICAL_BUCKETS = frozenset({"jb_unique"})
-_CLASS_EXCLUSIVE_BUCKETS = frozenset({"jb_unique"})
-# These subcircuits are orthogonal to the bare/JB axis — a feature can be a
+# universal_refusal_core: feature in bare + all jb + all ctrl (corpus level).
+# In any single graph, it should appear as "bare-equivalent": bare itself,
+# or shared-with-bare in a jb/ctrl graph.
+_UNIVERSAL_CORE_BUCKETS = frozenset({
+    "bare", "ctrl",
+    "shared_with_bare", "shared_with_bare_and_ctrl",
+})
+# canonical_pro_refusal: in all 5 jb, not bare (corpus). Per-graph, the feature
+# must NOT appear in the bare graph for this prompt. In a jb graph, that's
+# jb_unique (definitely not bare) or shared_with_ctrl (in ctrl+jb, not bare).
+_CANONICAL_BUCKETS = frozenset({"jb_unique", "shared_with_ctrl"})
+_CLASS_EXCLUSIVE_BUCKETS = frozenset({"jb_unique", "shared_with_ctrl"})
+
+# Ctrl-aware subcircuits (Task 10, Apr 22) — require Task 7 per_condition_top50 data.
+#   ctrl_shared_refusal: bare ∩ all 5 ctrl, missing some jb. At per-graph level
+#     these are "bare-ish" features, so they show up as bare / ctrl / shared
+#     variants (NEVER as jb_unique — that would contradict the corpus rule).
+_CTRL_SHARED_REFUSAL_BUCKETS = frozenset({
+    "bare", "ctrl",
+    "shared_with_bare", "shared_with_bare_and_ctrl", "shared_with_ctrl",
+})
+#   ctrl_only: all 5 ctrl, not bare, not any jb. At per-graph level, must be
+#     "ctrl-unique" — anything touching bare or jb contradicts the corpus rule.
+_CTRL_ONLY_BUCKETS = frozenset({"ctrl_unique", "ctrl"})
+#   jb_{cls}_specific_vs_ctrl: in jb_{cls} top-50, NOT in ctrl_{cls} top-50.
+#     Allowed only in the matching jb_{cls} graph, as jb_unique or shared_with_bare
+#     (not shared_with_ctrl — that would mean feature IS in ctrl too, contradicting).
+_JB_SPECIFIC_BUCKETS = frozenset({"jb_unique", "shared_with_bare"})
+
+# These subcircuits are orthogonal to the bare/ctrl/JB axis — a feature can be a
 # "sign-flip" or "dampening specialist" in any graph where it appears,
 # regardless of whether the overlap bucket says bare, shared, or jb_unique.
 _UNFILTERED_SUBCIRCUITS = frozenset({
@@ -122,9 +282,17 @@ def _subcircuit_allowed(
         return overlap_bucket in _UNIVERSAL_CORE_BUCKETS
     if sc_name == "canonical_pro_refusal":
         return overlap_bucket in _CANONICAL_BUCKETS
+    if sc_name == "ctrl_shared_refusal":
+        return overlap_bucket in _CTRL_SHARED_REFUSAL_BUCKETS
+    if sc_name == "ctrl_only":
+        return overlap_bucket in _CTRL_ONLY_BUCKETS
+    if sc_name.startswith("jb_") and sc_name.endswith("_specific_vs_ctrl"):
+        # "jb_cognitive_reframe_specific_vs_ctrl" → cls is "cognitive_reframe"
+        cls = sc_name.removeprefix("jb_").removesuffix("_specific_vs_ctrl")
+        return overlap_bucket in _JB_SPECIFIC_BUCKETS and jb_class == cls
     if sc_name.endswith("_exclusive"):
         # "cognitive_reframe_exclusive" → class is "cognitive_reframe"
-        cls = sc_name.rsplit("_", 1)[0]
+        cls = sc_name.removesuffix("_exclusive")
         return overlap_bucket in _CLASS_EXCLUSIVE_BUCKETS and jb_class == cls
     # Unknown subcircuit name — pass through so newly-added subcircuits in
     # Stage 07 don't get silently dropped until this file is updated.
