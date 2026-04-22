@@ -1,34 +1,29 @@
-# Attribution Experiment: Statistical Analysis
+# Stage 02b Statistical Analysis
 
-**Prompts**: 50 | **Model**: google/gemma-3-4b-it
-**Direction**: Layer 32 (best separation)
+- **Prompts**: 50
+- **Model**: google/gemma-3-4b-it
+- **Target**: L15 (causal). Two graph modes:
+  - **multi** — targets the template anchors [-5, -3, -2] (`<end_of_turn>`, `<start_of_turn>`, `model`)
+  - **single** — target pos=-2 only (Tejas-verified causal position)
 
-## Main Results
+Comparisons are run for each mode:
+- `vs_bare`: bare ↔ jb_<class> — legacy JB-effect delta
+- `vs_ctrl`: ctrl_<class> ↔ jb_<class> — token-matched, isolates JB semantics
+- `ctrl_vs_bare`: bare ↔ ctrl_<class> — sanity (ctrl should track bare)
 
-| Class | Net Delta | % Change | p (Wilcoxon) | Cohen's d | 95% CI | Consistency |
-|-------|----------|----------|-------------|-----------|--------|-------------|
-| **Roleplay** | -38.7 | -54.9% | 1.37e-08*** | -0.91 | [-50.5, -27.0] | 42/50 |
-| **Fiction** | -65.3 | -92.7% | 3.002e-13*** | -1.57 | [-76.6, -53.8] | 47/50 |
-| **Analytical** | -73.7 | -104.6% | 5.329e-15*** | -2.37 | [-82.1, -64.9] | 49/50 |
-| **Completion** | +5.0 | +7.2% | 0.01057* | +0.27 | [-0.1, +10.2] | 15/50 |
-| **Cognitive_reframe** | -50.2 | -71.3% | 2.487e-14*** | -1.41 | [-60.2, -40.4] | 49/50 |
+## Mode: `single`
 
-## Dual Mechanism Decomposition
+### single · vs_bare
 
-| Class | dPos (pro-refusal) | dNeg (anti-refusal) | Net | Dominant |
-|-------|--------------------|--------------------|----|----------|
-| **Roleplay** | -22.5 (-16.7%) | -16.2 (-25.3%) | -38.7 | Balanced |
-| **Fiction** | -43.1 (-32.0%) | -22.2 (-34.6%) | -65.3 | Balanced |
-| **Analytical** | -44.7 (-33.2%) | -29.0 (-45.1%) | -73.7 | Balanced |
-| **Completion** | +19.7 (+14.6%) | -14.6 (-22.8%) | +5.0 | Pro-refusal recruitment |
-| **Cognitive_reframe** | -33.8 (-25.1%) | -16.4 (-25.5%) | -50.2 | Dampening-dominant |
+| Class | N | Baseline | Treatment | ΔNet | % Change | p (Wilcoxon) | Cohen's d | 95% CI | Dominant |
+|---|---|---|---|---|---|---|---|---|---|
+| **roleplay** | 50 | +70.5 | +31.8 | -38.7 | -54.9% | 1.37e-08*** | -0.91 | [-50.5, -27.0] | Balanced |
+| **fiction** | 50 | +70.5 | +5.2 | -65.3 | -92.7% | 3.002e-13*** | -1.57 | [-76.4, -53.9] | Balanced |
+| **analytical** | 50 | +70.5 | -3.2 | -73.7 | -104.6% | 5.329e-15*** | -2.37 | [-82.1, -65.2] | Balanced |
+| **completion** | 50 | +70.5 | +75.5 | +5.0 | +7.2% | 0.01057* | +0.27 | [-0.0, +10.2] | Balanced |
+| **cognitive_reframe** | 50 | +70.5 | +20.3 | -50.2 | -71.3% | 2.487e-14*** | -1.41 | [-60.0, -40.6] | Dampening-dominant |
 
-## Feature Comparison
+## Direction (Stage 01) Summary
 
-| Class | Bare | JB | Shared % | JB-only % | Sign-flip % |
-|-------|------|-----|----------|-----------|------------|
-| **Roleplay** | 8342 | 12540 | 65.7% | 56.3% | 17.5% |
-| **Fiction** | 8342 | 12996 | 58.5% | 62.5% | 25.6% |
-| **Analytical** | 8342 | 12109 | 63.0% | 56.6% | 23.1% |
-| **Completion** | 8342 | 11200 | 73.5% | 45.3% | 16.6% |
-| **Cognitive_reframe** | 8342 | 11131 | 64.4% | 51.8% | 20.3% |
+- Best separation layer: **L32** (magnitude 20873.2109)
+- Best causal layer: **L15** (used for attribution)
