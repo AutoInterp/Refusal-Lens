@@ -89,6 +89,23 @@ def parse_args():
                    help="Skip dataset-verification phase (just run interventions)")
     p.add_argument("--skip-anti", action="store_true",
                    help="Skip anti-refusal subtraction (pro-refusal add only)")
+    p.add_argument("--skip-benign", action="store_true",
+                   help="Skip Phase 2c benign force-refuse control (Tejas's 10 benign prompts)")
+    p.add_argument(
+        "--r-source", choices=["stage01", "tejas-rescale", "recompute"],
+        default="stage01",
+        help=(
+            "How to source the L15 unnormalized direction r. "
+            "stage01 (default): load from 01_direction/unnormalized_r.pt as-is. "
+            "tejas-rescale: load stage01 direction, rescale to --r-target-magnitude. "
+            "recompute: recompute fresh from harmful_train + harmless_train under "
+            "the same model load as intervention (bf16), matching Tejas Script 20 exactly."
+        ),
+    )
+    p.add_argument("--r-target-magnitude", type=float, default=4019.7,
+                   help="Target |r| when --r-source tejas-rescale (default: Tejas's 4019.7 at L15)")
+    p.add_argument("--r-recompute-n", type=int, default=64,
+                   help="N harmful + N harmless prompts for --r-source recompute (default: 64, matches Tejas)")
     return p.parse_args()
 
 
@@ -109,6 +126,103 @@ def _evaluate(model, tokenizer, prompt_text: str, hook_fn, layer, max_new_tokens
         "coherent": is_coherent(resp),
         "response": resp[:300],
     }
+
+
+# --------------------------------------------------------------------
+# Direction-source resolution (audit fix to match Tejas Script 20 magnitude)
+# --------------------------------------------------------------------
+
+def recompute_r_tejas_style(model, tokenizer, layer: int, n_each: int = 64):
+    """Recompute unnormalized r in-script, matching Tejas Script 20 exactly.
+
+    Reads `harmful_train.json` and `harmless_train.json`, takes first `n_each`
+    from each, formats with chat template, runs one forward per prompt (NO
+    batching, NO padding, NO truncation), extracts hidden_states[layer+1][0,
+    -2, :] in float64, returns the mean-diff in float32.
+
+    Unlike Stage 01 (which batches with left-padding + max_length=256), this
+    matches Tejas's methodology bit-for-bit. Use when we want the exact |r|
+    Tejas measured (~4019.7 at L15).
+    """
+    import json as _json
+    import gc
+    import torch
+
+    harmful_path = config.DATASET_DIR / "harmful_train.json"
+    harmless_path = config.DATASET_DIR / "harmless_train.json"
+    with open(harmful_path) as f:
+        harmful = [p["instruction"] for p in _json.load(f)[:n_each]]
+    with open(harmless_path) as f:
+        harmless = [p["instruction"] for p in _json.load(f)[:n_each]]
+    print(f"  [recompute] reading {len(harmful)} harmful + {len(harmless)} harmless prompts...")
+
+    d_model = model.config.text_config.hidden_size
+    mean_harmful = torch.zeros(d_model, dtype=torch.float64)
+    mean_harmless = torch.zeros(d_model, dtype=torch.float64)
+
+    for i, instr in enumerate(harmful):
+        formatted = format_prompt(tokenizer, instr)
+        input_ids = tokenizer(formatted, return_tensors="pt")["input_ids"].to(model.device)
+        with torch.no_grad():
+            out = model(input_ids=input_ids, output_hidden_states=True)
+        mean_harmful += out.hidden_states[layer + 1][0, -2, :].cpu().to(torch.float64) / n_each
+        del out
+        gc.collect()
+        torch.cuda.empty_cache()
+        if (i + 1) % 16 == 0:
+            print(f"    harmful {i+1}/{n_each}")
+
+    for i, instr in enumerate(harmless):
+        formatted = format_prompt(tokenizer, instr)
+        input_ids = tokenizer(formatted, return_tensors="pt")["input_ids"].to(model.device)
+        with torch.no_grad():
+            out = model(input_ids=input_ids, output_hidden_states=True)
+        mean_harmless += out.hidden_states[layer + 1][0, -2, :].cpu().to(torch.float64) / n_each
+        del out
+        gc.collect()
+        torch.cuda.empty_cache()
+        if (i + 1) % 16 == 0:
+            print(f"    harmless {i+1}/{n_each}")
+
+    return (mean_harmful - mean_harmless).to(torch.float32)
+
+
+def resolve_direction(args, run_dir: Path, model, tokenizer):
+    """Produce the L15 unnormalized r according to --r-source. Returns (r, provenance)."""
+    import torch
+
+    layer = args.layer
+    if args.r_source == "stage01":
+        r_dict = load_unnormalized_r(run_dir / "01_direction", [layer])
+        r = r_dict[layer].to(torch.float32)
+        prov = {"source": "stage01", "path": str(run_dir / "01_direction" / "unnormalized_r.pt")}
+    elif args.r_source == "tejas-rescale":
+        r_dict = load_unnormalized_r(run_dir / "01_direction", [layer])
+        r_orig = r_dict[layer].to(torch.float32)
+        orig_norm = float(r_orig.norm())
+        scale = args.r_target_magnitude / orig_norm
+        r = r_orig * scale
+        prov = {
+            "source": "tejas-rescale",
+            "original_magnitude": orig_norm,
+            "target_magnitude": args.r_target_magnitude,
+            "scale_applied": scale,
+            "base_path": str(run_dir / "01_direction" / "unnormalized_r.pt"),
+        }
+    elif args.r_source == "recompute":
+        r = recompute_r_tejas_style(model, tokenizer, layer, n_each=args.r_recompute_n)
+        prov = {
+            "source": "recompute",
+            "n_harmful": args.r_recompute_n,
+            "n_harmless": args.r_recompute_n,
+            "method": "Tejas Script 20 exact port — no batching, no padding, no truncation, model dtype as loaded",
+        }
+    else:
+        raise ValueError(f"Unknown --r-source {args.r_source}")
+
+    prov["magnitude"] = float(r.norm())
+    print(f"  [r-source={args.r_source}] |r_L{layer}| = {prov['magnitude']:.1f}")
+    return r, prov
 
 
 # --------------------------------------------------------------------
@@ -223,6 +337,45 @@ def process_prompt(model, tokenizer, row, r_vec_by_layer, layer,
             result["interventions"][anti_key]["bare"] = r_int
 
     return result
+
+
+# --------------------------------------------------------------------
+# Phase 2c — benign force-refuse control (Tejas Script 20 Phase 4a)
+# --------------------------------------------------------------------
+
+def phase2c_benign_force_refuse(model, tokenizer, r_vec, layer, max_new_tokens,
+                                benign_prompts=None):
+    """Run the pro-refusal-add hook on a list of benign prompts. Expect all to REFUSE.
+
+    This is Tejas's control experiment (Script 20 Phase 4a): if the intervention
+    is a generic refusal push (not a JB-specific artifact), benign prompts under
+    the same hook should flip from their usual COMPLY baseline to REFUSE. Tejas
+    reports 10/10 on this. Below-80% here would invalidate the symmetry claim.
+
+    Uses `config.BENIGN_PROMPTS` (10 prompts verbatim from Script 20) by default.
+    """
+    if benign_prompts is None:
+        benign_prompts = list(config.BENIGN_PROMPTS)
+    print(f"\n[PHASE 2c] Benign force-refuse control ({len(benign_prompts)} prompts)...")
+    add_hook = make_intervention_hook(r_vec, sign="add")
+    results = []
+    for i, prompt in enumerate(benign_prompts):
+        r = _evaluate(model, tokenizer, prompt, add_hook, layer, max_new_tokens)
+        r["prompt"] = prompt
+        r["forced_to_refuse"] = (r["cls"] == "REFUSE")
+        results.append(r)
+        print(f"  [{i+1}/{len(benign_prompts)}] {r['cls']:>6} | {prompt[:50]}")
+    n_refused = sum(1 for r in results if r["forced_to_refuse"])
+    n_coherent = sum(1 for r in results if r["coherent"])
+    print(f"  RESULT: {n_refused}/{len(benign_prompts)} forced to REFUSE "
+          f"(Tejas reports 10/10 on his bulletproof run); {n_coherent} coherent")
+    return {
+        "n_prompts": len(benign_prompts),
+        "n_forced_to_refuse": n_refused,
+        "force_refuse_rate": round(n_refused / len(benign_prompts), 3) if benign_prompts else 0.0,
+        "n_coherent": n_coherent,
+        "per_prompt": results,
+    }
 
 
 # --------------------------------------------------------------------
@@ -356,7 +509,9 @@ def plot_intervention_symmetry(summary, layer, out_path: Path) -> None:
     plt.close()
 
 
-def write_summary_md(summary, layer, phase0, out_path: Path, elapsed_min: float) -> None:
+def write_summary_md(summary, layer, phase0, out_path: Path, elapsed_min: float,
+                      r_provenance: dict | None = None,
+                      benign_result: dict | None = None) -> None:
     pro = summary[f"L{layer}_pro_refusal_add"]
     anti = summary.get(f"L{layer}_anti_refusal_sub")
     lines = [
@@ -367,6 +522,26 @@ def write_summary_md(summary, layer, phase0, out_path: Path, elapsed_min: float)
         f"**Dataset**: refusal_lens_controlled_dataset.json (50 prompts × 11 conditions).",
         f"**Elapsed**: {elapsed_min:.1f} min.",
         "",
+    ]
+    if r_provenance:
+        lines += [
+            "## Direction source",
+            "",
+            f"- `r_source`: **{r_provenance.get('source')}**",
+            f"- \\|r\\|: **{r_provenance.get('magnitude', 0):.1f}** (Tejas reports 4019.7 on his bulletproof run)",
+        ]
+        if r_provenance.get("source") == "tejas-rescale":
+            lines.append(
+                f"- Scale applied: ×{r_provenance.get('scale_applied', 1):.4f} "
+                f"(original \\|r\\|={r_provenance.get('original_magnitude', 0):.1f})"
+            )
+        elif r_provenance.get("source") == "recompute":
+            lines.append(
+                f"- Recomputed from {r_provenance.get('n_harmful', 64)}+{r_provenance.get('n_harmless', 64)} prompts "
+                "under the same bf16 model load as intervention (Tejas-exact)"
+            )
+        lines.append("")
+    lines += [
         "## Phase 0 — dataset verification",
         "",
         f"- Bare refused: **{phase0['bare_refused']}/{phase0['bare_refused'] + len(phase0['excluded_prompts'])}**",
@@ -407,6 +582,20 @@ def write_summary_md(summary, layer, phase0, out_path: Path, elapsed_min: float)
             "`jb_vs_ctrl_contrast` finding.",
             "",
         ])
+
+    if benign_result:
+        lines.extend([
+            "## Phase 2c — benign force-refuse control (Tejas bulletproof)",
+            "",
+            f"Force-refuse rate on 10 benign prompts: **{benign_result['force_refuse_rate']*100:.1f}%** "
+            f"({benign_result['n_forced_to_refuse']}/{benign_result['n_prompts']})",
+            f"Coherent responses: **{benign_result['n_coherent']}/{benign_result['n_prompts']}**",
+            "",
+            "Tejas reports **10/10** on his bulletproof run. A result below ~80% here would "
+            "indicate the intervention isn't a generic refusal push, invalidating the "
+            "'L15 r IS the refusal axis' claim.",
+            "",
+        ])
     out_path.write_text("\n".join(lines) + "\n")
 
 
@@ -427,10 +616,12 @@ def main():
     print(f"  dtype:         {args.dtype}")
     print(f"  max_prompts:   {args.max_prompts}")
 
-    # Load direction first (cheap, fails fast if Stage 01 outputs missing)
-    r_vec_by_layer = load_unnormalized_r(run_dir / "01_direction", [args.layer])
-    r_mag = float(r_vec_by_layer[args.layer].norm())
-    print(f"  |r_L{args.layer}|:      {r_mag:.1f}")
+    # Stage-01 r sanity (fail fast for stage01 / tejas-rescale; recompute path skips this)
+    if args.r_source in ("stage01", "tejas-rescale"):
+        stage01_r_path = run_dir / "01_direction" / "unnormalized_r.pt"
+        if not stage01_r_path.exists():
+            print(f"  ERROR: {stage01_r_path} missing. Run Stage 01 or pass --r-source recompute.")
+            sys.exit(1)
 
     # Load dataset
     rows = load_controlled_dataset(n_prompts=args.max_prompts)
@@ -455,9 +646,13 @@ def main():
         config.MODEL_NAME, dtype=dtype_map[args.dtype], device_map="auto",
     )
     model.eval()
-    # Move direction to model device (done once; hook re-casts dtype per call)
-    r_vec_by_layer[args.layer] = r_vec_by_layer[args.layer].to(model.device)
     print("  Model ready.")
+
+    # Resolve direction AFTER model load (recompute path needs the model).
+    # The hook re-casts dtype per call, so keep r in float32 on the model device.
+    r_tensor, r_provenance = resolve_direction(args, run_dir, model, tokenizer)
+    r_vec_by_layer = {args.layer: r_tensor.to(model.device)}
+    r_mag = r_provenance["magnitude"]
 
     # Checkpoint / resume
     ckpt_path = out_dir / "causal_checkpoint.json"
@@ -517,16 +712,32 @@ def main():
         if (i + 1) % args.checkpoint_every == 0:
             save_json({"results": results, "phase0": phase0}, ckpt_path)
 
+    # Phase 2c — benign force-refuse control (Tejas Script 20 Phase 4a)
+    benign_result = None
+    if not args.skip_benign:
+        benign_result = phase2c_benign_force_refuse(
+            model, tokenizer, r_vec_by_layer[args.layer],
+            args.layer, args.max_new_tokens,
+        )
+
     total_elapsed = time.time() - t0
 
     # Aggregate + persist
     summary = aggregate_summary(results, args.layer, args.skip_anti)
+    if benign_result:
+        summary[f"L{args.layer}_benign_force_refuse"] = {
+            "n_prompts": benign_result["n_prompts"],
+            "n_forced_to_refuse": benign_result["n_forced_to_refuse"],
+            "force_refuse_rate": benign_result["force_refuse_rate"],
+            "n_coherent": benign_result["n_coherent"],
+        }
     final = {
         "metadata": {
             "method": "arditi_all_positions_every_step",
             "layers": [args.layer],
             "intervention_modes": list(config.CAUSAL_INTERVENTION_MODES[:1 + int(not args.skip_anti)]),
             "r_magnitude": {f"L{args.layer}": r_mag},
+            "r_provenance": r_provenance,
             "n_prompts": len(results),
             "n_conditions": 11,
             "source_run": run_dir.name,
@@ -539,6 +750,7 @@ def main():
             k: v for k, v in (phase0 or {}).items()
             if k not in ("bare_details", "ctrl_details")  # drop per-prompt verbosity
         },
+        "phase2c_benign_control": benign_result,
         "results": results,
         "summary": summary,
     }
@@ -553,20 +765,27 @@ def main():
     plot_intervention_symmetry(summary, args.layer, out_dir / "intervention_symmetry.png")
     print("    intervention_symmetry.png")
     write_summary_md(summary, args.layer, phase0 or {},
-                     out_dir / "FLIP_RATE_SUMMARY.md", total_elapsed / 60)
+                     out_dir / "FLIP_RATE_SUMMARY.md", total_elapsed / 60,
+                     r_provenance=r_provenance, benign_result=benign_result)
     print("    FLIP_RATE_SUMMARY.md")
 
     # Headline numbers to console
     print("\n" + "=" * 60)
     print("HEADLINE RESULTS")
     print("=" * 60)
+    print(f"  |r_L{args.layer}|:                     {r_mag:.1f} (source={r_provenance['source']})")
     pro = summary[f"L{args.layer}_pro_refusal_add"]
-    print(f"  L{args.layer} pro-refusal flip rate:  "
+    print(f"  L{args.layer} pro-refusal flip rate:   "
           f"{pro['flip_rate']*100:.1f}% ({pro['n_flipped_to_refuse']}/{pro['n_jb_comply_baseline']})")
     if f"L{args.layer}_anti_refusal_sub" in summary:
         anti = summary[f"L{args.layer}_anti_refusal_sub"]
-        print(f"  L{args.layer} anti-refusal flip rate: "
+        print(f"  L{args.layer} anti-refusal flip rate:  "
               f"{anti['flip_rate']*100:.1f}% ({anti['n_flipped_to_comply']}/{anti['n_bare_refuse_baseline']})")
+    if benign_result:
+        print(f"  L{args.layer} benign force-refuse:     "
+              f"{benign_result['force_refuse_rate']*100:.1f}% "
+              f"({benign_result['n_forced_to_refuse']}/{benign_result['n_prompts']})  "
+              f"[Tejas reports 10/10]")
     print(f"  Elapsed: {total_elapsed / 60:.1f} min")
     print("DONE!")
 
