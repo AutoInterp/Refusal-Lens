@@ -92,6 +92,10 @@ def parse_args():
     p.add_argument("--skip-overlap", action="store_true")
     p.add_argument("--skip-subcircuits", action="store_true")
     p.add_argument("--gzip", action="store_true")
+    p.add_argument("--source-graph-data", type=Path, default=None,
+                   help="When --skip-convert is set, read pre-converted JSONs from "
+                        "this directory (e.g. <run>/graph_data produced by 02c_pack_graphs.py). "
+                        "If omitted, falls back to <out-dir>/graph_data.")
     p.add_argument("--node-threshold", type=float, default=0.8)
     p.add_argument("--edge-threshold", type=float, default=0.98)
     p.add_argument("--mode", type=str, choices=["multi", "single", "both"], default="single",
@@ -220,16 +224,76 @@ def main():
     print(f"  prompt filter:      {sorted(prompt_filter) if prompt_filter else 'all'}")
     print(f"  class filter:       {sorted(class_filter) if class_filter else 'all'}")
 
-    if not graphs_pt_dir.exists():
+    # Determine which dir has our per-graph JSONs when --skip-convert is set.
+    # Priority: explicit --source-graph-data, then 05_frontend/graph_data,
+    # then run_dir/graph_data (where 02c_pack_graphs.py writes).
+    source_graph_data_dir = None
+    if args.skip_convert:
+        candidates = [
+            args.source_graph_data,
+            graph_data_dir,
+            run_dir / "graph_data",
+        ]
+        for cand in candidates:
+            if cand is not None and cand.exists() and (
+                any(cand.glob("*.json")) or any(cand.glob("*.json.gz"))
+            ):
+                source_graph_data_dir = cand.resolve()
+                break
+        if source_graph_data_dir is None:
+            print("\n  ERROR: --skip-convert set but no pre-converted JSONs found.")
+            print(f"    Searched: {[str(c) for c in candidates if c is not None]}")
+            print("    Run 02c_pack_graphs.py first, or drop --skip-convert.")
+            sys.exit(1)
+        print(f"  source_graph_data:  {source_graph_data_dir}")
+
+    if not args.skip_convert and not graphs_pt_dir.exists():
         print(f"\n  ERROR: {graphs_pt_dir} does not exist. "
               f"Did Stage 02 run with --save-graphs?")
         sys.exit(1)
 
-    pt_files = select_pt_files(graphs_pt_dir, prompt_filter, class_filter, mode_filter)
-    if not pt_files:
-        print("\n  ERROR: no .pt files match the filters.")
-        sys.exit(1)
-    print(f"\n  Selected {len(pt_files)} .pt files")
+    # Enumerate slugs. When converting, we enumerate from .pt files. When
+    # skip-convert, we enumerate from the source JSON dir (may have .json or .json.gz).
+    if args.skip_convert:
+        json_like = list(source_graph_data_dir.glob("*.json")) + list(source_graph_data_dir.glob("*.json.gz"))
+        # Build virtual "pt_files" from JSON stems for uniform downstream handling.
+        # Use a lightweight namespace object so select_pt_files's filter logic still applies.
+        class _Stem:
+            def __init__(self, stem):
+                self.stem = stem
+                self.name = stem + ".pt"
+        pt_files = []
+        seen = set()
+        for jl in sorted(json_like):
+            stem = jl.stem[:-5] if jl.suffix == ".gz" else jl.stem  # strip .json.gz or .json
+            if jl.suffix == ".gz":
+                stem = jl.name.removesuffix(".json.gz")
+            else:
+                stem = jl.stem
+            if stem in seen:
+                continue
+            seen.add(stem)
+            try:
+                idx, cond_name, mode = parse_slug(stem)
+            except (ValueError, IndexError):
+                continue
+            if prompt_filter is not None and idx not in prompt_filter:
+                continue
+            if class_filter is not None and cond_name not in class_filter:
+                continue
+            if mode_filter is not None and mode is not None and mode not in mode_filter:
+                continue
+            pt_files.append(_Stem(stem))
+        if not pt_files:
+            print("\n  ERROR: no JSON files match the filters in source_graph_data.")
+            sys.exit(1)
+        print(f"\n  Selected {len(pt_files)} graphs (from JSONs, --skip-convert)")
+    else:
+        pt_files = select_pt_files(graphs_pt_dir, prompt_filter, class_filter, mode_filter)
+        if not pt_files:
+            print("\n  ERROR: no .pt files match the filters.")
+            sys.exit(1)
+        print(f"\n  Selected {len(pt_files)} .pt files")
 
     # ------------------------------------------------------------------
     # Step 1: convert .pt → graph_data/<slug>.json
@@ -238,6 +302,33 @@ def main():
     json_paths: dict[str, Path] = {}
     if args.skip_convert:
         print("\n  Step 1: skipping .pt → JSON conversion (--skip-convert)")
+        # Ensure destination exists + copy source JSONs into it if source ≠ dest.
+        graph_data_dir.mkdir(parents=True, exist_ok=True)
+        if source_graph_data_dir != graph_data_dir.resolve():
+            import shutil
+            n_copied = 0
+            for jl in list(source_graph_data_dir.glob("*.json")) + list(source_graph_data_dir.glob("*.json.gz")):
+                dst = graph_data_dir / jl.name
+                if not dst.exists():
+                    shutil.copy2(jl, dst)
+                    n_copied += 1
+            print(f"    Copied {n_copied} JSONs from {source_graph_data_dir} → {graph_data_dir}")
+        # Also ensure graph-metadata.json is in the staging dir
+        md_src = source_graph_data_dir / "graph-metadata.json"
+        md_dst = graph_data_dir / "graph-metadata.json"
+        if md_src.exists() and not md_dst.exists():
+            import shutil
+            shutil.copy2(md_src, md_dst)
+
+        # If JSONs are gzipped and subsequent annotation needs plain JSON,
+        # ungzip in place (annotate_overlap/annotate_subcircuits read with open()).
+        for gz in list(graph_data_dir.glob("*.json.gz")):
+            plain = gz.with_suffix("")  # strips .gz → .json
+            if not plain.exists():
+                import gzip as _gz
+                with _gz.open(gz, "rb") as src, open(plain, "wb") as dst:
+                    dst.write(src.read())
+
         for pt in pt_files:
             slug = pt.stem
             jpath = graph_data_dir / f"{slug}.json"

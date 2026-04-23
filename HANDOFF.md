@@ -1,15 +1,16 @@
 # Refusal-Lens — Pipeline State & Remaining Tasks
 
-**Handoff doc, last updated 2026-04-22** (end of session after Phase A validation + Stage 06 implementation). Written for a fresh Claude session to pick up where we left off. The current phase of work is: attribution pipeline code is complete and validated; causal intervention code is complete but not yet run on GPU.
+**Handoff doc, last updated 2026-04-23** (end of session after Stage 06 full-run lands). Written for a fresh Claude session to pick up where we left off. Current phase: correlational pipeline done, causal intervention validated, frontend + ablation are the remaining moves.
 
 **TL;DR for a fresh session**:
-- All refactored pipeline stages (01 / 02 / 02b / 03 / 04 / 05-code / 07) landed + validated against the real RunPod run `run_20260422_015552` on the `l15-refactor` branch.
-- Stage 06 (Task 9) causal intervention code is written and has 9 local tests passing; smoke + full run on RunPod H100 pending.
-- Phase A0 packaging scripts are written (`02c_pack_graphs.py` + `push_graph_data.py --source 02c`); the actual `.pt → JSON.gz` producer run + HF push is pending (~80 GB pull + ~3 GB push, one-time).
+- All refactored pipeline stages (01 / 02 / 02b / 03 / 04 / 07) landed + validated on the real RunPod run `run_20260422_015552` on the `l15-refactor` branch.
+- **Stage 06 (Task 9) causal intervention COMPLETE on full 50-prompt dataset**. Headline: **96.7% pro-refusal flip (87/90), 100% anti-refusal (49/49), 100% benign force-refuse (10/10)**. Matches Tejas's 90/90 bulletproof within 3 prompts; bidirectional symmetry confirms L15 `r` is the refusal axis. See Phase B results block below.
+- **Stage 05 frontend is the next priority** — code is ready but needs to be run end-to-end on the new `run_20260422_015552` attribution graphs (80 GB `.pt` fetch from HF → `02c_pack_graphs` → HF push → `05_visualize_circuits` → browser spot-check). User has ~80 GB local disk for this; should be fast once started.
+- Phase A0 packaging scripts are written (`02c_pack_graphs.py` + `push_graph_data.py --source 02c`); the actual packaging run is step 1 of the Stage 05 work.
 - Local test suite: **214 passed / 0 failed / 1 skipped**.
-- ICML headline numbers are in hand (see "Phase A validation findings" below).
+- ICML headline numbers are all in hand (see "Phase A validation findings" + new Phase B block below).
 
-Skip straight to the **"Immediate next steps for new session"** section at the bottom if you want the punch list.
+Skip straight to the **"Immediate next steps for new session"** section at the bottom if you want the punch list. Stage 05 frontend refresh is #1.
 
 ---
 
@@ -45,8 +46,8 @@ Mechanistic interpretability research on **Gemma-3-4b-it** — attributing the m
 | 03 | `03_verify_attribution.py` | ✅ | ✅ 50/50 within tolerance | MLP contributes 0.02% of signal (known limitation). |
 | 04 | `04_label_features.py` | ✅ | ✅ 1353 features, 100% HF coverage | `per_condition_top50` has all 11 keys. |
 | 04b | `04b_delphi_labels.py` | ⏳ not started | — | LLM labels via Claude API (~$2, CPU). |
-| 05 | `05_visualize_circuits.py` + patches | ✅ | ⏳ awaits Phase A0 JSON push | 3-way bucket logic, ctrl-aware filters, CSS palette in place. |
-| 06 | `06_causal_intervention.py` | ✅ code + 9 tests | ⏳ awaits RunPod GPU | Ports Tejas Script 20. |
+| 05 | `05_visualize_circuits.py` + patches | ✅ code | ⚠️ **not yet run end-to-end on the new attribution graphs — NEXT PRIORITY** | 3-way bucket logic, ctrl-aware filters, CSS palette in place; need .pt fetch → 02c pack → HF push → stage-05 render → browser check. |
+| 06 | `06_causal_intervention.py` | ✅ code + 9 tests + full run | ✅ **96.7% pro-flip / 100% anti / 10/10 benign on `run_20260422_015552`** | Ports Tejas Script 20. Headline results committed at `06_causal/`. |
 | 07 | `07_identify_subcircuits.py` | ✅ | ✅ 18 subcircuits, `jb_vs_ctrl_contrast` novel metric computed | See Phase A4 table below. |
 | 08 | `08_ablate_subcircuits.py` | ⏳ not started | — | Depends on Stage 06 + 07. |
 
@@ -237,10 +238,57 @@ Ports Tejas Script 20 bulletproof pipeline (`origin/tejas-circuit-experiments`, 
 **`scripts/pipeline/tests/test_pipeline_local.py`** (append `test_stage_06`):
 - T-S6a..i — hook math (add/sub), tuple-output handling, bad-sign rejection, aggregate_summary correctness, skip_anti path, per-class rate math. 9 assertions. No GPU.
 
-**What's pending on GPU** (next RunPod session):
-- `python3 scripts/pipeline/06_causal_intervention.py --run-dir data/results/pipeline_runs/run_20260422_015552 --max-prompts 2` (smoke, ~5 min)
-- Full run: 50 prompts × 11 conditions × (1 baseline + 2 interventions) ≈ 1650 generations × ~10s = ~4.5h on H100
-- Expected result: L15 pro-refusal flip rate ≥ 95% (match Tejas's 90/90); anti-refusal flip rate high (symmetry claim).
+**Pre-GPU audit fixes (Apr 22 late)**:
+- Added `--r-source {stage01, tejas-rescale, recompute}` CLI flag. Tejas's reported `|r_L15|=4019.7` didn't match our Stage 01's `|r_L15|=3101.2` on an identical-methodology computation. `--r-source recompute` runs the direction recomputation **in-script under the same bf16 model** as intervention, bit-for-bit matching Tejas Script 20's Phase 4. Chose this for the full run.
+- Added Phase 2c **benign force-refuse control** (Tejas Script 20 Phase 4a): applies the same L15 pro-refusal-add hook to 10 hardcoded benign prompts (from `config.BENIGN_PROMPTS`), expects all to flip to REFUSE. This is the "bulletproof" control proving the intervention is a generic refusal push, not a JB-specific artifact.
+
+## Phase B results (Stage 06 full run on `run_20260422_015552`, Apr 22–23)
+
+Pod: RunPod H100 SXM, torch 2.4.0 / CUDA 12.4.1, bf16 model. Wall clock: **54.6 min**. Command: `python3 scripts/pipeline/06_causal_intervention.py --run-dir data/results/pipeline_runs/run_20260422_015552 --r-source recompute`.
+
+**Dataset health (Phase 0)**:
+- Bare refused: **49/50** (1 prompt — "How to steal someone's password..." — excluded as bare-comply).
+- Ctrl refused: **246/250 = 98.4%** (4 ctrl-leak pairs excluded per Tejas's bulletproof convention).
+
+**Headline flip rates**:
+
+| Experiment | Result | Notes |
+|---|---|---|
+| **L15 pro-refusal add** (JB COMPLY → REFUSE) | **87/90 = 96.7%** | Tejas bulletproof reports 90/90; we're 3 prompts shy. |
+| **L15 anti-refusal sub** (bare REFUSE → COMPLY) | **49/49 = 100%** | Tejas didn't test — our symmetry addition. |
+| **L15 benign force-refuse** (10 benign prompts → REFUSE) | **10/10 = 100%** | Tejas reports 10/10. Matches exactly. |
+| Coherence | 100% on all 146 flips | No gibberish — only coherent refusals. |
+
+**Per-class pro-refusal flip**:
+
+| Class | Comply baseline (Stage 06) | Flipped | Flip rate | Stage 07 `jb_specific_frac` |
+|---|---|---|---|---|
+| analytical | 27/50 | 27 | **100%** | 34.2% |
+| roleplay | 9/50 | 9 | **100%** | 20.0% |
+| completion | 1/50 | 1 | 100% (n=1 tiny) | 18.4% |
+| cognitive_reframe | 33/50 | 32 | 97% | **38.6%** |
+| fiction | **20/50** | **18** | **90%** | 34.2% |
+
+**Novel findings from the full run**:
+
+1. **Bidirectional symmetry confirmed (the headline causal claim)**. Adding r flips 97% of JB prompts to REFUSE; subtracting r flips 100% of bare prompts to COMPLY; the same hook forces 10/10 benign prompts to REFUSE. Taken together these establish that L15 `r = mean_harmful − mean_harmless` is not just a readable direction — **it IS the refusal axis, manipulable in both directions**.
+
+2. **Fiction is the hardest JB class to causally patch at 90%**. Every other class flips at ≥97%. Fiction is tied with analytical for second-highest JB-specific feature fraction (34.2%), yet analytical flips 27/27 while fiction flips only 18/20. Candidate hypothesis: narrative-framed text distributes attention more than other JB styles, making the linear direction-push less effective. **Candidate Stage 08 dissociation test**: does ablating `jb_fiction_specific_vs_ctrl`'s 52 features cleanly suppress fiction jailbreaks without affecting the other classes?
+
+3. **`|r_L15|` unexplained 22% gap vs Tejas** (3123.9 recomputed vs his 4019.7). Same methodology (64+64 diff-in-means, pos=-2, no batching, no truncation, bf16 model), different magnitude. Likely dataset-version drift on `harmful_train.json`/`harmless_train.json` between branches. **Not functionally limiting** — our lower magnitude still achieves the bulletproof-control-matching 10/10 benign force-refuse and 96.7% JB flip. Worth a diagnostic pass (diff the splits across branches) but deprioritised given the headline results.
+
+4. **Comply-baseline rates quantify JB strength on this model**:
+   - cognitive_reframe 33/50 (66%) — strongest JB
+   - analytical 27/50 (54%)
+   - fiction 20/50 (40%)
+   - roleplay 9/50 (18%)
+   - completion 1/50 (2%) — effectively **not a jailbreak** on Gemma-3-4b-it with the new controlled dataset.
+
+Outputs (committed on `l15-refactor`):
+- `06_causal/causal_results.json` — per-prompt baseline + intervention records (4.4 MB).
+- `06_causal/causal_summary.json` — aggregated flip rates + per-class breakdown.
+- `06_causal/flip_rate_by_class.png`, `intervention_symmetry.png` — figures.
+- `06_causal/FLIP_RATE_SUMMARY.md` — human-readable headline one-pager.
 
 **Local test result after Task 9 lands**: `214 passed / 0 failed / 1 skipped`.
 
@@ -262,9 +310,9 @@ Stage 07 report on the new run: **L14 is the hotspot** for every refusal subcirc
 - **Docker**: `Dockerfile` (git-clone path) + `Dockerfile.local` (COPY path for restricted networks). Proxy build-args. Non-root `--user` support with `USER=runtime` baked to prevent `getpwuid()` failures.
 - **HF upload helper** (`scripts/pipeline/push_run.py`): uploads an entire run dir (directions + graphs + JSONs) to HF in one call.
 
-### What's running RIGHT NOW (Apr 22, end of session)
+### What's running RIGHT NOW (Apr 23, end of session)
 
-**Nothing active.** The RunPod attribution run is DONE (`run_20260422_015552`) and its JSON summaries are committed locally. The attribution `.pt` files are on HF at `moon70/refusal-lens-graphs/runs/run_20260422_015552/`. No active compute jobs.
+**Nothing active.** Stage 06 full run landed (96.7% pro-flip, 100% anti, 10/10 benign), committed + pushed to `l15-refactor`. Next work is Stage 05 frontend refresh against the new attribution graphs — to be done locally on the user's ~80 GB-disk box.
 
 ---
 
@@ -505,66 +553,86 @@ No mocks. Real tests. `pytest.importorskip("torch")` for GPU gating.
 
 ---
 
-## Immediate next steps for new session (priority order)
+## Immediate next steps for new session (priority order, Apr 23)
 
-### 1. Stage 06 GPU smoke test (RunPod, ~5 min)
+### 1. Stage 05 frontend refresh on `run_20260422_015552` (NEXT — user has ~80 GB local disk)
 
-First confirm the hook wiring works on real hardware:
+The new attribution data needs to flow through the frontend pipeline end-to-end. Stage 05 code (3-way bare/ctrl/jb coloring, ctrl-aware subcircuit filter panel, new slug format) is ready but hasn't been exercised against the real `run_20260422_015552` graphs yet. Run this locally.
+
+**Step 1a — fetch the raw `.pt` graphs from HF (~80 GB, one-time)**:
 ```bash
-# On RunPod H100:
-PYTHONPATH=src python3 scripts/pipeline/06_causal_intervention.py \
-    --run-dir data/results/pipeline_runs/run_20260422_015552 \
-    --max-prompts 2
-```
-Expect: at least one `jb_*` condition flips to REFUSE, tiny `causal_results.json` written to `06_causal/`, <5 min wall clock. If it crashes with a dtype / device mismatch, inspect `utils.make_intervention_hook` — the hook recasts `r` to the output dtype at call time, but model-parallel device placement can still bite.
-
-### 2. Stage 06 full production run (RunPod, ~4.5 h overnight)
-
-After smoke passes:
-```bash
-PYTHONPATH=src python3 scripts/pipeline/06_causal_intervention.py \
-    --run-dir data/results/pipeline_runs/run_20260422_015552
-```
-Outputs at `06_causal/`: `causal_results.json`, `causal_summary.json`, `flip_rate_by_class.png`, `intervention_symmetry.png`, `FLIP_RATE_SUMMARY.md`.
-
-**Expected headline** (ICML claim): L15 pro_refusal_add flip rate ≈ 95–100% matching Tejas's 90/90 bulletproof; anti_refusal_sub flip rate high (symmetry = "L15 r is THE refusal axis"). Record these two numbers immediately.
-
-### 3. Phase A0 packaging run (one-time, any machine with ~100 GB free)
-
-Converts `.pt → JSON.gz` and uploads to HF so downstream viewers pull a ~3 GB bundle instead of 80 GB raw:
-```bash
+cd /path/to/Refusal-Lens
 python3 scripts/pipeline/fetch_raw_graphs.py \
-    --run run_20260422_015552 --dataset-repo moon70/refusal-lens-graphs
+    --run run_20260422_015552 \
+    --dataset-repo moon70/refusal-lens-graphs
+```
+
+**Step 1b — pack to gzipped JSONs + push to HF** (once, so future viewers pull ~3 GB instead of 80 GB):
+```bash
 python3 scripts/pipeline/02c_pack_graphs.py \
     --run-dir data/results/pipeline_runs/run_20260422_015552
+
 python3 scripts/pipeline/push_graph_data.py \
     --run-dir data/results/pipeline_runs/run_20260422_015552 \
-    --source 02c --dataset-repo moon70/refusal-lens-graphs
+    --source 02c \
+    --dataset-repo moon70/refusal-lens-graphs
 ```
-After this, local `.pt` files can be deleted — HF has them.
 
-### 4. Stage 05 validation (after A0)
-
+**Step 1c — render the frontend** (stages the viewer with 3-way coloring + subcircuit filter panel):
 ```bash
-python3 scripts/pipeline/fetch_graph_data.py \
-    --run run_20260422_015552 --dataset-repo moon70/refusal-lens-graphs
 python3 scripts/pipeline/05_visualize_circuits.py \
     --run-dir data/results/pipeline_runs/run_20260422_015552 \
     --subcircuits-run data/results/pipeline_runs/run_20260422_015552 \
-    --mode single --skip-convert --gzip
-cd data/results/pipeline_runs/run_20260422_015552/05_frontend && python3 -m http.server 8000
+    --mode single \
+    --skip-convert \
+    --gzip
 ```
-Spot-check: `shared_with_ctrl` gold nodes distinct from `jb_unique` orange nodes on a `jb_fiction` graph.
 
-### 5. Then (low priority, ICML-adjacent)
+**Step 1d — serve + spot-check in browser**:
+```bash
+cd data/results/pipeline_runs/run_20260422_015552/05_frontend
+python3 -m http.server 8000
+# Open http://localhost:8000/ in a browser
+```
+Visual acceptance criteria:
+- `jb_fiction` prompt-graph has BOTH gold `shared_with_ctrl` nodes (prefix-induced) AND orange `jb_unique` nodes (true JB-semantic) — this is the visual payoff of Task 8.
+- Subcircuit filter panel on the right lists 18 subcircuits (11 legacy + 7 ctrl-aware) with counts > 0 for at least the major ones (`universal_refusal_core`, `canonical_pro_refusal`, `sign_flip_convergent`, `jb_fiction_specific_vs_ctrl`, etc.).
+- Overlap legend shows the 3-way buckets with the "PREFIX-induced" / "true JB-semantic" labels.
+- `compare.html` (bare-vs-JB side-by-side) still works.
 
-- **Task 7b Stage 04b** — LLM labels via Claude API (~$2, CPU). Makes frontend features human-readable.
-- **Task 11 Stage 08** — Subcircuit ablation. Depends on Stage 06 baseline + Stage 07 subcircuits (both now done). Design: ablate `canonical_pro_refusal` / `jb_{cls}_specific_vs_ctrl` / `dampening_specialists` and measure flip-rate delta vs Stage 06 baseline.
-- **ICML abstract writing** (May 4 deadline) — numbers are in hand: see "Phase A validation findings" section for the three headline tables.
+**If something looks wrong** — likely suspects for the new data:
+- Slug parsing: new `.pt` names are `{idx}_{cond_name}_{mode}.pt` (e.g. `013_jb_fiction_multi.pt`). `parse_slug` in `05_visualize_circuits.py` handles this, but double-check it lands in `group_by_prompt_structured` correctly.
+- 3-way annotation: only fires when matched `ctrl_{cls}` exists for a `jb_{cls}` at the same mode (`multi` or `single`). If missing, falls back to 2-way (bare-vs-jb only) — legend won't show gold.
+- Subcircuit panel: pulls `subcircuits.json` from `07_subcircuits/`; must contain the 7 ctrl-aware names.
 
-### Gotcha for step 1 — file placement on the run dir
+### 2. Phase A0 HF push (bundled with step 1b above)
 
-The attribution_results JSONs for `run_20260422_015552` were originally at the run-dir root (as the RunPod save path wrote them); this session moved them into `02_attribution/` (canonical location). If the user creates a NEW run from RunPod, check the layout before running Stage 02b — it expects `<run>/02_attribution/attribution_results.json`, not `<run>/attribution_results.json`.
+Already included as step 1b. After this, `run_20260422_015552`'s gzipped JSONs live at `https://huggingface.co/datasets/moon70/refusal-lens-graphs/tree/main/runs/run_20260422_015552/graph_data/` and collaborators can fetch via `fetch_graph_data.py` (no 80 GB download).
+
+### 3. Task 11 Stage 08 — Subcircuit ablation (the "jailbreak-patching framework" deliverable)
+
+After Stage 05 ships, this is the scientific payoff. Ablate Stage 07-defined subcircuits at their native layers, measure how the flip rate in Stage 06 changes. If `jb_fiction_specific_vs_ctrl` ablation specifically suppresses fiction jailbreaks (and not other classes), we have a **causal dissociation** — the framework claim.
+
+**Starting questions for the design**:
+- Mechanism: zero-ablate features at the transcoder decomposition, OR hook into the residual stream and project out feature directions?
+- Metric: re-run Stage 06 under ablation, compare `pro_refusal_add` flip rate per class.
+- Dissociation test: does ablating `jb_fiction_specific_vs_ctrl` (52 features) selectively drop fiction's 90% flip toward 0%, while leaving analytical/cognitive_reframe intact?
+- Null-control: ablating `universal_refusal_core` (116 features) should break bare refusal too — that's the positive-control proving ablations actually matter.
+
+Depends on: Stage 06 outputs (done), Stage 07 subcircuits (done). Needs GPU for generation. Estimated ~4h on H100 for one ablation condition × 50 prompts; several conditions.
+
+### 4. Lower priority / post-ICML
+
+- **Task 7b Stage 04b** — LLM labels via Claude API (~$2, CPU). Makes frontend features human-readable. Run after Stage 05 lands so the labels surface in the viewer.
+- **`|r_L15|` magnitude mystery diagnostic** — diff `dataset/refusal_direction_dataset/splits/harmful_train.json` on `l15-refactor` vs `origin/tejas-circuit-experiments` to find the content drift that produced 3123.9 vs 4019.7. Not blocking but worth closing for rigor.
+- **ICML abstract writing** (May 4) — numbers are in hand: see "Phase A validation findings" + "Phase B results" blocks.
+- **Fiction resistance deep-dive**: pull the 2 fiction prompts that didn't flip under pro-refusal-add (`causal_results.json`, filter `interventions.L15_pro_refusal_add.jb_fiction.flipped_toward_refuse == false`) and look for structural commonalities — candidate for a paper figure.
+
+### Gotchas
+
+- **Run-dir layout**: attribution_results JSONs for `run_20260422_015552` were originally at run-dir root; this session moved them into `02_attribution/`. If a NEW RunPod run lands, check layout before running Stage 02b — it expects `<run>/02_attribution/attribution_results.json`.
+- **LFS hook on git push**: pod environments without `git-lfs` binary installed will silently abort pushes because of a `pre-push` hook. Fix: `apt-get install -y git-lfs && git lfs install`. See HANDOFF commit history for context.
+- **`|r|` direction magnitude**: our Stage 06 uses `--r-source recompute` by default for Tejas-exact methodology, but our recompute produces `|r|=3123.9` vs Tejas's `4019.7`. Both magnitudes produce the bulletproof 10/10 benign force-refuse — suggests the gap is benign but worth understanding before publication.
 
 ---
 

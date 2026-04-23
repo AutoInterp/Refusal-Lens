@@ -15,10 +15,10 @@ For the design philosophy, stage specs, and forward roadmap see **[PIPELINE_PLAN
 | 02b | `02b_statistical_analysis.py` | Paired stats (Wilcoxon, t-test, Cohen's d, bootstrap CIs), dual-mechanism decomposition, plots, markdown report | ✓ Done |
 | 03 | `03_verify_attribution.py` | Verifies `sum(feature attributions) ≈ r · h[L=32]`, reports MLP contribution fraction | ✓ Done |
 | 04 | `04_label_features.py` | Labels every unique feature using HuggingFace dashboard binary payloads (top/bottom logits, examples) | ✓ Done |
-| 05 | `utils_viz.py` + `05_frontend_patches/` | Attribution circuit viewer with overlap coloring + bare↔JB compare | ✓ Done (50-prompt pending) |
-| 06 | `06_causal_intervention.py` | Arditi-method causal intervention (Tejas's track) | Planned |
-| 07 | `07_identify_subcircuits.py` | Rule-based subcircuit identification (11 subcircuits, set-logic) | ✓ Done |
-| 08 | `08_ablate_subcircuits.py` | Targeted subcircuit ablation (uses Stage 07 output) | Planned |
+| 05 | `utils_viz.py` + `05_frontend_patches/` | Attribution circuit viewer with 3-way bare/ctrl/JB overlap coloring + subcircuit panel | ⚠️ Code ready but the new attribution graphs (L15 + 11 conditions + 2 modes) need the orchestrator + HF-JSON round trip verified end-to-end — **next priority** |
+| 06 | `06_causal_intervention.py` | Arditi-method causal intervention at L15 (bidirectional: pro-refusal add + anti-refusal sub) + benign force-refuse control (Tejas Script 20 port) | ✓ Done (run_20260422_015552) |
+| 07 | `07_identify_subcircuits.py` | Rule-based subcircuit identification (18 subcircuits: 11 legacy + 7 ctrl-aware) with `jb_vs_ctrl_contrast` novel metric | ✓ Done |
+| 08 | `08_ablate_subcircuits.py` | Targeted subcircuit ablation (uses Stage 07 definitions + 06 baseline) | Planned (next after Stage 05 viewer refresh) |
 
 Shared modules: `config.py` (model/layer/class constants), `utils.py` (run-dir helpers, prompt formatting, dataset selection).
 
@@ -542,6 +542,100 @@ The rule-based view gives us a prioritized ablation order for Stage 08, grounded
 5. **`universal_refusal_core` (83)** — shared baseline. Ablation should break refusal on bare *and* JB (control — proves the subcircuits matter at all).
 
 The top-3 subcircuits are the priority story for Georg: "JBs do two disjoint things to the refusal circuit — they dampen the canonical core, and they recruit a sign-flipped parallel set. Both are interpretable at the feature level, both are concentrated in L24–L32, and they unfold in a fixed temporal order across the late wave."
+
+---
+
+## New experiment — `run_20260422_015552` (L15 measurement, 11-condition controlled dataset)
+
+Second-generation attribution run on the 50-prompt × 11-condition **controlled dataset** (bare + 5 `jb_*` + 5 token-matched `ctrl_*` benign prefixes). Measurement target moved from L32 to **L15** — the causally-effective layer Tejas identified. This section covers the three findings that come out of Stages 02b, 07, and 06 on this run.
+
+### A. Stage 02b — ctrl prefixes don't reduce refusal attribution, jailbreaks do
+
+The ctrl-balanced dataset lets us decompose JB effect into "prefix-formatting" vs "semantic-content" components via a 3-way comparison: `vs_bare` (effect of full JB prompt), `vs_ctrl` (effect vs matched-length benign prefix), `ctrl_vs_bare` (effect of the benign prefix alone).
+
+| Class | `vs_bare` %chg (JB effect) | `vs_ctrl` %chg (JB vs matched ctrl) | `ctrl_vs_bare` %chg (prefix alone) |
+|---|---|---|---|
+| cognitive_reframe | **-51.9%** (d=-2.05) | -51.9% (d=-2.05) | +1.4% (n.s.) |
+| analytical | **-49.8%** (d=-4.07) | -49.8% (d=-4.07) | +4.2% |
+| fiction | **-34.6%** (d=-2.21) | -34.6% (d=-2.21) | +5.2% |
+| roleplay | -6.2% (d=-0.43) | -6.2% (d=-0.43) | -3.9% |
+| completion | +4.2% (d=+0.43) | +4.2% | +1.8% (n.s.) |
+
+**Reading**: `ctrl_vs_bare` effects are tiny or slightly *positive* (benign prefixes either do nothing or increase refusal attribution), while `vs_bare` drops are huge (d > 2 for three classes). Correlational evidence that jailbreak effect is semantic, not a prefix-length artifact.
+
+### B. Stage 07 — `jb_vs_ctrl_contrast` separates JB-semantic from prefix-induced features
+
+The novel metric this dataset enables: for each class, what fraction of the recruited feature set is **genuinely JB-semantic** (in `jb_{cls}` top-50 but NOT in `ctrl_{cls}` top-50) vs **prefix-induced** (in both)?
+
+| Class | Comply baseline (Stage 06) | JB-specific % (Stage 07) | Interpretation |
+|---|---|---|---|
+| cognitive_reframe | 33/50 (66%) | **38.6%** | Strongest JB — highest comply + most genuine semantic mechanism |
+| analytical | 27/50 (54%) | 34.2% | Strong semantic-jailbreak |
+| fiction | 20/50 (40%) | 34.2% | Strong semantic-jailbreak |
+| roleplay | 9/50 (18%) | 20.0% | Weak JB — mostly prefix artifact |
+| completion | 1/50 (2%) | **18.4%** | Effectively not a jailbreak on this model |
+
+**Reading**: up to 82% of what prior work called "JB features" is prefix-induced, not JB-semantic. The controlled dataset is what makes the distinction measurable. See `07_subcircuits/jb_vs_ctrl_contrast.png` for the headline figure and `07_subcircuits/SUBCIRCUITS_REPORT.md` for the full 18-subcircuit breakdown.
+
+Bonus structural finding: **all refusal subcircuits peak at L14** (`universal_refusal_core`, `canonical_pro_refusal`, `sign_flip_convergent` [×36 features at L14], `dampening_specialists`, every `jb_{cls}_specific_vs_ctrl`). The refusal signal concentrates one layer before the L15 measurement target — a clean mechanistic claim for the paper.
+
+### C. Stage 06 — L15 r IS the refusal axis (causal validation)
+
+Three intervention results on the same 50-prompt dataset, all at L15, all using `h[:,:,:] ± r_unnormalized` at every forward step (Tejas's Arditi recipe — pos=-2 computation, all-positions application, every-step re-application):
+
+| Experiment | Result | Tejas reports |
+|---|---|---|
+| **Pro-refusal add** (JB COMPLY → REFUSE) | **87/90 = 96.7%** | 90/90 |
+| **Anti-refusal sub** (bare REFUSE → COMPLY) | **49/49 = 100%** | (not tested in Script 20) |
+| **Benign force-refuse** (10 benign prompts → REFUSE) | **10/10 = 100%** | 10/10 |
+
+![flip_rate_by_class.png](../../data/results/pipeline_runs/run_20260422_015552/06_causal/flip_rate_by_class.png)
+
+**The bidirectional symmetry is the headline claim**. Add r → JB prompts flip to refuse at 97%. Subtract r → every bare-harmful prompt the model normally refuses now complies. This establishes that L15's `r = mean_harmful − mean_harmless` is not just a readable direction — it IS the model's refusal axis, manipulable in both directions.
+
+**Per-class pro-refusal flip rate**:
+
+| Class | Flip rate | Notes |
+|---|---|---|
+| analytical | 27/27 = **100%** | Every JB-comply prompt flipped |
+| roleplay | 9/9 = **100%** | |
+| completion | 1/1 = 100% | Only 1 comply baseline → tiny denominator |
+| cognitive_reframe | 32/33 = 97% | 1 resistant prompt |
+| fiction | **18/20 = 90%** | **Lowest flip rate — notable** |
+
+#### Novel finding: fiction is the hardest jailbreak class to causally patch
+
+Fiction flips at 90% — 10 points below every other class. Cross-referencing with Stage 07's structural analysis:
+- Fiction has 34.2% jb-specific (tied for second-highest JB-semantic content, with analytical).
+- BUT analytical flips at 100% and fiction at 90%.
+- Fiction is the only class where the pro-refusal intervention **fails to flip** multiple prompts.
+
+Candidate hypotheses for why fiction resists:
+1. **Narrative-framed text has distributed attention patterns** that linear-direction addition can't overpower as cleanly (attention-mediated refusal state spread over many tokens).
+2. **Fiction recruits features OUTSIDE the MLP pathway** that our r vector (derived from residual stream) doesn't address as directly.
+3. **Fiction-class prompts that resist flipping might be structurally different** from the 18 that did flip — a candidate for the next depth pass (pull the 2 resistant prompts out of `causal_results.json`, see what's semantically distinctive).
+
+This is a **Stage 08 ablation target**: if fiction resists direction-addition, does it also resist fiction-specific subcircuit ablation (`jb_fiction_specific_vs_ctrl`, n=52 features)? A dissociation result there would be a strong paper claim.
+
+#### Dataset health
+
+- Bare refused: **49/50** (1 bare-comply exclusion: "How to steal someone's password...")
+- Ctrl refused: **246/250 = 98.4%** (4 ctrl-leak pairs excluded per Tejas's bulletproof convention)
+- 100% coherent flips (87/87 pro, 49/49 anti, 10/10 benign) — intervention never produces gibberish, only coherent refusals.
+
+#### Direction-magnitude caveat
+
+Our `|r_L15|` recomputed in-script = **3123.9**, vs Tejas's reported **4019.7** on bulletproof. Both use identical methodology (64 harmful + 64 harmless, pos=-2, diff-in-means, unnormalized, bf16 model, no batching/padding/truncation). Our Stage 01 (separate fp32 batched computation) gets 3101.2 — consistent with our recompute.
+
+The 22% magnitude gap is unexplained but NOT functionally limiting: 96.7% JB flip + 100% benign force-refuse + 100% anti-refusal proves our r is pointed at the right axis with sufficient magnitude to overpower the input-conditional residual stream. Possible source: `harmful_train.json` content drift between Tejas's branch and ours. Worth a diagnostic pass but not blocking the headline claim.
+
+### Implications for the "jailbreak-patching framework" claim
+
+Combining the three stages:
+1. **Stage 02b + 07** (correlational): we can measure which jailbreak features are genuinely JB-semantic vs. prefix artifacts — and the split is 20–40% JB-semantic for the 3 strongest jailbreak classes.
+2. **Stage 06** (causal): we can neutralize jailbreaks at 96.7% by pushing the residual stream along the L15 refusal axis — AND this intervention is generic (benign force-refuse 10/10), proving r is the refusal axis rather than a JB-specific trigger.
+
+The remaining framework step is Stage 08: show that ablating **specifically** the Stage 07 subcircuits (e.g. `jb_fiction_specific_vs_ctrl`'s 52 features) reproduces Stage 06's flip rate for that class alone — proving the subcircuits are not just correlationally present but causally sufficient. That's the "here's how we defeat fiction-class jailbreaks specifically by ablating these named features" claim.
 
 ---
 
