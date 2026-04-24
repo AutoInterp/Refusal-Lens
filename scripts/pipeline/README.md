@@ -714,6 +714,52 @@ tmux attach -t pipeline     # Ctrl+b n to switch windows, Ctrl+b d to detach
 - Stage 03: ~5–10 min
 - Stage 04: ~2 min
 
+### Stage 08 — subcircuit ablation + manual steering
+
+Stage 08a runs feature-level ablation of Stage 07-identified subcircuits via
+`ReplacementModel.feature_intervention_generate` (zero-ablation). Produces a
+dissociation matrix showing which subcircuits selectively suppress which
+jailbreak classes.
+
+```bash
+PYTHONPATH=src python3 scripts/pipeline/08_ablate_subcircuits.py \
+    --run-dir data/results/pipeline_runs/<run-name> \
+    --subcircuits universal_refusal_core,ctrl_shared_refusal,jb_fiction_specific_vs_ctrl,jb_analytical_specific_vs_ctrl,jb_cognitive_reframe_specific_vs_ctrl \
+    --positions both           # runs both slice(None) + template-anchor [-5,-3,-2]
+```
+
+Outputs `<run>/08_ablation/ablation_results.json`, `ablation_summary.json`,
+`dissociation_matrix_{all,anchors}.png`, `positions_comparison.png`,
+`ABLATION_SUMMARY.md`. Reuses Stage 06 baselines when present.
+
+#### Manual feature steering (frontend cart + demo server)
+
+The Stage 05 frontend now has an **ablation cart** on the right rail. Shift/
+Cmd-click feature nodes in an attribution graph to toggle them into the cart;
+click `Export cart.json` to download and feed into Stage 08:
+
+```bash
+PYTHONPATH=src python3 scripts/pipeline/08_ablate_subcircuits.py \
+    --run-dir <run-dir> --feature-file cart_<timestamp>.json \
+    --ablation-name my_custom_patch --positions both
+```
+
+For a live demo, launch the FastAPI ablation server alongside the frontend:
+
+```bash
+# One-time setup:
+pip install fastapi uvicorn pydantic
+
+# Launch (loads ReplacementModel — ~60-120s):
+PYTHONPATH=src python3 scripts/pipeline/ablation_server.py --host 127.0.0.1 --port 8080
+
+# In another terminal, serve the frontend as usual (on port 8000):
+cd data/results/pipeline_runs/<run>/05_frontend && python3 -m http.server 8000
+```
+
+The cart's `Run ablation (localhost:8080)` button now POSTs to the server and
+shows baseline vs ablated generations inline.
+
 ### Sharing the frontend with collaborators
 
 The attribution-graph browser (Stage 05) can be viewed on any machine without GPU, without running any pipeline compute — all the expensive steps are pre-computed and the rendered graph bundle is hosted on HuggingFace. The steps below are what Georg / Tejas / any collaborator runs on a fresh machine.

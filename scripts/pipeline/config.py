@@ -90,6 +90,34 @@ CAUSAL_INTERVENTION_MODES = ("pro_refusal_add", "anti_refusal_sub")
 STAGE_06_DEFAULT_LAYERS = [15]      # v1: L15 only for speed; expand to [15, 18, 32] when time allows
 
 # ============================================================
+# Stage 08 — subcircuit ablation / weight-edit patching
+# ============================================================
+# Default subcircuits to ablate in Stage 08a. Chosen to exercise positive /
+# negative controls + the three largest class-specific sets. Each must exist
+# as a key in 07_subcircuits/subcircuits.json for the selected run.
+#   universal_refusal_core    — POSITIVE control (ablating breaks bare refuse)
+#   ctrl_shared_refusal       — NEGATIVE control (prefix-invariant; ablation
+#                               should not affect JB flip rate)
+#   jb_{class}_specific_vs_ctrl — CLASS-SPECIFIC dissociation targets (the
+#                                 headline NeurIPS result)
+STAGE_08_DEFAULT_SUBCIRCUITS = (
+    "universal_refusal_core",
+    "ctrl_shared_refusal",
+    "jb_fiction_specific_vs_ctrl",
+    "jb_analytical_specific_vs_ctrl",
+    "jb_cognitive_reframe_specific_vs_ctrl",
+)
+# Template-anchor positions (from Gemma-3 chat template): matches
+# TARGET_POSITIONS_MULTI so ablation at these positions aligns with the
+# attribution targets from Stage 02. Used when --positions anchors.
+STAGE_08_TEMPLATE_ANCHORS = [-5, -3, -2]
+# Gemma-3-it transcoders always zero positions [0:4] — bos, start_of_turn,
+# user, newline. Sidecar (08c) must mirror this mask for equivalence with
+# ReplacementModel.feature_intervention. Source:
+# vendor/circuit-tracer/circuit_tracer/replacement_model/replacement_model_nnsight.py:219
+STAGE_08_FIRST_TOKEN_MASK = slice(0, 4)
+
+# ============================================================
 # Paths
 # ============================================================
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent

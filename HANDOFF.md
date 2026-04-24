@@ -479,9 +479,106 @@ No mocks. Real tests. `pytest.importorskip("torch")` for GPU gating.
 
 ---
 
+## Phase C — Stage 08 jailbreak patching (new, Apr 24)
+
+**High-level goal (per Georg)**: the patching half of the research. Two steps
+plus a manual-steering deliverable that unlock NeurIPS-grade claims:
+
+1. **Step 1 (Stage 08a, landed this session)** — runtime ablation of
+   Stage 07-defined subcircuit features via `ReplacementModel.feature_intervention_generate`.
+2. **Step 2a (Stage 08b, pending)** — Arditi-style directional orthogonalization
+   of feature decoder directions out of MLP/attention write matrices. Produces
+   an edited HF model checkpoint with no runtime dependency on the replacement
+   model.
+3. **Step 2b (Stage 08c, pending)** — input-dependent sidecar that wraps a plain
+   HF Gemma and subtracts the same feature reconstructions an MLP would emit.
+   Mathematically equivalent to 08a's feature_intervention (zero-value). Compared
+   against 08b to benchmark surgical-patch trade-offs.
+4. **Manual feature steering (landed this session)** — Stage 05 frontend feature
+   cart + `ablation_server.py` FastAPI backend.
+
+Full design in `/home/mshab/.claude/plans/curried-discovering-giraffe.md`.
+
+### Task 11 Stage 08a — resume-session changes (Apr 24)
+
+**New files**:
+- `scripts/pipeline/08_ablate_subcircuits.py` (~800 lines) — main orchestrator.
+  Mirrors Stage 06 structure (Phase 0/1/2/3, checkpoint/resume, figures,
+  summary MD). `--positions {all,anchors,both}` runs comparative analysis of
+  `slice(None)` vs. template-anchor `[-5,-3,-2]` positions. `--feature-file cart.json`
+  consumes Stage 05 manual cart exports. Reuses Stage 06 baselines when present.
+  Headline output: dissociation-matrix heatmap per positions mode +
+  class-selective dissociation_delta per class-specific ablation.
+- `scripts/pipeline/ablation_server.py` (~250 lines) — FastAPI backend.
+  Singleton `ReplacementModel`, CORS for localhost:8000. `POST /ablate`
+  returns baseline+ablated generations side-by-side. Launch with
+  `python3 scripts/pipeline/ablation_server.py --host 127.0.0.1 --port 8080`.
+- `scripts/pipeline/05_frontend_patches/feature-cart.{js,css}` — Stage 05
+  right-rail ablation cart. Shift/Cmd-click feature nodes to toggle them into
+  the cart (visually: green underline). Buttons: `Export cart.json`,
+  `Copy CLI command`, `Run ablation` (POST to localhost:8080), `Clear cart`.
+
+**Modified**:
+- `scripts/pipeline/config.py` — added `STAGE_08_DEFAULT_SUBCIRCUITS`
+  (universal_refusal_core, ctrl_shared_refusal, 3 class-specific sets),
+  `STAGE_08_TEMPLATE_ANCHORS = [-5, -3, -2]`, `STAGE_08_FIRST_TOKEN_MASK = slice(0, 4)`
+  (Gemma-3-it transcoder zero-positions mask).
+- `scripts/pipeline/utils.py` — new helpers `parse_feature_key`,
+  `load_subcircuit_features`, `load_cart`, `resolve_anchor_positions`.
+- `scripts/pipeline/utils_viz.py::stage_frontend` — injects feature-cart.{js,css}
+  into the frontend via the existing `<link>`/`<script>` injection block.
+- `scripts/pipeline/tests/test_pipeline_local.py` — new `test_stage_08`
+  (13 assertions, no GPU). Wired into `--stage all` and `--stage 08`.
+
+**CLT pitfalls to respect** (documented in plan + memory):
+- Transcoder is cross-layer: a feature at source layer `k` has decoder vectors
+  for layers `k..N-1`, not just k. Shape of `_get_decoder_vectors(k, feat_ids)` is
+  `[N-k, d_model]`. Load-bearing for 08b and 08c.
+- Gemma-3-it transcoders zero positions `[0:4]` (bos / start_of_turn / user / newline).
+  `STAGE_08_FIRST_TOKEN_MASK` captures this.
+- Transcoder I/O points: encoder input = `pre_feedforward_layernorm.output`,
+  decoder writes at `post_feedforward_layernorm.output`.
+- Two Gemma-3 architectures (`Gemma3ForCausalLM` vs `Gemma3ForConditionalGeneration`);
+  Stage 06 uses the multimodal wrapper. 08b must detect at load time.
+
+**Validation bar for PR #1 (must hit on `run_20260422_015552`)**:
+- POSITIVE control: `universal_refusal_core` (116 features, all positions) must
+  drop bare REFUSE 49/49 → ≤30/49 (break_rate ≥ 39%).
+- NEGATIVE control: `ctrl_shared_refusal` (50 features) must affect JB flip rate
+  by ≤5 pp across every class (recovery_rate ≤ 5% for all jb_*).
+- DISSOCIATION (headline NeurIPS figure): ≥2 of
+  `{jb_fiction_specific_vs_ctrl, jb_analytical_specific_vs_ctrl, jb_cognitive_reframe_specific_vs_ctrl}`
+  must show class-selective dissociation_delta ≥ +20 pp on jb_fiction /
+  jb_analytical / jb_cognitive_reframe recovery.
+
+**Smoke-test command** (run on GPU):
+```bash
+PYTHONPATH=src python3 scripts/pipeline/08_ablate_subcircuits.py \
+    --run-dir data/results/pipeline_runs/run_20260422_015552 \
+    --subcircuits universal_refusal_core,ctrl_shared_refusal,jb_fiction_specific_vs_ctrl,jb_analytical_specific_vs_ctrl,jb_cognitive_reframe_specific_vs_ctrl \
+    --positions both --max-prompts 5
+```
+
+**Local test count**: 214 → 227 (13 new T-S8* assertions). Ran locally without
+torch/numpy — the test_stage_08 path is pure-Python helper logic and fully
+isolated from torch imports.
+
+### Local-dev Python environment (Apr 24)
+
+The WSL dev box lacks pip/numpy/torch. Created a local venv at `.venv/` (via
+`~/.local/bin/virtualenv`) for local unit-test runs. Test invocation:
+
+```bash
+PYTHONPATH=src .venv/bin/python3 scripts/pipeline/tests/test_pipeline_local.py --stage 08
+```
+
+The `.venv/` is `.gitignore`'d by the existing pattern. Full-suite tests that
+need numpy/matplotlib/transformers still work on RunPod or any machine with
+conda-python.
+
 ## Remaining tasks — detailed implementation plans
 
-*(Tasks 7 / 8 / 9 / 10 are DONE — see the per-task "resume-session changes" blocks earlier in this file for what landed. Only 04b and 08 still need implementation.)*
+*(Tasks 7 / 8 / 9 / 10 / 11(08a) are DONE — see the per-task "resume-session changes" blocks earlier in this file for what landed. Only 04b, 08b, and 08c still need implementation.)*
 
 ### Task 7b — Stage 04b Delphi/LLM feature labels (pending)
 

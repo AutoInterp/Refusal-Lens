@@ -2183,6 +2183,238 @@ def test_stage_07_synthetic_ctrl():
             )
 
 
+def test_stage_08():
+    """T-S8: Stage 08 subcircuit ablation — primitives, intervention specs,
+    dissociation aggregation. No GPU required."""
+    print("\n" + "=" * 60)
+    print("STAGE 08 TESTS (subcircuit ablation, no GPU)")
+    print("=" * 60)
+
+    import importlib
+
+    from utils import (
+        load_cart,
+        load_subcircuit_features,
+        parse_feature_key,
+        resolve_anchor_positions,
+    )
+
+    # T-S8a: parse_feature_key happy + error paths
+    ok = parse_feature_key("L14:F480") == (14, 480) and parse_feature_key("L0:F0") == (0, 0)
+    try:
+        parse_feature_key("bad")
+        raised = False
+    except ValueError:
+        raised = True
+    log_test("T-S8a: parse_feature_key parses canonical + rejects malformed", ok and raised)
+
+    # T-S8b: load_subcircuit_features dedupes across overlapping sets
+    with tempfile.TemporaryDirectory() as tmp:
+        sub_path = Path(tmp) / "sub.json"
+        sub_path.write_text(json.dumps({
+            "subcircuits": {
+                "A": {"features": ["L0:F1", "L0:F2", "L1:F5"]},
+                "B": {"features": ["L0:F2", "L3:F9"]},
+                "empty": {"features": []},
+            },
+        }))
+        feats_both = load_subcircuit_features(sub_path, ["A", "B"])
+        log_test(
+            "T-S8b: load_subcircuit_features dedupes (A∪B) and preserves order",
+            feats_both == [(0, 1), (0, 2), (1, 5), (3, 9)],
+            f"got {feats_both}",
+        )
+        # Missing name raises
+        try:
+            load_subcircuit_features(sub_path, ["not_here"])
+            raised = False
+        except KeyError:
+            raised = True
+        log_test("T-S8b-err: missing subcircuit name raises KeyError", raised)
+
+    # T-S8c: load_cart accepts minimal + full schema
+    with tempfile.TemporaryDirectory() as tmp:
+        cart_min = Path(tmp) / "cart_min.json"
+        cart_min.write_text(json.dumps({"features": [{"layer": 14, "feat_idx": 480}]}))
+        got = load_cart(cart_min)
+        log_test("T-S8c: load_cart defaults value=0.0 when omitted",
+                 got == [(14, 480, 0.0)], f"got {got}")
+
+        cart_full = Path(tmp) / "cart_full.json"
+        cart_full.write_text(json.dumps({
+            "features": [
+                {"layer": 15, "feat_idx": 200, "value": 0.0, "label": "refusal"},
+                {"layer": 20, "feat_idx": 100, "value": 0.5},
+            ],
+        }))
+        got_full = load_cart(cart_full)
+        log_test("T-S8c-full: load_cart preserves custom values and extra keys",
+                 got_full == [(15, 200, 0.0), (20, 100, 0.5)], f"got {got_full}")
+
+    # T-S8d: resolve_anchor_positions resolves negatives + rejects OOB
+    log_test(
+        "T-S8d: resolve_anchor_positions([-5,-3,-2], length=20) == [15,17,18]",
+        resolve_anchor_positions([-5, -3, -2], 20) == [15, 17, 18],
+    )
+    try:
+        resolve_anchor_positions([-100], 10)
+        oob_raised = False
+    except ValueError:
+        oob_raised = True
+    log_test("T-S8d-err: out-of-bounds anchor raises ValueError", oob_raised)
+
+    # Load the 08 module for function-level tests
+    s08 = importlib.import_module("08_ablate_subcircuits")
+
+    # T-S8e: build_interventions in 'all' mode
+    feats = [(14, 480), (15, 200)]
+    ivs_all = s08.build_interventions(feats, "all", tokenized_length=20)
+    ok_all = (
+        len(ivs_all) == 2
+        and all(iv[1] == slice(None) for iv in ivs_all)
+        and all(iv[3] == 0.0 for iv in ivs_all)
+        and ivs_all[0][:1] + ivs_all[0][2:3] == (14, 480)
+    )
+    log_test("T-S8e: build_interventions('all') produces 1-per-feature at slice(None)", ok_all)
+
+    # T-S8f: build_interventions in 'anchors' mode
+    ivs_anc = s08.build_interventions(feats, "anchors", tokenized_length=20)
+    ok_anc = (
+        len(ivs_anc) == 6   # 2 features × 3 anchor positions
+        and sorted({iv[1] for iv in ivs_anc}) == [15, 17, 18]
+        and all(iv[3] == 0.0 for iv in ivs_anc)
+    )
+    log_test("T-S8f: build_interventions('anchors') produces features × anchor_positions", ok_anc)
+
+    # T-S8g: default subcircuit names are real subcircuit-rule keys
+    default_names = list(config.STAGE_08_DEFAULT_SUBCIRCUITS)
+    expected = {"universal_refusal_core", "ctrl_shared_refusal",
+                "jb_fiction_specific_vs_ctrl",
+                "jb_analytical_specific_vs_ctrl",
+                "jb_cognitive_reframe_specific_vs_ctrl"}
+    log_test(
+        "T-S8g: STAGE_08_DEFAULT_SUBCIRCUITS contains the required control + class-specific sets",
+        expected.issubset(set(default_names)),
+        f"got {default_names}",
+    )
+
+    # T-S8h: zero-positions mask for Gemma-3-it is slice(0, 4)
+    log_test(
+        "T-S8h: STAGE_08_FIRST_TOKEN_MASK == slice(0, 4) (Gemma-3-it transcoder zero-positions)",
+        config.STAGE_08_FIRST_TOKEN_MASK == slice(0, 4),
+    )
+
+    # T-S8i: compute_dissociation_score on a hand-constructed fixture
+    fake_summary = {
+        "per_ablation": {
+            "jb_fiction_specific_vs_ctrl": {
+                "n_features": 52,
+                "positions": {
+                    "all": {
+                        "jb_fiction":            {"recovery_rate": 0.85, "break_rate": 0.0,
+                                                  "n_baseline_comply": 20, "n_baseline_refuse": 0,
+                                                  "n_ablated_refuse": 17, "n_ablated_comply": 3,
+                                                  "n_changed": 17, "n_coherent_changed": 17,
+                                                  "n_recovered_refusal": 17, "n_broke_refusal": 0,
+                                                  "n_seen": 20},
+                        "jb_analytical":         {"recovery_rate": 0.20, "break_rate": 0.0,
+                                                  "n_baseline_comply": 25, "n_baseline_refuse": 0,
+                                                  "n_ablated_refuse": 5, "n_ablated_comply": 20,
+                                                  "n_changed": 5, "n_coherent_changed": 5,
+                                                  "n_recovered_refusal": 5, "n_broke_refusal": 0,
+                                                  "n_seen": 25},
+                        "jb_cognitive_reframe":  {"recovery_rate": 0.25, "break_rate": 0.0,
+                                                  "n_baseline_comply": 30, "n_baseline_refuse": 0,
+                                                  "n_ablated_refuse": 7, "n_ablated_comply": 23,
+                                                  "n_changed": 7, "n_coherent_changed": 7,
+                                                  "n_recovered_refusal": 7, "n_broke_refusal": 0,
+                                                  "n_seen": 30},
+                        "jb_completion":         {"recovery_rate": 0.10, "break_rate": 0.0,
+                                                  "n_baseline_comply": 10, "n_baseline_refuse": 0,
+                                                  "n_ablated_refuse": 1, "n_ablated_comply": 9,
+                                                  "n_changed": 1, "n_coherent_changed": 1,
+                                                  "n_recovered_refusal": 1, "n_broke_refusal": 0,
+                                                  "n_seen": 10},
+                        "jb_roleplay":           {"recovery_rate": 0.15, "break_rate": 0.0,
+                                                  "n_baseline_comply": 8, "n_baseline_refuse": 0,
+                                                  "n_ablated_refuse": 1, "n_ablated_comply": 7,
+                                                  "n_changed": 1, "n_coherent_changed": 1,
+                                                  "n_recovered_refusal": 1, "n_broke_refusal": 0,
+                                                  "n_seen": 8},
+                    },
+                },
+            },
+        },
+    }
+    diss = s08.compute_dissociation_score(fake_summary)
+    fiction_rec = diss["jb_fiction_specific_vs_ctrl"]["all"]
+    ok_diss = (
+        fiction_rec["target_class"] == "fiction"
+        and fiction_rec["target_recovery_rate"] == 0.85
+        and 0.6 < fiction_rec["dissociation_delta"] < 0.7
+    )
+    log_test(
+        "T-S8i: compute_dissociation_score selects target='fiction', Δ ≈ +67pp on fixture",
+        ok_diss,
+        f"got {fiction_rec}",
+    )
+
+    # T-S8j: aggregate_summary on a tiny 2-prompt fixture produces correct recovery math
+    synth_results = [
+        {
+            "prompt_id": 1,
+            "baseline": {
+                "bare":       {"cls": "REFUSE"},
+                "jb_fiction": {"cls": "COMPLY"},
+                "jb_analytical": {"cls": "COMPLY"},
+            },
+            "ablations": {
+                "S1": {
+                    "n_features": 5,
+                    "all": {
+                        "bare":          {"cls": "COMPLY", "changed_vs_baseline": True, "coherent": True},
+                        "jb_fiction":    {"cls": "REFUSE", "changed_vs_baseline": True, "coherent": True},
+                        "jb_analytical": {"cls": "COMPLY", "changed_vs_baseline": False, "coherent": True},
+                    },
+                },
+            },
+        },
+        {
+            "prompt_id": 2,
+            "baseline": {
+                "bare":       {"cls": "REFUSE"},
+                "jb_fiction": {"cls": "COMPLY"},
+                "jb_analytical": {"cls": "REFUSE"},
+            },
+            "ablations": {
+                "S1": {
+                    "n_features": 5,
+                    "all": {
+                        "bare":          {"cls": "REFUSE", "changed_vs_baseline": False, "coherent": True},
+                        "jb_fiction":    {"cls": "REFUSE", "changed_vs_baseline": True, "coherent": True},
+                        "jb_analytical": {"cls": "REFUSE", "changed_vs_baseline": False, "coherent": True},
+                    },
+                },
+            },
+        },
+    ]
+    agg = s08.aggregate_summary(
+        synth_results,
+        ablation_sets={"S1": [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5)]},
+        positions_modes=["all"],
+        conditions=["bare", "jb_fiction", "jb_analytical"],
+    )
+    per = agg["per_ablation"]["S1"]["positions"]["all"]
+    log_test(
+        "T-S8j: aggregate recovery_rate jb_fiction == 2/2 (both flipped), break_rate bare == 1/2",
+        per["jb_fiction"]["recovery_rate"] == 1.0
+        and per["jb_fiction"]["n_recovered_refusal"] == 2
+        and per["bare"]["break_rate"] == 0.5
+        and per["bare"]["n_broke_refusal"] == 1,
+        f"got {per}",
+    )
+
+
 def test_stage_06():
     """T-S6: Stage 06 causal intervention — hook math, schema, CLI.
 
@@ -2314,7 +2546,7 @@ def test_stage_06():
 def main():
     parser = argparse.ArgumentParser(description="Local pipeline validation tests")
     parser.add_argument(
-        "--stage", choices=["01", "01-a5", "02", "02b", "03", "03-a4", "04-a7", "04-a8", "04-schema", "06", "07", "07-ctrl", "utils", "utils-viz", "all"], default="all",
+        "--stage", choices=["01", "01-a5", "02", "02b", "03", "03-a4", "04-a7", "04-a8", "04-schema", "06", "07", "07-ctrl", "08", "utils", "utils-viz", "all"], default="all",
         help="Which stage to test (default: all)",
     )
     parser.add_argument(
@@ -2347,6 +2579,7 @@ def main():
         test_stage_07()
         test_stage_07_synthetic_ctrl()
         test_stage_06()
+        test_stage_08()
         if check_gpu():
             test_stage_01()
             test_stage_03()
@@ -2384,6 +2617,8 @@ def main():
         test_stage_07_synthetic_ctrl()
     elif args.stage == "06":
         test_stage_06()
+    elif args.stage == "08":
+        test_stage_08()
     elif args.stage == "utils-viz":
         test_utils_viz()
 

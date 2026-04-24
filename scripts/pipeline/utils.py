@@ -304,3 +304,99 @@ def generate_baseline(model, tokenizer, prompt: str,
             pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
         )
     return tokenizer.decode(out[0, input_ids.shape[1]:], skip_special_tokens=True)
+
+
+# ====================================================================
+# Stage 08 helpers — subcircuit / cart feature-set resolution
+# ====================================================================
+
+def parse_feature_key(key: str) -> tuple[int, int]:
+    """Parse a `L{layer}:F{feat_idx}` string into (layer, feat_idx) ints.
+
+    Raises ValueError on anything that doesn't exactly match the pattern.
+    Canonical feature key schema used throughout Stages 04, 05, 07, 08.
+    """
+    if not isinstance(key, str) or not key.startswith("L") or ":F" not in key:
+        raise ValueError(f"Expected 'L<int>:F<int>', got {key!r}")
+    try:
+        layer_part, feat_part = key.split(":", 1)
+        return int(layer_part[1:]), int(feat_part[1:])
+    except (IndexError, ValueError) as e:
+        raise ValueError(f"Could not parse feature key {key!r}: {e}") from None
+
+
+def load_subcircuit_features(
+    subcircuits_json: Path,
+    names,
+) -> list[tuple[int, int]]:
+    """Return a deduplicated list of (layer, feat_idx) across the named
+    subcircuits from Stage 07's subcircuits.json.
+
+    `names` is any iterable of subcircuit names (e.g.
+    ('universal_refusal_core', 'jb_fiction_specific_vs_ctrl')).
+
+    Missing names raise KeyError — this is a fail-fast: a typo'd subcircuit
+    name silently returning zero features would hide an invalid ablation set.
+    Deduplication preserves first-occurrence order across `names`.
+    """
+    with open(subcircuits_json) as f:
+        data = json.load(f)
+    subcircuits = data.get("subcircuits", {})
+    seen: set[tuple[int, int]] = set()
+    out: list[tuple[int, int]] = []
+    for name in names:
+        if name not in subcircuits:
+            raise KeyError(
+                f"Subcircuit {name!r} missing in {subcircuits_json}. "
+                f"Available: {sorted(subcircuits)}"
+            )
+        for key in subcircuits[name]["features"]:
+            lf = parse_feature_key(key)
+            if lf not in seen:
+                seen.add(lf)
+                out.append(lf)
+    return out
+
+
+def load_cart(path: Path) -> list[tuple[int, int, float]]:
+    """Parse a manual ablation cart JSON produced by the Stage 05 frontend.
+
+    Schema (minimum):
+        {"features": [{"layer": int, "feat_idx": int, "value": float}, ...]}
+
+    Missing `value` defaults to 0.0 (zero-ablation). Returns a list of
+    (layer, feat_idx, value) tuples in cart order.
+    """
+    with open(path) as f:
+        data = json.load(f)
+    features = data.get("features", [])
+    out: list[tuple[int, int, float]] = []
+    for entry in features:
+        layer = int(entry["layer"])
+        feat_idx = int(entry["feat_idx"])
+        value = float(entry.get("value", 0.0))
+        out.append((layer, feat_idx, value))
+    return out
+
+
+def resolve_anchor_positions(
+    anchors: list[int],
+    tokenized_length: int,
+) -> list[int]:
+    """Resolve negative template-anchor positions (e.g. [-5, -3, -2]) to
+    absolute indices in a prompt of the given tokenized length.
+
+    Positions must resolve to valid (>=0, < tokenized_length) indices.
+    Raises ValueError if any anchor is out of bounds — the caller is
+    expected to ensure the prompt is long enough to hit the template anchors.
+    """
+    out: list[int] = []
+    for a in anchors:
+        idx = a if a >= 0 else tokenized_length + a
+        if not (0 <= idx < tokenized_length):
+            raise ValueError(
+                f"Anchor {a} resolves to index {idx}, out of bounds for "
+                f"tokenized_length={tokenized_length}"
+            )
+        out.append(idx)
+    return out

@@ -449,10 +449,12 @@ def stage_frontend(
             gzip_flag
             + '<link rel="stylesheet" href="./overlap-colors.css">\n'
             '<link rel="stylesheet" href="./subcircuit-panel.css">\n'
+            '<link rel="stylesheet" href="./feature-cart.css">\n'
             '<script src="./fetch-override.js" defer></script>\n'
             '<script src="./gzip-fetch.js" defer></script>\n'
             '<script src="./overlap-annotate.js" defer></script>\n'
             '<script src="./subcircuit-panel.js" defer></script>\n'
+            '<script src="./feature-cart.js" defer></script>\n'
         )
         marker = "<script src='./util.js'></script>"
         if marker in html and injection not in html:
