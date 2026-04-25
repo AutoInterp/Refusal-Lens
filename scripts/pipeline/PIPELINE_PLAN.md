@@ -1,11 +1,19 @@
 # Refusal-Lens Unified Pipeline Plan
 
 **Created**: 2026-04-14
-**Last updated**: 2026-04-19 (Stage 07 rule-based subcircuits complete; 10-prompt local run complete; Stage 05 subcircuit filter panel queued)
+**Last updated**: 2026-04-25 (Stage 08a PR #1 landed; GPU smoke running on the local 5080)
+**Reference run**: `data/results/pipeline_runs/run_20260422_015552/` (50 prompts × 11 conditions, L15 measurement, controlled dataset)
+**Working branch**: `l15-refactor`
+
+---
 
 ## Goal
 
-Combine Mahmoud's correlation/attribution work with Tejas's causal intervention work into one reproducible pipeline that tells Georg's research story: *"Here are the circuits, they're real, here's what they encode, and here's what happens when you manipulate them."*
+Combine Mahmoud's correlational/attribution work with Tejas's causal-intervention work into one reproducible pipeline that tells Georg's research story:
+
+> *"Here are the circuits, they're real, here's what they encode, here's what happens when you manipulate them, and here's how to permanently patch a specific class of jailbreak."*
+
+The full chain — correlational → causal → patching — is what unlocks NeurIPS-grade claims. ICML workshop submission targets the correlational + causal halves (May 4); NeurIPS adds the patching half.
 
 ---
 
@@ -13,328 +21,472 @@ Combine Mahmoud's correlation/attribution work with Tejas's causal intervention 
 
 ```
 scripts/pipeline/
-├── config.py                      # Shared constants (D_MODEL=2560, 34 layers)
-├── utils.py                       # Shared utilities
-├── 01_compute_direction.py        # Per-layer refusal directions        [DONE ✓]
-├── 02_run_attribution.py          # CLT attribution graphs              [DONE ✓]
-├── 02b_statistical_analysis.py    # Stats + plots for attribution       [DONE ✓]
-├── 03_verify_attribution.py       # M2: attribution = dot product check [DONE ✓]
-├── 04_label_features.py           # M4: HuggingFace dashboard labeling  [DONE ✓]
-├── 05_visualize_circuits.py       # M3: color-coded graph visualization [NEXT]
-├── 06_causal_intervention.py      # Arditi method (Tejas Script 16)
-├── 06b_linear_probe.py            # Linear probe readability vs causality
-├── 07_identify_subcircuits.py     # Cluster functional subcircuits
-└── 08_ablate_subcircuits.py       # Targeted subcircuit ablation
-
-scripts/pipeline/tests/
-├── test_pipeline_local.py         # Local validation (60/60 passing)
-└── test_runpod_1_4.py             # RunPod integration (stages 01→04)
+├── config.py                       # Shared constants (D_MODEL=2560, 34 layers, 11 conditions)
+├── utils.py                        # Run-dir helpers, prompt formatting, dataset loading,
+│                                   # hooks, intervention helpers, Stage 08 cart helpers
+├── utils_viz.py                    # Frontend staging, overlap/subcircuit annotation,
+│                                   # gzip helpers
+├── 01_compute_direction.py         # Per-layer refusal directions (34 layers)         [DONE ✓]
+├── 02_run_attribution.py           # CLT attribution graphs (multi + single mode)     [DONE ✓]
+├── 02b_statistical_analysis.py     # 30 stats blocks, ctrl-aware effect sizes         [DONE ✓]
+├── 02c_pack_graphs.py              # `.pt → JSON.gz` packer for HF distribution       [DONE ✓]
+├── 03_verify_attribution.py        # `sum(attr) ≈ r·h[L]` consistency check           [DONE ✓]
+├── 04_label_features.py            # HF-dashboard-binary labels for every feature     [DONE ✓]
+├── 04b_delphi_labels.py            # Claude-API human-readable labels                 [PLANNED]
+├── 05_visualize_circuits.py        # Frontend orchestrator (3-way bare/ctrl/JB)       [DONE ✓]
+├── 05_frontend_patches/*.{js,css,html}  # Overlap colors, subcircuit panel,
+│                                   # compare.html, gzip-fetch, feature cart
+├── 06_causal_intervention.py       # L15 Arditi (pro/anti/benign) (Tejas Script 20)   [DONE ✓]
+├── 07_identify_subcircuits.py      # 18 rule-based subcircuits + JB-vs-ctrl contrast  [DONE ✓]
+├── 08_ablate_subcircuits.py        # Runtime feature ablation (Stage 08a / PR #1)     [DONE ✓ — GPU validation pending]
+├── 08b_direction_ablation.py       # Permanent weight edit (Arditi-style projection)  [PLANNED]
+├── 08c_sidecar_build.py            # Input-dependent sidecar wrapper                  [PLANNED]
+├── ablation_server.py              # FastAPI demo backend for Stage 05 cart           [DONE ✓]
+├── fetch_graph_data.py             # Frontend bundle fetch from HF (~3 GB)
+├── fetch_raw_graphs.py             # Raw `.pt` fetch from HF (~80 GB)
+├── push_graph_data.py              # Push JSON.gz bundle to HF
+├── push_raw_graphs.py              # Push raw `.pt` archive to HF
+├── push_run.py                     # One-shot upload of an entire run dir
+├── merge_stage02_shards.py         # Multi-GPU shard merger
+└── rebuild_graph_metadata.py       # Repair tool for graph-metadata.json
 ```
+
+Tests: `scripts/pipeline/tests/test_pipeline_local.py` — 13 stages worth of unit tests, ~225+ assertions.
 
 Results land in `data/results/pipeline_runs/run_YYYYMMDD_HHMMSS/`.
 
 ---
 
-## Critical Design Decisions
+## Critical Design Decisions (load-bearing)
 
-### Per-layer directions
-Tejas established that the refusal direction **rotates across layers** — L32 has strongest separation (20,873) but L15 is causally effective (3,101). Cosine(L15, L32) = −0.115 in our n=64 sample, confirming the directions are near-orthogonal. Stage 01 computes `r` at **all 34 layers**; downstream causal stages use `r[layer]` when intervening.
+### Per-layer directions, L15 is causal
+Tejas established that the refusal direction **rotates** across layers. L32 has the strongest separation (~21,000) but L15 is causally effective. The 34×34 cosine heatmap (Stage 02b/A5) reveals **three regimes**: A (L5–L13, semantic), B (L14–L17, pivot), C (L18–L33, output). Stage 06 uses unnormalized r at **L15** for intervention; Stage 02 uses **L15 as measurement layer** for attribution graphs.
 
-### D_MODEL = 2560
-Gemma-3-4b-it hidden dim is 2560 (not 2304 as an older memory had). Pipeline reads this from model config, but the constant is fixed in `config.py`.
+### D_MODEL = 2560 (Gemma-3-4b-it)
+Hidden dim 2560 (not 2304 as an older memory had). Constant in `config.py`.
 
-### Feature Comparison → Labeling
-Stage 02 emits feature-comparison buckets (shared / sign-flipped / dampened / amplified-anti). Stage 04 labels **every unique feature** in the union of top-50 and comparison data, then merges the labels into the comparison buckets (`feature_comparison_labeled.json`).
+### Controlled dataset, 11 conditions
+`dataset/refusal_lens_controlled_dataset.json` — 50 prompts × {`bare`, 5 × `jb_*`, 5 × `ctrl_*`} = 550 generations. Each `jb_<class>` has a matched `ctrl_<class>` benign prefix. **This is what enables `jb_specific` vs `prefix-induced` separation** — the headline ICML novelty.
 
-### Label source: HuggingFace dashboard binary (not Neuronpedia)
-Neuronpedia does not index gemma-3-4b-it. We read `mwhanna/gemma-scope-2-4b-it/transcoder_all/width_16k_l0_small_affine/features/{layer}.bin` directly via byte-range HTTP requests using the `index.json.gz` offsets. Each feature's payload (top/bottom logits, activation examples) is used to construct its label.
+### CLT (cross-layer transcoder), zero-positions mask
+`mwhanna/gemma-scope-2-4b-it/transcoder_all/width_16k_l0_small_affine`. A feature at source layer `k` writes into layers `k..N-1` (decoder shape `[N-k, d_model]`). Encoder input = `pre_feedforward_layernorm.output`; decoder writes at `post_feedforward_layernorm.output`. Gemma-3-it transcoders force-zero positions `[0:4]` (`<bos>`, `<start_of_turn>`, `user`, `\n`) → captured in `STAGE_08_FIRST_TOKEN_MASK`. **Load-bearing for Stage 08b/08c math.**
 
-### Dataset ingestion (future)
-Currently random selection via `select_diverse_prompts()`. `utils.load_experiment_dataset()` exists as the future swap point for curated dataset JSON — will be wired in once M1 (clean 50-prompt dataset) is ready.
+### Two-graph attribution scheme
+Stage 02 emits two attribution graphs per (prompt, condition):
+- `multi`: measurement positions `[-5, -3, -2]` (template-anchor span)
+- `single`: measurement position `[-2]` only (final-user-token)
 
-### Workflow rule
-Claude suggests code → Mahmoud implements by hand → Claude runs local tests and reports bugs → Mahmoud fixes → full RunPod run → Claude reviews results. No mocks — real tests, `pytest.importorskip("torch")` for gating when needed.
+Stages 02b/04/07 read both modes; Stage 05 picks `single` by default. Multi is the canonical for the comparative analysis.
 
-### Stage 05 feature labels via LLM synthesis (proposed 2026-04-18, deferred)
-Circuit-tracer's `create_graph_files` leaves `clerp=""` on feature nodes. Anthropic's demos use hand-written labels which doesn't scale to 876 unique features across our 50 prompts. Plan: an offline labeler that, per feature, assembles `(top_logits, bottom_logits, activation_example_quantiles, top-5 incoming attribution edges, top-5 outgoing attribution edges)` → single Claude API call → 5–10 word description → store as `llm_label` in `feature_labels.json` → `utils_viz` injects into each graph's `clerp` at conversion time. Estimated cost: ~$2 total with Haiku 4.5 (876 × one-shot calls, no caching needed). Deferred until after 50-prompt pipeline validated end-to-end and Georg weighs in on whether this is worth the run cost.
+### Two Gemma-3 architectures
+`Gemma3ForCausalLM` (plain, `model.layers[L]`) vs. `Gemma3ForConditionalGeneration` (multimodal wrapper, `model.language_model.layers[L]`). Stage 06 uses the multimodal wrapper. **Stage 08b must detect at load time** when projecting decoder directions out of `o_proj` / `down_proj`.
 
-### Stage 05 side-by-side comparison viewer (proposed 2026-04-18)
-Currently the frontend shows one graph at a time. Research workflow demands simultaneous bare ↔ JB viewing. Plan: new `compare.html` in `05_frontend_patches/` with two iframes + URL-param `?graph=<slug>` support via a small patch to `init-cg.js`. Each iframe is an independent copy of the vanilla viewer — shared data, separate pan/zoom/feature-detail state. Deferred until the 10-prompt RunPod subset validates the core pipeline end-to-end.
+### Producer-side packaging (Stage 02c)
+Raw `.pt` graphs are ~1.5 GB each (~80 GB per run). The frontend bundle is gzipped JSON (~3 GB). `02c_pack_graphs.py` decouples `.pt → JSON.gz` from full Stage 05 staging so collaborators can fetch the small bundle without ever downloading raw `.pt`.
 
-### Stage 05 storage strategy (2026-04-18, revisit after Georg feedback)
-Attribution graphs are much larger than expected: **~1.5 GB per raw `.pt`, ~40 MB per pruned frontend JSON** (with `node_threshold=0.8`, `edge_threshold=0.98`). For 50 prompts × 6 conditions = 300 graphs: ~430 GB raw `.pt`, ~12 GB pruned JSON.
-
-**Current decision** — optimize for *information fidelity* over storage:
-- **No tighter pruning.** Lowering thresholds (e.g. `0.6 / 0.9`) would disproportionately drop low-influence features — exactly the class-exclusive "JB subcircuit" features we want to highlight.
-- **Transport compression (gzip) instead of pruning.** `.json` gzips ~5–8× in practice → ~5–8 MB per graph. No information loss.
-- **Raw `.pt` files are pod-only for now.** Not committed; not synced. Revisit if Georg asks for them (options at that point: `scp` to local archive, or push to HF datasets under `AutoInterp/refusal-lens-graphs`).
-- **Pruned JSONs are the canonical artifact.** Hosted (not committed to git) — planned target: HuggingFace dataset repo, frontend fetches directly. Falls back to local `graph_data/` for local dev.
-
-**If storage is still a problem after gzip:** options in escalation order — (1) HF-hosted JSONs + frontend fetches from HF URL, (2) git-LFS for a committed subset (10 representative prompts), (3) accept stricter thresholds as last resort, carefully documenting what's dropped.
+### Workflow rule (per Mahmoud's preference)
+Claude proposes code → Mahmoud implements/edits by hand → Claude runs local tests + GPU smoke → reports findings. No mocks. Real tests, gated `pytest.importorskip` only when needed.
 
 ---
 
-## Stage Status (as of 2026-04-17)
+## Reference Run — `run_20260422_015552`
 
-### Stage 01 — Compute Refusal Directions ✓
-- **Local**: 26/26 tests passing
-- **RunPod (n=64)**: L32 sep=20,873 (prior 20,644; Tejas 20,827); L15 sep=3,101 (Tejas 3,131); L33=287 (pre-RMSNorm artifact captured as expected)
-- Cosine(L15,L32) = **−0.115** (near-orthogonal direction rotation) — flag for mentor
-- Outputs: `01_direction/refusal_direction.pt`, `unnormalized_r.pt`, `directions/layer_XX.pt`, `direction_metadata.json`
+50 prompts × 11 conditions, L15 measurement, controlled dataset. **All numbers below are from this run unless noted.**
 
-### Stage 02 — Run Attribution ✓
-- 50 prompts × 5 JB classes × bare = 300 attribution graphs
-- Outputs: `02_attribution/attribution_results.json`, `feature_comparison_aggregate.json`, `attribution_checkpoint.json`
-
-### Stage 02b — Statistical Analysis ✓
-- Outputs: `statistical_analysis.json`, `EXPERIMENT_SUMMARY.md`, four PNGs
-- **Key results** (50 prompts):
-
-  | Class | Δnet | % | p (Wilcoxon) | Cohen's d | Consistency |
-  |---|---|---|---|---|---|
-  | Roleplay | −38.7 | −54.9% | 1.4e-8 *** | −0.91 | 42/50 |
-  | Fiction | −65.3 | −92.7% | 3.0e-13 *** | −1.57 | 47/50 |
-  | Analytical | −73.7 | −104.6% | 5.3e-15 *** | −2.37 | 49/50 |
-  | Completion | +5.0 | +7.2% | 0.011 * | +0.27 | 15/50 |
-  | Cognitive_reframe | −50.2 | −71.3% | 2.5e-14 *** | −1.41 | 49/50 |
-
-- Completion's dual mechanism: dPos=+19.7 (pro-refusal recruitment), dNeg=−14.6 (anti-refusal weakening) → net positive
-
-### Stage 03 — Attribution Verification (M2) ✓
-- MLP ratio = 0.404% (prior 0.35–0.39%) — transcoders decompose ~0.4% of the refusal signal; the rest is attention + embeddings
-- attr_net_mean=70.47 matches 02b bare exactly → key paths plumb through correctly
-- Per-layer decomposition shows early-layer buildup (L7–L11 contribute ~2400 to dot product) — motivates a dedicated plot (see gap #4)
-
-### Stage 04 — Feature Labeling (M4) ✓
-- 876 unique features, **100% labeled** (788 priority features all labeled)
-- Sources: top-50 per condition ∪ sign-flipped (603) ∪ dampened (115) ∪ amplified-anti (117)
-- Caveat: many top-token patches are polyglot/byte-level noise. Expected for Gemma Scope; means labels alone won't tell the full story — Stage 05 visualization + activation examples on concrete prompts will be needed.
-
----
-
-## Added Metrics & Plots (from 2026-04-17 post-run review)
-
-These were not in the original plan. They're divided into **scientifically load-bearing** (add before mentor meeting) and **narrative-improving** (nice-to-have).
-
-### Load-bearing — add to 02b or a dedicated stage
-
-**A1. Response coherence + refusal classification per prompt** *(goes into Stage 02)*
-- Run `utils.classify_response` and `utils.is_coherent` over bare + each JB generation
-- Attach `bare_refused`, `jb_refused`, `bare_coherent`, `jb_coherent` booleans to each result row
-- **Why**: attribution deltas are only meaningful if the model's output actually changes — if bare refuses and JB still refuses, the attribution drop is disconnected from behavior. This is the single most load-bearing missing check.
-- **Status**: Mahmoud has flagged this as planned for later in the pipeline; tracked here for completeness.
-
-**A2. Completion-paradox feature attribution** *(Stage 02b table + plot)*
-- Top-10 features with largest positive Δattribution under completion (features being *recruited* to strengthen refusal)
-- Compare to top-10 dampened features under the three suppressive classes
-- Render as side-by-side labeled bar charts
-- **Why**: we know dPos=+19.7 is happening but not which features cause it. This directly answers task S2 (completion paradox deep-dive) and is the most research-interesting single figure.
-
-### Narrative-improving — 10-minute matplotlib additions to 02b
-
-**A3. Separation-vs-layer curve**
-- X: layer index 0–33, Y: separation magnitude
-- Already have the data in `01_direction/direction_metadata.json`
-- **Why**: makes the L33 pre-RMSNorm collapse (287 vs L32's 20,873) visually undeniable; shows monotonic buildup
-
-**A4. Per-layer attribution contribution bar chart**
-- Stage 03 already computes it for 10 prompts but never visualizes
-- Aggregate mean contribution per layer across all 50 prompts, render as bar chart
-- **Why**: reveals where the refusal signal is *assembled* — our data hints at L7–L11 contributing more than L32 does, which reshapes how we'd design interventions
-
-**A5. Full 34×34 cosine heatmap**
-- We currently store only 6 pairwise cosines (L15/18/25/32). Compute full matrix.
-- **Why**: Georg explicitly asked about rotation. A heatmap shows exactly where the direction pivots (probably L14–L20) and gives a crisp answer
-
-**A6. Bare-vs-JB net-attribution distribution plot**
-- Violin or box plot per class on the same axes
-- **Why**: means/CIs don't show the tail behavior. Important for completion especially (35/50 strengthen, 15/50 weaken — a bimodal pattern hidden by the mean)
-
-**A7. Feature-class UpSet / Venn**
-- The "Classes" column in 04 already encodes which JB classes each feature appears in
-- Render as UpSet (preferred over 5-way Venn)
-- **Why**: distinguishes universal refusal-circuit features from JB-class-specific ones — directly serves M3 (circuit visualization)
-
-**A8. Top-features-by-layer histogram**
-- Histogram of where sign-flipped / dampened / amplified-anti features concentrate by layer
-- **Why**: prior finding said JB effect concentrates in L24–L32. Confirm or refute with the 50-prompt data.
-
-### Suggested placement
-
-| Addition | Stage | Rationale |
+| Stage | Output | Headline numbers |
 |---|---|---|
-| A1 coherence | 02 | Needs model generations, so compute at attribution time |
-| A2 completion features | 02b | Uses Stage 02's per-condition feature data |
-| A3 separation curve | 02b or 01 | Data lives in 01 metadata; plot is a stats/visualization concern |
-| A4 per-layer contribution | 03 | 03 already has the data per-prompt; aggregate and plot |
-| A5 cosine heatmap | 02b or 01 | Derivable from 01 directions; fits better with 02b report |
-| A6 distribution plot | 02b | Standard statistical addition |
-| A7 UpSet | 04 or 05 | Belongs with visualization but derivable from 04 data |
-| A8 layer histogram | 04 | Uses 04's by-layer grouping already present |
+| 01 | `01_direction/` | 34 layers; \|r_L15\|=3,123.9 (recompute, in-script bf16); separation L32=20,873, L15=3,101 |
+| 02 | `02_attribution/` | 50×11×2 = 1,100 attribution graphs, 0 errors |
+| 02b | `02b_stats/` | 30 stats blocks (2 modes × 3 comparisons × 5 classes); cognitive_reframe attr drops -51.9% (d=-2.05) under JB, ctrl prefix moves it +1.4% (n.s.) — **direct correlational evidence JB effect is semantic** |
+| 03 | `03_verification/` | 50/50 within tolerance; MLP = 0.02% of signal (rest is attention + embed) |
+| 04 | `04_labels/` | 1,353 unique features, **100% HF dashboard coverage** |
+| 06 | `06_causal/` | **96.7% pro-flip** (87/90 JB→REFUSE), **100% anti** (49/49 bare→COMPLY), **10/10 benign force-refuse**. 100% coherent. **L15 r IS the refusal axis** — bidirectional, generic. 54.6 min wall clock on H100 |
+| 07 | `07_subcircuits/` | 18 subcircuits (11 legacy + 7 ctrl-aware); **`jb_specific_frac` per class**: cognitive_reframe **38.6%**, analytical 34.2%, fiction 34.2%, roleplay 20.0%, completion 18.4% — *up to 82% of "JB features" in prior work are prefix-induced, not JB-semantic* |
+| 08 | `08_ablation/` | GPU smoke running locally on 5080 (Apr 25) |
 
-**Recommendation**: bundle A3, A5, A6 into 02b (easy), A4 into 03, A7+A8 into 04. A1 waits for Stage 02 enhancement. A2 is its own short script under 02b or as a sub-analysis.
+Subcircuit sizes (used by Stage 08):
+- `universal_refusal_core` = 116 (positive control)
+- `ctrl_shared_refusal` = 50 (negative control)
+- `jb_fiction_specific_vs_ctrl` = 52
+- `jb_analytical_specific_vs_ctrl` = 69
+- `jb_cognitive_reframe_specific_vs_ctrl` = 88
 
----
-
-## Downstream Stages (unchanged from original plan)
-
-### Stage 05 — Visualize Attribution Circuits (M3)
-**Depends on**: 02, 02b, 04
-**Outputs**: color-coded circuit diagrams with labeled nodes, shared-vs-JB-only coloring, subcircuit candidates
-**Research story**: "Fiction fundamentally reorganizes the circuit, while completion preserves its skeleton."
-
-### Stage 06 — Causal Intervention (Arditi)
-**Depends on**: 01
-**Owner**: Tejas
-**Source**: Tejas Script 16
-**Outputs**: control + jailbreak flip rates per layer; exact-magnitude ablation on all positions, every forward pass, unnormalized r
-**Research story**: "Refusal direction is causally sufficient at L15, despite L32 having 7x stronger separation. Separation ≠ causation."
-
-### Stage 06b — Linear Probe
-**Depends on**: 01
-**Outputs**: per-layer probe accuracy on harmful-vs-harmless
-**Research story**: "Refusal is linearly readable everywhere from L9 onward, but only causally mutable at L15."
-
-### Stage 07 — Identify Subcircuits
-**Depends on**: 02, 04, 05
-**Outputs**: named subcircuit definitions (dampening, tug-of-war, JB-detection)
-**Research story**: "Three functional subcircuits with distinct roles."
-
-**Approach A (rule-based, chosen as default 2026-04-18)** — interpretable, narratively defensible:
-- `universal_refusal_core` = features in all 5 JB classes ∩ bare top-50 (~100 features, from A7 analysis)
-- `canonical_pro_refusal` = features in 5-class intersection but NOT in bare pool (~50 features; shared suppression target)
-- `{class}_exclusive` (×5) = features unique to one JB class (43–107 each, from A7)
-- `dampening_specialists` = features in `dampened` bucket across ≥3 classes (~50)
-- `anti_refusal_amplifiers` = features in `amplified_anti` bucket across ≥3 classes (~60)
-- `late_wave_layer24_32` = all features in L24–L32 band (cross-cuts above; ~630)
-
-Implementation: pure set logic on `feature_class_sets.json` + `layer_histogram.json` + `feature_comparison_labeled.json`. No GPU, no ML fitting. Local test derives all from existing `run_20260417_010035` outputs.
-
-**Approach B (embedding-based, alternative, discuss with Georg)** — deferred, pending mentor input:
-- Build per-feature vector: `(class_membership_5d, layer_1d, mean_attribution_1d, max_activation_1d, top_logit_embeddings_Nd)`
-  - `top_logit_embeddings` = average of Gemma/Qwen sentence-embedding vectors for the top-5 promoted tokens, capturing semantic content of what the feature encodes
-- Dimensionality reduction: PCA to ~20 dims, then UMAP to 2D for visualization
-- Cluster with HDBSCAN (no k specified; cluster count determined by density)
-- Name clusters post-hoc by inspecting the most-central features per cluster (highest local density)
-
-Trade-offs vs rule-based:
-- **Pros**: finds unexpected feature groupings we didn't predict; captures semantic similarity (e.g. "all safety-warning features" clustering together regardless of which classes they appear in); more likely to generalize to new JB classes
-- **Cons**: cluster identity is statistical, not interpretable by inspection; hard to explain to Georg without a UMAP plot + handpicked labels; requires careful tuning (HDBSCAN min_cluster_size, min_samples); may produce ~10–20 small clusters instead of 6–8 big ones
-- **Open question for Georg**: does he want us to run both and compare? Or commit to one?
-
-**Plan**: ship Approach A first (rule-based). If Georg wants Approach B, add a `--method=embedding` flag to `07_identify_subcircuits.py` that runs HDBSCAN on the same input data and writes a parallel `subcircuits_embedding.json`. Both outputs feed into Stage 08 ablation independently — we can ablate by either subcircuit definition.
-
-### Stage 07 results (2026-04-19)
-
-11 subcircuits identified on `run_20260417_010035` (50 prompts). 834/876 features tagged. Two structural identities surfaced:
-- `canonical_pro_refusal ∩ sign_flip_convergent` = 48/56 (**86%**) — "JB-recruited refusal ≡ sign-flipped refusal"
-- `universal_refusal_core ∩ dampening_specialists` = 44/52 (**85%**) — "dampening attacks the canonical core, not a separate circuit"
-- `canonical_pro_refusal ∩ dampening_specialists` = 2/52 (**4%**) — the two mechanisms use disjoint features, ablatable independently
-- Temporal sequence in layer peaks: anti-refusal amplifiers (L25) → universal core (L29) → dampening + sign-flip (L30) → canonical pro-refusal (L32)
-- Anti-refusal amplifiers fire 2.5× more often than dampening specialists (0.0078 vs 0.0031 mean activation frequency) — bypass uses general-purpose features, suppression uses specialized rare ones
-- `L24:F107` (' ok', ' okay') is the top anti-refusal amplifier — a literal "OK, I'll help" compliance feature the model recruits to bypass refusal
-- Top-3 by |attribution| of `universal_refusal_core` == top-3 of `dampening_specialists` — JBs attack the strongest bare-refusal features first
-
-Full results + figures in `README.md` Section 9 + `07_subcircuits/SUBCIRCUITS_REPORT.md`.
-
-### Stage 05 subcircuit filter panel (proposed 2026-04-19, Plan A)
-
-Now that Stage 07 emits 11 named subcircuits, the frontend needs per-subcircuit highlighting in the graph viewer. Three options, implementing A first:
-
-**Plan A (chosen 2026-04-19)** — right-rail checkbox panel, composes with existing overlap coloring:
-- `utils_viz.annotate_subcircuits(graph_json, subcircuits_json)` attaches `subcircuits: [...]` membership array to each feature node at stage_frontend time
-- `05_frontend_patches/subcircuit-panel.{js,css}` adds a collapsible panel listing the 11 subcircuits with counts; click-to-filter dims non-member nodes, hover highlights members
-- Keeps the existing shared/jb_unique/bare overlap colors — subcircuit filter is a dim/highlight layer, not a color conflict
-- Works in both `index.html` and `compare.html` (applied to each iframe independently)
-
-**Plan B (later, if requested)** — radio "color by overlap" vs "color by subcircuit". Subcircuit-color mode uses a distinct palette (universal=green, canonical=orange, sign-flip=red, dampening=blue, anti-amp=purple, class-exclusive=shade-per-class). Multi-membership nodes need tie-break (first-match priority order or pie-slice encoding). Deferred — subcircuits overlap, and Plan A's dim/highlight avoids the tie-break problem.
-
-**Plan C (deferred)** — dedicated `subcircuits.html` viewer with left-sidebar list and per-subcircuit preset views. Bigger lift; only pursue if Plan A proves insufficient for Georg's workflow.
-
-### Stage 05 gzip compression approach (2026-04-19)
-
-Two deploy targets differ in fetch semantics:
-
-- **HuggingFace dataset host (preferred for the 50-prompt ship):** HF serves `.json.gz` with `Content-Encoding: gzip` and browsers auto-decode — frontend fetch unchanged. Canonical artifact = `.json.gz` on HF, raw `.json` only in local dev.
-- **Local dev (`python -m http.server`):** no `Content-Encoding` header; requires either (a) a tiny `util.js` patch that feeds the response through `DecompressionStream('gzip')` on `.json.gz` URLs (~10 LOC), or (b) keeping raw `.json` locally. Going with (b) initially — `stage_frontend()` stays uncompressed for local testing; a new `build_gzipped_frontend_bundle()` helper produces the HF-ready tree separately.
-
-For the 10-prompt local run: 60 graphs × ~40 MB = ~2.4 GB uncompressed, ~200 MB gzipped. Both are well under practical limits; we keep raw locally, gzip for HF upload.
-
-### 10-prompt local run (`run_20260418_172402`, complete 2026-04-19)
-
-Stage 02 ran locally on RTX 4090 (bf16) with `--save-graphs` → 60 `.pt` files, 83 GB on disk. Directional replication of all 50-prompt findings:
-
-| Class | n=10 mean net | n=10 Δ vs bare | n=50 Δ |
-|---|---|---|---|
-| bare | +65.78 | — | — |
-| completion | +75.62 | **+9.84** | +5.0 |
-| roleplay | +41.70 | −24.08 | −38.7 |
-| cognitive_reframe | +24.38 | −41.40 | −50.2 |
-| analytical | +2.66 | −63.12 | −73.7 |
-| fiction | +0.36 | −65.42 | −65.3 |
-
-Completion paradox replicates (+14.9%). Directional agreement with 50-prompt on all 5 classes. Primary use: graph corpus for end-to-end Stage 05 subcircuit-filter-panel iteration without RunPod.
-
-### Stage 08 — Ablate Subcircuits
-**Depends on**: 07, 01
-**Outputs**: per-subcircuit ablation results
-**Research story**: "Ablating the dampening subcircuit removes X% of fiction's bypass effect."
+**Peak-layer finding**: every refusal subcircuit peaks at **L14**, one layer before our L15 measurement target — clean mechanistic claim worth calling out.
 
 ---
 
-## Execution Order & Dependencies
+## Stage-by-Stage Reference
 
-```
-01 ──┬──→ 02 ──→ 02b ──┬──→ 04 ──→ 05
-     │                 │
-     │                 └──→ 03
-     │
-     └──→ 06 ──→ 06b
+### Stage 01 — Compute Refusal Directions [✓]
+**Role**: per-layer refusal direction `r` (normalized) + `unnormalized_r` (Tejas's intervention magnitude). All 34 layers @ pos=-2; per-position at L15 (-1..-15) for diagnostics.
 
-04 + 05 + 06 ──→ 07 ──→ 08
+**Run**:
+```bash
+PYTHONPATH=src python3 scripts/pipeline/01_compute_direction.py \
+    --output-dir data/results/pipeline_runs/run_<ts>/01_direction \
+    --n-prompts 64 --layers all
 ```
 
----
+**Outputs**: `refusal_direction.pt`, `unnormalized_r.pt`, `directions/layer_XX.pt`, `direction_metadata.json`.
 
-## Progress Table
+**Findings**:
+- L32 sep=20,873 (strongest separation, pre-RMSNorm)
+- L15 sep=3,101 (causally effective)
+- Cosine(L15, L32) = **−0.115** (near-orthogonal — direction rotates)
+- L33 sep=287 (post-RMSNorm collapse — diagnostic, not a usable layer)
 
-| Stage | Status | Local Test | RunPod Test | Notes |
-|-------|--------|------------|-------------|-------|
-| 01    | ✓ Done | 26/26      | ✓ n=64      | Matches Tejas within noise |
-| 02    | ✓ Done | 1-prompt bf16 on 4090 | ✓ 50 prompts × 5 classes | Now supports `--save-graphs` + `--dtype` |
-| 02b   | ✓ Done | Matches reference | ✓ 50 prompts | Includes A3 sep-curve, A5 cosine heatmap, A6 distribution plots |
-| 03    | ✓ Done | 15/15      | ✓ 50 prompts | MLP ratio 0.404%; A4 per-layer contribution added |
-| 04    | ✓ Done | 04-a7, 04-a8 pass | ✓ 876 features, 100% labeled | A7 UpSet + A8 layer histogram added |
-| A3    | ✓ Done | ✓ | — | Separation-vs-layer plot in 02b |
-| A4    | ✓ Done | ✓ | — | Per-layer contribution aggregate in 03 |
-| A5    | ✓ Done | ✓ | — | 34×34 cosine heatmap (reveals Regime A/B/C pivot structure) |
-| A6    | ✓ Done | ✓ | — | Bare-vs-JB distribution violin plot |
-| A7    | ✓ Done | ✓ | — | Feature-class UpSet (N=788; 12.7% universal, 46.1% class-exclusive) |
-| A8    | ✓ Done | ✓ | — | Top-features-by-layer histogram (80% of JB-affected features in L24–L32) |
-| 05a   | ✓ Done | ✓ bf16 on 4090 | — | Stage 02 `--save-graphs` flag + `.pt` persistence |
-| 05b   | ✓ Done | ✓ | — | `utils_viz.py` helpers: convert_pt, annotate_overlap, stage_frontend, gzip_json_files |
-| 05c   | ✓ Done | ✓ | — | Frontend overlap coloring (shared/jb-unique/bare) + legend + fetch-override patch |
-| 05d   | ✓ Done | ✓ | — | `compare.html` side-by-side viewer (bare ↔ JB iframes, URL-param driven) |
-| 05e   | ✓ Done | 10-prompt local bf16 complete 2026-04-19 | — | 60 .pt files, 83 GB; directional match with 50-prompt |
-| 05f   | Planned | — | — | Full 50-prompt RunPod run with `--save-graphs` |
-| 05g   | **Next** | — | — | Subcircuit filter panel (Plan A) — right-rail highlight/dim |
-| 05h   | Planned | — | — | Gzipped HF bundle (`build_gzipped_frontend_bundle`) |
-| A1    | Planned | — | — | Coherence wiring in Stage 02 (deferred, tracked) |
-| A2    | Planned | — | — | Completion-paradox feature attribution (deferred) |
-| LLM labels | Planned | — | — | Claude-API-synthesized `clerp` labels (deferred) |
-| 6-way UpSet | Planned | — | — | `feature_labels.json[conditions_seen]` including bare |
-| 06    | Planned | — | — | Tejas's task — causal intervention (Arditi method) |
-| 06b   | Planned | — | — | Linear probe |
-| 07    | ✓ Done | 13/13 tests pass; 11 subcircuits, 834/876 tagged | — | Rule-based; embedding-based Plan B deferred for Georg meeting |
-| 08    | Planned | — | — | Subcircuit ablation (priority queue in README §9 Stage 08 ablation queue) |
+**Open**: `|r_L15|` magnitude gap — we get 3,123.9 vs Tejas's 4,019.7 with same methodology. Both produce the bulletproof 10/10 benign force-refuse, so non-blocking, but worth a dataset diff before publication.
 
 ---
 
-## Next Milestones
+### Stage 02 — Run Attribution [✓]
+**Role**: CLT attribution graphs at L15 for (prompt, condition, mode). Two-graph scheme: `multi=[-5,-3,-2]` and `single=[-2]`.
 
-1. **Plot additions A3/A5/A6 in 02b + A4 in 03 + A7/A8 in 04** — one batch of matplotlib work, improves narrative without blocking Stage 05
-2. **A2 completion-paradox feature attribution** — research-interesting figure, small script
-3. **A1 response coherence** — wire into Stage 02 (queued by Mahmoud)
-4. **Stage 05 visualization** — once plot additions land
-5. **Stage 06 causal intervention** — Tejas's parallel track
-6. **M1 clean 50-prompt dataset** — deferred until pipeline is complete
+**Run** (RunPod or local 5080):
+```bash
+# Single-GPU
+PYTHONPATH=src python3 scripts/pipeline/02_run_attribution.py \
+    --run-dir data/results/pipeline_runs/run_<ts> \
+    --measurement-layer 15 --modes multi,single \
+    --batch-size 256 --save-graphs --resume
+
+# Multi-GPU (H100 cluster)
+bash scripts/pipeline/run_stage02_parallel.sh <run_dir> <n_gpus>
+```
+
+**Outputs**: `02_attribution/attribution_results.json` (per-prompt feature comparisons), `02_attribution/graphs/{idx}_{cond_name}_{mode}.pt` (raw circuit-tracer graphs), `attribution_checkpoint.json`.
+
+**Schema** (consumed by every downstream stage): `results[i].conditions.<cond>.graphs.{multi,single}.{net, pos_sum, neg_sum, top50_features, comparison.{vs_bare, vs_ctrl, ctrl_vs_bare}, ...}`. See HANDOFF.md "Critical schema changes" for the full layout.
+
+**Findings**: 1,100 graphs land cleanly. `bare.multi.net = 7.287` matches `sum(per_target[i].net)` exactly (multi-target weighted-row fix landed in circuit-tracer patch).
+
+---
+
+### Stage 02b — Statistical Analysis [✓]
+**Role**: 30 stats blocks (2 modes × 3 comparisons × 5 classes) — paired Wilcoxon, Cohen's d, bootstrap CIs. Plots: separation curve (A3), 34×34 cosine heatmap (A5), per-class distribution (A6).
+
+**Run**:
+```bash
+PYTHONPATH=src python3 scripts/pipeline/02b_statistical_analysis.py \
+    --run-dir data/results/pipeline_runs/run_<ts>
+```
+
+**Outputs**: `02b_stats/statistical_analysis.json`, `EXPERIMENT_SUMMARY.md`, separation/cosine/distribution PNGs.
+
+**Findings** (from reference run):
+
+| Class | jb_*_vs_bare %chg | ctrl_*_vs_bare %chg |
+|---|---|---|
+| cognitive_reframe | **−51.9%** (d=−2.05) | +1.4% (n.s.) |
+| fiction | **−34.6%** (d=−2.21) | +5.2% |
+| roleplay | −6.2% (d=−0.43) | −3.9% |
+| completion | +4.2% (d=+0.43) | +1.8% (n.s.) |
+
+**The matched ctrl prefixes do NOT reduce attribution to refusal — they slightly *increase* it.** JB attribution drops with huge effect sizes (d>2 for 3/5 classes). Direct correlational evidence the JB effect is *semantic*, not formatting.
+
+---
+
+### Stage 02c — Pack Graphs [✓]
+**Role**: `.pt → JSON.gz` packer for HF distribution. Decouples conversion from full Stage 05 staging.
+
+**Run**:
+```bash
+PYTHONPATH=src python3 scripts/pipeline/02c_pack_graphs.py \
+    --run-dir data/results/pipeline_runs/run_<ts>
+```
+
+**Outputs**: `<run>/graph_data/*.json.gz` + `graph-metadata.json`.
+
+---
+
+### Stage 03 — Attribution Verification (M2) [✓]
+**Role**: confirms `sum(feature_attributions) ≈ r · h[L=15]` per prompt. Reports MLP-only contribution fraction (always small — that's the point).
+
+**Run**:
+```bash
+PYTHONPATH=src python3 scripts/pipeline/03_verify_attribution.py \
+    --run-dir data/results/pipeline_runs/run_<ts>
+```
+
+**Outputs**: `03_verification/verification.json`, `per_layer_contribution.png` (A4).
+
+**Findings**: 50/50 verified within tolerance. **MLP = 0.02% of signal** on L15-measurement (was ~0.4% on L32). Transcoders only decompose MLP — the rest of refusal lives in attention + embeddings. Per-layer contribution chart (A4) shows assembly across L7–L11 even when measured at L15.
+
+---
+
+### Stage 04 — Feature Labeling (M4) [✓]
+**Role**: every unique feature gets labeled from the HF dashboard binary (`mwhanna/gemma-scope-2-4b-it/transcoder_all/width_16k_l0_small_affine/features/{layer}.bin`). Top/bottom logits, activation examples, conditions seen.
+
+**Run**:
+```bash
+PYTHONPATH=src python3 scripts/pipeline/04_label_features.py \
+    --run-dir data/results/pipeline_runs/run_<ts>
+```
+
+**Outputs**: `04_labels/feature_labels.json` (1,353 features, 100% labeled), `feature_class_sets.json` (with `per_condition_top50` block — Stage 07's input), `feature_comparison_labeled.json`, A7 UpSet, A8 layer histogram.
+
+**Findings**: `feature_class_sets.per_condition_top50` has all 11 keys → enables Stage 07 ctrl-aware rules. Many top tokens are polyglot/byte-level (Gemma Scope characteristic) — labels alone don't tell the whole story; Stage 05 visualization + concrete prompts are needed. **04b LLM labels (planned)** would synthesize human-readable strings and inject as `clerp` at staging time.
+
+---
+
+### Stage 05 — Visualize Circuits [✓ code; needs end-to-end refresh on `run_20260422_015552`]
+**Role**: frontend orchestrator. Stages a viewer with 3-way bare/ctrl/JB overlap coloring, subcircuit filter panel, ablation cart.
+
+**Run**:
+```bash
+# 1) (one-time per run) fetch raw .pt from HF
+PYTHONPATH=src python3 scripts/pipeline/fetch_raw_graphs.py \
+    --run run_<ts> --dataset-repo moon70/refusal-lens-graphs
+
+# 2) (one-time) pack to gzipped JSON + push back to HF
+PYTHONPATH=src python3 scripts/pipeline/02c_pack_graphs.py --run-dir data/results/pipeline_runs/run_<ts>
+PYTHONPATH=src python3 scripts/pipeline/push_graph_data.py \
+    --run-dir data/results/pipeline_runs/run_<ts> --source 02c \
+    --dataset-repo moon70/refusal-lens-graphs
+
+# 3) stage the frontend
+PYTHONPATH=src python3 scripts/pipeline/05_visualize_circuits.py \
+    --run-dir data/results/pipeline_runs/run_<ts> \
+    --subcircuits-run data/results/pipeline_runs/run_<ts> \
+    --mode single --skip-convert --gzip
+
+# 4) serve
+cd data/results/pipeline_runs/run_<ts>/05_frontend && python3 -m http.server 8000
+```
+
+**Outputs**: `05_frontend/index.html`, `compare.html` (bare↔JB side-by-side), gzipped graph JSONs, subcircuit panel.
+
+**Frontend patches** (`05_frontend_patches/`): `overlap-colors.css` (9 buckets, gold = `shared_with_ctrl` = prefix-induced), `overlap-annotate.js`, `subcircuit-panel.{js,css}`, `compare.html`, `gzip-fetch.js`, `feature-cart.{js,css}` (Stage 08 cart — shift/cmd-click to pin features).
+
+**Pending**: end-to-end refresh on `run_20260422_015552` — Stage 05 code is validated against synthetic + `run_20260417_010035` but the new attribution graphs haven't been rendered yet.
+
+---
+
+### Stage 06 — Causal Intervention (Arditi, Tejas Script 20 port) [✓]
+**Role**: at L15, add unnormalized r → flip JB to REFUSE (Arditi); subtract r → flip bare to COMPLY (symmetry); apply same hook to benign prompts → expect 10/10 force-refuse (Tejas's bulletproof control proving the hook is generic).
+
+**Run**:
+```bash
+PYTHONPATH=src python3 scripts/pipeline/06_causal_intervention.py \
+    --run-dir data/results/pipeline_runs/run_<ts> \
+    --r-source recompute       # bf16 in-script — Tejas-exact methodology
+```
+
+`--r-source` options: `stage01` (use `01_direction/unnormalized_r.pt`), `tejas-rescale` (rescale Stage 01 to Tejas's reported `|r|`), `recompute` (fresh 64+64 diff-in-means under the same bf16 model — chosen for the headline run).
+
+**Outputs**: `06_causal/causal_results.json`, `causal_summary.json`, `flip_rate_by_class.png`, `intervention_symmetry.png`, `FLIP_RATE_SUMMARY.md`.
+
+**Findings** (run_20260422_015552):
+- pro-refusal-add: **87/90 = 96.7%** (Tejas got 90/90)
+- anti-refusal-sub: **49/49 = 100%** (our symmetry addition; Tejas didn't test)
+- benign force-refuse: **10/10 = 100%** (matches Tejas exactly)
+- 100% coherence on all 146 flips
+- Per-class: analytical 27/27 (100%), roleplay 9/9 (100%), completion 1/1 (100%), cognitive_reframe 32/33 (97%), **fiction 18/20 (90%)** — fiction is the hardest
+
+**Headline causal claim**: bidirectional symmetry + 10/10 benign establishes that `r_L15` IS the refusal axis, manipulable in both directions; not a one-way push, not JB-specific.
+
+---
+
+### Stage 07 — Identify Subcircuits [✓]
+**Role**: rule-based set-logic over `feature_class_sets.json` → 18 named subcircuits (11 legacy + 7 ctrl-aware). Computes `jb_vs_ctrl_contrast` headline ICML metric.
+
+**Run**:
+```bash
+PYTHONPATH=src python3 scripts/pipeline/07_identify_subcircuits.py \
+    --run-dir data/results/pipeline_runs/run_<ts>
+```
+
+**Outputs**: `07_subcircuits/subcircuits.json`, `subcircuits_summary.json`, `SUBCIRCUITS_REPORT.md`, `jb_vs_ctrl_contrast.png`, `jb_specific_by_layer.png`, treemap, by-layer chart, overlap chart.
+
+**Subcircuit families**:
+- **Legacy** (11): `universal_refusal_core`, `canonical_pro_refusal`, `sign_flip_convergent`, `dampening_specialists`, `anti_refusal_amplifiers`, `late_wave_layer24_32` (empty on L15-measurement runs by construction), 5 × `{class}_exclusive`.
+- **Ctrl-aware** (7, new): `ctrl_shared_refusal` (prefix-invariant refusal spine), `ctrl_only`, 5 × `jb_{class}_specific_vs_ctrl` (per-class JB-semantic features).
+
+**Headline metric — `jb_specific_frac` per class** (the ICML novelty):
+
+| Class | JB-specific % | Interpretation |
+|---|---|---|
+| cognitive_reframe | **38.6%** | deepest JB |
+| analytical | 34.2% | strong JB-semantic |
+| fiction | 34.2% | strong JB-semantic |
+| roleplay | 20.0% | mostly prefix artifact |
+| completion | 18.4% | mostly prefix artifact |
+
+**Claim**: *up to 82% of what prior work called "JB features" is prefix-induced, not JB-semantic — only the controlled dataset can measure this.*
+
+**Structural identities**:
+- `canonical_pro_refusal ∩ sign_flip_convergent` ≈ 86% — JB-recruited refusal IS sign-flipped refusal
+- `universal_refusal_core ∩ dampening_specialists` ≈ 85% — dampening attacks the canonical core
+- Anti-refusal amplifiers fire ~2.5× more often than dampening specialists (bypass uses general-purpose features, suppression uses specialized rare ones)
+- Top anti-refusal amplifier: `L24:F107` (` ok`, ` okay`) — literal "OK, I'll help" feature
+
+---
+
+### Stage 08 — Subcircuit Ablation & Patching [PR #1 done; PR #2/#3 planned]
+
+The patching half. Three sub-stages, three PRs, with a manual-steering frontend deliverable bundled into PR #1.
+
+#### Stage 08a — Runtime ablation [✓ code; GPU smoke running 2026-04-25]
+**Role**: zero-ablate Stage 07 features at runtime via `ReplacementModel.feature_intervention_generate`. Produces a dissociation matrix per (subcircuit, class).
+
+**Run**:
+```bash
+# Smoke (5 prompts, ~5–8 min on H100, ~10–15 min on 5080)
+PYTHONPATH=src python3 scripts/pipeline/08_ablate_subcircuits.py \
+    --run-dir data/results/pipeline_runs/run_20260422_015552 \
+    --subcircuits universal_refusal_core,ctrl_shared_refusal,jb_fiction_specific_vs_ctrl \
+    --positions all --max-prompts 5 --skip-baseline --resume
+
+# Full (50 × 11 × 5 × 2 = 5,500 generations + baselines from Stage 06)
+PYTHONPATH=src python3 scripts/pipeline/08_ablate_subcircuits.py \
+    --run-dir data/results/pipeline_runs/run_20260422_015552 \
+    --positions both --skip-baseline --resume --checkpoint-every 10
+```
+
+**CLI flags**: `--subcircuits` (comma list, default = `STAGE_08_DEFAULT_SUBCIRCUITS`), `--feature-file cart.json` (manual cart override), `--ablation-name`, `--positions {all|anchors|both}`, `--conditions`, `--max-prompts`, `--prompt-{start,end}`, `--skip-baseline` (reuse Stage 06), `--resume`, `--checkpoint-every`.
+
+**Outputs**: `08_ablation/ablation_results.json` (per-prompt records, mirrors Stage 06 schema), `ablation_summary.json` (dissociation matrix), `dissociation_matrix_{all,anchors}.png`, `positions_comparison.png`, `ABLATION_SUMMARY.md`.
+
+**Validation gates** (must hit all three for the NeurIPS claim):
+
+| Gate | Subcircuit | Threshold |
+|---|---|---|
+| Positive control | `universal_refusal_core` (116 feat) | bare REFUSE → ≤30/49 (break_rate ≥ 39%) |
+| Negative control | `ctrl_shared_refusal` (50 feat) | every JB class flip moves ≤5pp |
+| **Dissociation** | ≥2 of `jb_{fiction,analytical,cognitive_reframe}_specific_vs_ctrl` | each shows **≥+20pp** higher recovery on its own class than other-class avg |
+
+#### Stage 08a — Manual feature steering [✓]
+Frontend cart in Stage 05 + FastAPI demo backend.
+
+**Cart**: shift/cmd-click feature nodes → toggles into right-rail cart. Buttons: Export `cart.json`, Copy CLI, Run Ablation (POSTs to `localhost:8080`), Clear.
+
+**Server**:
+```bash
+pip install fastapi pydantic uvicorn
+PYTHONPATH=src python3 scripts/pipeline/ablation_server.py --host 127.0.0.1 --port 8080
+# Loads ReplacementModel singleton ~60–120s
+```
+
+`POST /ablate` returns `{baseline, baseline_cls, baseline_coherent, ablated, ablated_cls, ablated_coherent, n_features, positions, elapsed_s}`. CORS open for `localhost:8000` (frontend).
+
+#### Stage 08b — Permanent weight editing (Arditi-style) [PLANNED, NeurIPS-load-bearing]
+**Role**: project decoder directions of ablated features out of `o_proj` and `down_proj` at every target layer (per CLT). Produces an **edited HF model** that runs without the replacement model at inference.
+
+Approach (CLT-correct):
+1. Resolve features `[(k, j), ...]` from subcircuits + optional cart.
+2. Per source layer `k`, fetch decoder vectors `D[k, j] ∈ R^{(N-k)×d_model}`. Group by **target layer** `L = k + offset`.
+3. Per target `L`: SVD-orthonormalize `D_L`, build projector `P_L = Q Q^T`, apply to `down_proj` and `o_proj` rows: `W ← W − P_L @ W`.
+
+**Pitfalls**: skip `embed_tokens` / `lm_head` (shared, scope creep); leave `post_*_layernorm.weight` (γ) untouched (RMSNorm scalar-multiplicative — projector commutes); detect `Gemma3ForCausalLM` vs `Gemma3ForConditionalGeneration` at load.
+
+**Outputs**: `<run>/08b_direction_ablation/<set_name>/edited_model/` (HF `save_pretrained` dir), `metadata.json` (per-layer Frobenius `‖ΔW‖_F / ‖W‖_F`), `eval/flip_rate_summary.json` (Stage 06 rerun on edited model), `eval/mmlu.json` (300-prompt sanity check).
+
+**Acceptance**: target-class JB flip drops ≥15pp; other classes stable ±5pp; MMLU delta < 3pp.
+
+#### Stage 08c — Input-dependent sidecar [PLANNED]
+**Role**: `SidecarWrapper(nn.Module)` wraps a plain HF Gemma and at every layer subtracts the feature reconstructions an MLP would have emitted — mathematically equivalent to 08a's `feature_intervention(value=0.0)` for the same feature set.
+
+Hooks:
+- pre-hook on `block[k].pre_feedforward_layernorm.output`: compute `ReLU(W_enc[k,j] @ h + b_enc[k,j])`, zero positions [0:4], cache.
+- post-hook on `block[L].post_feedforward_layernorm.output`: for each `(k, j, offset)` with `k+offset == L`, subtract `D[k, offset, j, :] * cache[k][j]`.
+
+**Equivalence test (must pass before claim)**: same prompt, both paths → `torch.allclose(logits_rm, logits_wrap, rtol=1e-3)` (bf16 tolerance).
+
+**Comparison output** (`08b_vs_08c_compare.md`): flip-rate delta per class, MMLU delta, param-count delta, generation speed, deploy-as-single-HF-dir (08b yes / 08c no, custom wrapper).
+
+---
+
+## What's Done vs. What's Left
+
+### Done
+- **Correlational pipeline (01–04, 07)**: validated end-to-end on `run_20260422_015552`. ICML headline numbers in hand.
+- **Stage 02c** producer-side packaging.
+- **Stage 06** causal intervention: 96.7% / 100% / 100% bidirectional + benign control.
+- **Stage 07** ctrl-aware subcircuits + `jb_specific_frac` headline metric.
+- **Stage 08a** runtime ablation + manual cart + FastAPI backend (PR #1, code complete, 13/13 unit tests pass, GPU smoke running on 5080 right now).
+- **Stage 05** code (frontend patches, 3-way overlap, subcircuit panel, ablation cart).
+
+### Pending (priority order)
+1. **Stage 08a GPU validation** — smoke (5 prompts) → full (50 prompts) on `run_20260422_015552`. Acceptance: positive control + negative control + ≥2 class-specific dissociations ≥+20pp. **In flight on 5080.**
+2. **Stage 05 frontend refresh** on `run_20260422_015552` — code's ready, just needs the `02c → push → 05_visualize → http.server` round-trip and a browser spot-check. Visual acceptance criteria in HANDOFF §1.
+3. **Stage 08b** — Arditi-style permanent weight edit. NeurIPS-load-bearing.
+4. **Stage 08c** — sidecar wrapper. Equivalence test must pass before claim. Run alongside 08b for comparative benchmarking.
+5. **Stage 04b** — Claude API LLM labels (~$2 Haiku 4.5). Drops human-readable `clerp` strings into the frontend. Post-ICML.
+6. **`|r_L15|` magnitude diagnostic** — diff `harmful_train.json` between branches to explain the 3,123.9 vs 4,019.7 gap. Non-blocking; for publication rigor.
+
+---
+
+## Open Questions / Gaps
+
+| # | Question | Where it gets answered |
+|---|---|---|
+| 1 | Will Stage 08a hit the dissociation ≥+20pp threshold? | GPU smoke + full run (now) |
+| 2 | Why does fiction flip at only 90% under Stage 06 when the other classes hit 97–100%? Narrative-distributed attention? | Pull the 2 unflipped fiction prompts (`causal_results.json`), look for structural commonalities |
+| 3 | Is Stage 08b's Arditi projection mathematically equivalent to 08a's runtime ablation in the limit of all-positions? | 08c equivalence test (must pass `torch.allclose(logits_08a, logits_08c)` on bf16 tolerance) |
+| 4 | Does the edited 08b model preserve general capabilities? | MMLU delta < 3pp on 300-prompt subset |
+| 5 | `\|r_L15\|` magnitude gap (3,123.9 vs Tejas's 4,019.7) | Dataset diff between `l15-refactor` and `origin/tejas-circuit-experiments` |
+| 6 | What does L20 do? Why is it the only negative-contribution layer? | Open — dedicated probe |
+| 7 | What features live in Regime A (L5–L13) vs C (L18–L33)? Weakly anti-correlated. | Stage 07 cluster inspection (Approach B with HDBSCAN — deferred) |
+| 8 | What happens at the L13→L14 pivot? Specific attention head triggering rotation? | Attention-head attribution (S3 task — not in current plan) |
+| 9 | 99.98% of the refusal signal lives in attention + embeddings on L15 measurement — which heads? | Attention-head attribution |
+| 10 | Are any two JB classes structurally similar (shared `jb_*_specific_vs_ctrl` features)? | Stage 07 cross-tab — easy follow-up |
+| 11 | Will manual cart steering produce coherent ablations the cart's UX implies? | Live demo of `ablation_server.py` — only verifiable post-08a-validation |
+| 12 | Generalize to Qwen? | **Ruqiya's track** (not Mahmoud's) |
+
+---
+
+## Workflow Conventions
+
+### Testing
+```bash
+# Local (no GPU required)
+PYTHONPATH=src .venv/bin/python3 scripts/pipeline/tests/test_pipeline_local.py --stage all
+
+# Single stage
+PYTHONPATH=src .venv/bin/python3 scripts/pipeline/tests/test_pipeline_local.py --stage 08
+
+# Stages: utils, utils-viz, 01, 01-a5, 02, 02b, 03, 03-a4, 04-a7, 04-a8, 04-schema,
+#         06, 07, 07-ctrl, 08, all
+```
+
+Local venv: `.venv/` at repo root. CPU torch + numpy + matplotlib + transformers + nnsight + circuit-tracer (via `pip install -e ".[runpod]"` for full GPU stack).
+
+### Local-dev limitations
+- Stage 08 unit tests run with **just base venv** (pure Python helpers).
+- Stages 01/02/03/06/07's tests need numpy + matplotlib (now installed).
+- Stage 04-a7 has a known pre-existing `upsetplot 0.9.0` × `matplotlib 3.10.9` `nan` RGBA bug — unrelated to current work; needs upsetplot upgrade or matplotlib pin.
+
+### Code style
+- Heavy imports (torch, circuit_tracer, numpy, matplotlib) inside functions or `main()`, not at module top-level. Keeps test-time imports cheap.
+- Each stage mirrors the Phase 0/1/2/3 + checkpoint/resume + summary-MD pattern from Stage 06.
+
+### Git
+- All work on `l15-refactor`. Don't touch `main` without approval.
+- Submodule `vendor/circuit-tracer` on `refusal-lens-measurement-patch` (commit `b5300ee`).
+- Don't commit raw `.pt` graphs (`.gitignore` excludes them); push to HF instead.
+
+---
+
+## Where to Find Things
+
+| What | Path |
+|---|---|
+| Pipeline scripts | `scripts/pipeline/` |
+| Latest validated run | `data/results/pipeline_runs/run_20260422_015552/` |
+| Legacy L32 reference run | `data/results/pipeline_runs/run_20260417_010035/` |
+| Stage 06 results | `<run>/06_causal/FLIP_RATE_SUMMARY.md` |
+| Stage 07 results | `<run>/07_subcircuits/SUBCIRCUITS_REPORT.md` |
+| Controlled dataset | `dataset/refusal_lens_controlled_dataset.json` |
+| Local tests | `scripts/pipeline/tests/test_pipeline_local.py` |
+| Frontend patches | `scripts/pipeline/05_frontend_patches/` |
+| Stage 08 plan (full) | `/home/mshab/.claude/plans/curried-discovering-giraffe.md` |
+| Tejas's bulletproof source (Stage 06) | `git show origin/tejas-circuit-experiments:data/tejas_experiments/scripts/20_bulletproof_pipeline.py` |
+| HF dataset (graphs) | `https://huggingface.co/datasets/moon70/refusal-lens-graphs` |
+| Session handoff | `HANDOFF.md` |
+| Pipeline README (deployment + findings narrative) | `scripts/pipeline/README.md` |
+
+---
+
+## Final Note
+
+The correlational pipeline (01/02/02b/03/04/07) is complete and validated on real data. The causal pipeline (06) is complete and validated. The patching pipeline's first step (08a) is code-complete and currently running its GPU smoke on the 5080. **If 08a's three validation gates land**, this becomes a viable NeurIPS-grade story; the remaining 08b/08c work is the path to a permanent, deployable model edit.
