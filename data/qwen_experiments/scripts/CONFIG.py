@@ -88,10 +88,17 @@ for d in (RESULTS_DIR, RESULTS_V2_DIR, FIGURES_DIR):
 # CHAT TEMPLATE HELPER
 # =============================================================================
 def format_prompt(text: str, tokenizer) -> str:
-    """Apply Qwen's chat template with assistant-generation prompt."""
+    """Apply Qwen's chat template with assistant-generation prompt.
+
+    enable_thinking=False matches Gemma-3-4B-IT (no thinking mode). With the
+    default enable_thinking=True the template appends `<think>\\n` after
+    `<|im_start|>assistant\\n`, which shifts every trailing-token position
+    the refusal-direction sweep analyzes. The transcoders were trained on
+    Qwen/Qwen3-4B with no enforced thinking-mode prefix.
+    """
     msgs = [{"role": "user", "content": text}]
     return tokenizer.apply_chat_template(
-        msgs, tokenize=False, add_generation_prompt=True
+        msgs, tokenize=False, add_generation_prompt=True, enable_thinking=False
     )
 
 
