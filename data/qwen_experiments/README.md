@@ -124,10 +124,15 @@ Use `nohup` + a log file so you can disconnect SSH while long jobs run.
 cd /workspace/Refusal-Lens
 source /workspace/venv/bin/activate
 
+mkdir -p data/qwen_experiments/results_v2
+
 # Step 01: discover (best_pos, best_layer). ~30 min on A100.
+
 nohup python data/qwen_experiments/scripts/01_compute_direction_and_sanity.py \
-      > data/qwen_experiments/results_v2/01.log 2>&1 &
-tail -f data/qwen_experiments/results_v2/01.log
+  > data/qwen_experiments/results_v2/01.log 2>&1 &
+sleep 1 && tail -f data/qwen_experiments/results_v2/01.log
+
+
 # When done, the last line tells you what to put in CONFIG.py:
 #   "Update CONFIG.py: QWEN_BEST_POSITION=-?, QWEN_BEST_LAYER=??"
 
