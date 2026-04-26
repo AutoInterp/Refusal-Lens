@@ -388,6 +388,108 @@ def aggregate_summary(results, ablation_sets, positions_modes, conditions):
     return summary
 
 
+# --------------------------------------------------------------------
+# Phase 4 — activation audit (uses Stage 02 attribution data, no GPU)
+# --------------------------------------------------------------------
+
+def audit_activations(run_dir: Path, ablation_sets: dict[str, list[tuple[int, int]]]) -> dict:
+    """For each ablation set, summarize how often its features actually appear
+    in the corpus top-50 across each condition class — a proxy for "is the
+    feature firing during inference?".
+
+    The Stage 07 ctrl-aware rules are corpus-aggregated (a feature is in
+    `bare_top50` iff it's in the corpus-level top-50 for bare). But a feature
+    can fire on individual JB prompts without aggregating into the JB corpus
+    top-50. This audit measures per-feature, per-prompt top-50 hit rate so
+    we can interpret recovery/break rates correctly:
+
+      - high jb_* hit rate on a "ctrl_shared_refusal" feature → the
+        Stage 07 rule's separation isn't clean at the per-prompt level
+      - high target-class hit rate vs other JB classes on a class-specific
+        ablation → correlational dissociation is in place; expect causal
+        dissociation at scale.
+
+    Reads `<run_dir>/02_attribution/attribution_results.json`. Skips silently
+    (returns empty dict) if Stage 02 output isn't available.
+    """
+    attr_path = run_dir / "02_attribution" / "attribution_results.json"
+    if not attr_path.exists():
+        return {}
+
+    attr = load_json(attr_path)
+
+    feature_appearances: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    feature_attr_sum: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    total_per_cond: dict[str, int] = defaultdict(int)
+
+    for row in attr.get("results", []):
+        for cond_name, cond in row.get("conditions", {}).items():
+            total_per_cond[cond_name] += 1
+            top50 = cond.get("graphs", {}).get("multi", {}).get("top50_features", {}) or {}
+            for fk, attribution in top50.items():
+                feature_appearances[fk][cond_name] += 1
+                feature_attr_sum[fk][cond_name] += abs(float(attribution))
+
+    class_groups = {
+        "bare": ["bare"],
+        "jb_*": sorted(c for c in total_per_cond if c.startswith("jb_")),
+        "ctrl_*": sorted(c for c in total_per_cond if c.startswith("ctrl_")),
+    }
+
+    out: dict = {
+        "source": str(attr_path.relative_to(run_dir.parent.parent)) if run_dir.parent.parent in attr_path.parents else str(attr_path),
+        "n_prompts_per_condition": {c: total_per_cond[c] for c in sorted(total_per_cond)},
+        "per_ablation": {},
+    }
+
+    for abl_name, features in ablation_sets.items():
+        if not features:
+            continue
+        feat_keys = [f"L{L}:F{F}" for (L, F) in features]
+        per_class: dict = {}
+        for grp_name, conds in class_groups.items():
+            denom = sum(total_per_cond[c] for c in conds)
+            if not denom:
+                continue
+            hits_total = 0.0
+            attr_total = 0.0
+            n_zero = 0
+            for fk in feat_keys:
+                hits = sum(feature_appearances[fk].get(c, 0) for c in conds)
+                attr_sum = sum(feature_attr_sum[fk].get(c, 0.0) for c in conds)
+                hits_total += hits / denom
+                attr_total += attr_sum / denom
+                if hits == 0:
+                    n_zero += 1
+            per_class[grp_name] = {
+                "mean_top50_hit_rate": round(hits_total / len(feat_keys), 4),
+                "mean_attr_per_prompt": round(attr_total / len(feat_keys), 5),
+                "n_features_never_in_top50": n_zero,
+                "n_features": len(feat_keys),
+            }
+
+        # Per-jb-class breakdown (for class-specific dissociation diagnostic)
+        per_jb_class: dict = {}
+        for c in class_groups["jb_*"]:
+            denom = total_per_cond[c]
+            if not denom:
+                continue
+            rates = [feature_appearances[fk].get(c, 0) / denom for fk in feat_keys]
+            attrs = [feature_attr_sum[fk].get(c, 0.0) / denom for fk in feat_keys]
+            per_jb_class[c] = {
+                "mean_top50_hit_rate": round(sum(rates) / len(rates), 4),
+                "mean_attr_per_prompt": round(sum(attrs) / len(attrs), 5),
+            }
+
+        out["per_ablation"][abl_name] = {
+            "n_features": len(feat_keys),
+            "by_class_group": per_class,
+            "by_jb_class": per_jb_class,
+        }
+
+    return out
+
+
 def compute_dissociation_score(summary) -> dict:
     """Per-ablation diagnostic: does the ablation selectively affect one JB class
     more than others? Returns {ablation_name: {positions_mode: {target_class: avg_other_classes_delta}}}.
@@ -509,7 +611,7 @@ def plot_positions_comparison(summary, out_path: Path) -> None:
 
 
 def write_summary_md(summary, dissociation, positions_modes, elapsed_min: float,
-                     out_path: Path) -> None:
+                     out_path: Path, activation_audit: dict | None = None) -> None:
     lines = [
         "# Stage 08 Subcircuit Ablation — Summary",
         "",
@@ -517,6 +619,22 @@ def write_summary_md(summary, dissociation, positions_modes, elapsed_min: float,
         "`ReplacementModel.feature_intervention_generate`.",
         f"**Elapsed**: {elapsed_min:.1f} min.",
         f"**Positions modes**: {', '.join(positions_modes)}.",
+        "",
+        "## How to read these numbers (load-bearing context)",
+        "",
+        "- The transcoder only decomposes the MLP path. Stage 03 found that **MLP "
+        "carries ~0.02% of the refusal signal at L15 measurement** (the rest is "
+        "attention + embeddings). So `universal_refusal_core` is best read as a "
+        "**ceiling probe on MLP-only ablation**, not a positive control: bare "
+        "refusal can stay intact even with all 116 universal MLP features ablated, "
+        "because attention-mediated refusal remains.",
+        "- `recovery_rate` = baseline COMPLY → ablated REFUSE. `break_rate` = "
+        "baseline REFUSE → ablated COMPLY.",
+        "- The Stage 07 ctrl-aware rules (`ctrl_shared_refusal`, "
+        "`jb_*_specific_vs_ctrl`) are **corpus-aggregated top-50 set logic**. A "
+        "feature can fire on individual prompts during JB inference even when it "
+        "isn't in the JB's corpus top-50. See the activation audit section for "
+        "per-prompt hit rates and attribution magnitudes.",
         "",
         "## Per-ablation results",
         "",
@@ -559,6 +677,44 @@ def write_summary_md(summary, dissociation, positions_modes, elapsed_min: float,
                     f"{rec['dissociation_delta']*100:+.1f}pp |"
                 )
         lines.append("")
+
+    if activation_audit and activation_audit.get("per_ablation"):
+        lines += [
+            "## Activation audit (Stage 02 attribution data)",
+            "",
+            "Per-ablation, per-condition-class top-50 hit rate and mean |attribution|. "
+            "Diagnoses whether the Stage 07 set logic produces a clean per-prompt "
+            "separation, and whether class-specific subcircuits are correlationally "
+            "selective for their target class.",
+            "",
+        ]
+        for abl_name, audit in activation_audit["per_ablation"].items():
+            lines += [
+                f"### `{abl_name}` ({audit['n_features']} features) — corpus-level activity",
+                "",
+                "| Condition class | Mean top-50 hit rate | Mean \\|attr\\|/prompt | Features never in top-50 |",
+                "|---|---|---|---|",
+            ]
+            for grp, stats in audit["by_class_group"].items():
+                lines.append(
+                    f"| `{grp}` | {stats['mean_top50_hit_rate']*100:.2f}% | "
+                    f"{stats['mean_attr_per_prompt']:.5f} | "
+                    f"{stats['n_features_never_in_top50']}/{stats['n_features']} |"
+                )
+            lines.append("")
+            if audit.get("by_jb_class"):
+                lines += [
+                    "Per-JB-class breakdown (selectivity check):",
+                    "",
+                    "| JB class | Mean top-50 hit rate | Mean \\|attr\\|/prompt |",
+                    "|---|---|---|",
+                ]
+                for c, stats in audit["by_jb_class"].items():
+                    lines.append(
+                        f"| `{c}` | {stats['mean_top50_hit_rate']*100:.2f}% | "
+                        f"{stats['mean_attr_per_prompt']:.5f} |"
+                    )
+                lines.append("")
     out_path.write_text("\n".join(lines) + "\n")
 
 
@@ -665,6 +821,15 @@ def main():
     dissociation = compute_dissociation_score(summary)
     summary["dissociation"] = dissociation
 
+    # Phase 4 — activation audit from Stage 02 attribution (no GPU; CPU-only)
+    print("\n[PHASE 4] Activation audit from Stage 02 attribution data...")
+    activation_audit = audit_activations(run_dir, ablation_sets)
+    if activation_audit:
+        save_json(activation_audit, out_dir / "activation_audit.json")
+        print(f"  Saved activation_audit.json — covers {len(activation_audit.get('per_ablation', {}))} ablation sets")
+    else:
+        print("  Skipped (no 02_attribution/attribution_results.json found)")
+
     # Persist
     final = {
         "metadata": {
@@ -679,6 +844,7 @@ def main():
         },
         "results": results,
         "summary": summary,
+        "activation_audit": activation_audit,
     }
     save_json(final, out_dir / "ablation_results.json")
     save_json(summary, out_dir / "ablation_summary.json")
@@ -694,7 +860,8 @@ def main():
         plot_positions_comparison(summary, out_dir / "positions_comparison.png")
         print("    positions_comparison.png")
     write_summary_md(summary, dissociation, positions_modes,
-                     total_elapsed / 60, out_dir / "ABLATION_SUMMARY.md")
+                     total_elapsed / 60, out_dir / "ABLATION_SUMMARY.md",
+                     activation_audit=activation_audit)
     print("    ABLATION_SUMMARY.md")
 
     # Headline numbers
