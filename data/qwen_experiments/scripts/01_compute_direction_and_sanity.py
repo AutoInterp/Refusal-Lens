@@ -52,6 +52,24 @@ d_model = get_hidden_size(model)
 n_layers = model.config.num_hidden_layers
 print(f"  hidden_size={d_model}  num_layers={n_layers}")
 
+# Smoke test: chat template + single-BOS check before the long compute.
+# Gemma had a double-BOS bug because apply_chat_template already emits BOS
+# and then tokenizer(...) added another. Verify Qwen doesn't repeat it.
+_probe_str = format_prompt("hello", tokenizer)
+_probe_ids = tokenizer(_probe_str, return_tensors="pt")["input_ids"][0]
+_first5 = _probe_ids[:5].tolist()
+_decoded5 = [tokenizer.decode([t]) for t in _first5]
+print(f"\n[smoke] formatted prompt tail: ...{_probe_str[-40:]!r}")
+print(f"[smoke] first 5 token IDs: {_first5}")
+print(f"[smoke] first 5 decoded:   {_decoded5}")
+_specials = set(tokenizer.all_special_ids)
+if _first5[0] in _specials and _first5[1] in _specials and _first5[0] == _first5[1]:
+    raise RuntimeError(
+        f"Double special token at start: id {_first5[0]} repeats. "
+        "Pass add_special_tokens=False to the tokenizer call."
+    )
+print("[smoke] OK — no double-BOS detected.\n")
+
 # Load data
 with open(HARMFUL_TRAIN) as f:
     harmful = [p["instruction"] for p in json.load(f)[:N_TRAIN_SAMPLES]]
