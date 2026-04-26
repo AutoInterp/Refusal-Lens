@@ -326,7 +326,7 @@ PYTHONPATH=src python3 scripts/pipeline/07_identify_subcircuits.py \
 
 The patching half. Three sub-stages, three PRs, with a manual-steering frontend deliverable bundled into PR #1.
 
-#### Stage 08a — Runtime ablation [✓ code; GPU smoke running 2026-04-25]
+#### Stage 08a — Runtime ablation [✓ code + 50-prompt run done 2026-04-26; ⚠️ dissociation gates did NOT pass — revisit needed]
 **Role**: zero-ablate Stage 07 features at runtime via `ReplacementModel.feature_intervention_generate`. Produces a dissociation matrix per (subcircuit, class).
 
 **Run**:
@@ -349,11 +349,34 @@ PYTHONPATH=src python3 scripts/pipeline/08_ablate_subcircuits.py \
 
 **Validation gates** (must hit all three for the NeurIPS claim):
 
-| Gate | Subcircuit | Threshold |
-|---|---|---|
-| Positive control | `universal_refusal_core` (116 feat) | bare REFUSE → ≤30/49 (break_rate ≥ 39%) |
-| Negative control | `ctrl_shared_refusal` (50 feat) | every JB class flip moves ≤5pp |
-| **Dissociation** | ≥2 of `jb_{fiction,analytical,cognitive_reframe}_specific_vs_ctrl` | each shows **≥+20pp** higher recovery on its own class than other-class avg |
+| Gate | Subcircuit | Threshold | 50-prompt result (`run_20260422_015552`) |
+|---|---|---|---|
+| Positive control | `universal_refusal_core` (116 feat) | bare REFUSE → ≤30/49 (break_rate ≥ 39%) | **21.7%** ✗ |
+| Negative control | `ctrl_shared_refusal` (50 feat) | every JB class flip moves ≤5pp | **33.6% avg recovery** ✗ |
+| **Dissociation** | ≥2 of `jb_{fiction,analytical,cognitive_reframe}_specific_vs_ctrl` | each shows **≥+20pp** higher recovery on its own class than other-class avg | **all 6 deltas negative (−7 to −20pp)** ✗ |
+
+##### Stage 08 revisit — REVISIT NEEDED before progressing to 08b/08c
+
+The 50-prompt run shows the Stage 07 subcircuit extraction produces feature sets that are correlationally selective for their target class (fiction set fires 12× more on fiction than other classes; analytical 4×; cognitive_reframe 3–4×) **but ablating those sets does not preferentially break their target class**. All 6 dissociation deltas came out negative.
+
+**Why this is suspicious**: Anthropic's *On the Biology of Large Language Models* (2024) demonstrates that MLP-feature interventions on a CLT can suppress refusal/jailbreak behavior. Our negative result is therefore most likely an artifact of how our subcircuits are defined, **not** a fundamental limitation of MLP-mediated patching. The Stage 03 finding that "MLP carries 0.02% of L15 refusal signal" is a useful priors-check on attribution-to-`r`, but it does NOT preclude MLP ablation from breaking jailbreaks — a feature can carry tiny attribution magnitude and still be causally pivotal (the class-specific circuit can be small).
+
+**Hypotheses for what's wrong with the current rules**:
+1. **Corpus-aggregated top-50 set logic is too coarse.** A feature is in `jb_fiction_specific_vs_ctrl` if it appears in fiction's corpus top-50 but not the matched ctrl's. This produces statistical separability but does not guarantee per-prompt activation overlap; on any given fiction prompt, the relevant features may be in the prompt's individual top-N but outside the corpus top-50. Try **per-prompt rules** (feature must appear in ≥X individual fiction prompts' top-N).
+2. **Attribution target is logits, not the L15 refusal direction.** Stage 02 attributes to refusal-token logits / final-layer projection. Georg's request is to expose attribution **directly to the L15 refusal direction** (project gradient onto `r_L15`). Re-deriving subcircuits against attribution-to-`r_L15` likely produces a different (and more causal) ranking.
+3. **Ctrl-aware subtraction may be removing the wrong features.** The `_specific_vs_ctrl` rule subtracts ctrl-class top-50 from JB-class top-50, on the theory that "shared with ctrl = prefix-induced, not JB-semantic." This may be overcorrecting and removing genuinely causal refusal features that happen to also appear under matched ctrl prefixes.
+4. **Layerwise filtering is missing.** All Stage 07 subcircuits draw from layers 0–33 indiscriminately. Refusal subcircuits peak at L14 (per Stage 07 finding); a layer-restricted version (e.g. features in `[L13, L14, L15]` only) may produce a tighter causal set.
+5. **Threshold for inclusion is arbitrary.** Top-50 per condition was chosen by analogy to Stage 02 visualization; smaller (top-10/top-20) may be more conservative and causal, larger (top-100) may capture distributed-but-relevant features.
+6. **Feature-set size confound.** Bare-break rate correlates with feature count in our run (universal 116→22%, analytical 69→17%, fiction 52→4%). Set sizes should be **matched** before claiming class-specificity — currently not controlled.
+
+**Action items for the revisit** (do these before Stage 08b/08c):
+- (a) Re-run Stage 07 with per-prompt selection rules instead of corpus-aggregated top-50, and rerun Stage 08a on the new sets.
+- (b) Build the L15-`r`-attribution dashboard variant Georg requested, re-derive Stage 07 subcircuits against attribution-to-`r_L15`, rerun 08a.
+- (c) Add a layer-restricted variant (e.g. features only at L13–L15, where the refusal signal peaks) and rerun.
+- (d) Add a size-matched random-feature negative control (sample N random features per ablation set, where N = target subcircuit size); the random control's recovery rate is the noise floor against which class-specific deltas should be compared.
+- (e) Reproduce a published MLP-suppression result from Anthropic's *On the Biology of Large Language Models* on Gemma-3-4b-it as a sanity check that our 08a harness is wired correctly. If we can replicate their result, the issue is in our rules; if we can't, the issue is in our harness.
+
+**Until at least one of (a)–(d) produces a passing dissociation gate, treat 08a as inconclusive, not negative.** Do not commit GPU time to 08b/08c (which build on top of the same feature sets) until a passing 08a baseline exists. The full report and figures from the failed run are kept under `<run>/08_ablation/` for the paper appendix and as the "before" against which revisits will be compared.
 
 #### Stage 08a — Manual feature steering [✓]
 Frontend cart in Stage 05 + FastAPI demo backend.
@@ -403,16 +426,17 @@ Hooks:
 - **Stage 02c** producer-side packaging.
 - **Stage 06** causal intervention: 96.7% / 100% / 100% bidirectional + benign control.
 - **Stage 07** ctrl-aware subcircuits + `jb_specific_frac` headline metric.
-- **Stage 08a** runtime ablation + manual cart + FastAPI backend (PR #1, code complete, 13/13 unit tests pass, GPU smoke running on 5080 right now).
+- **Stage 08a** runtime ablation + manual cart + FastAPI backend (PR #1, code complete, 13/13 unit tests pass, **50-prompt GPU run done 2026-04-26 — dissociation gates failed; revisit Stage 07 rules before continuing**).
 - **Stage 05** code (frontend patches, 3-way overlap, subcircuit panel, ablation cart).
 
 ### Pending (priority order)
-1. **Stage 08a GPU validation** — smoke (5 prompts) → full (50 prompts) on `run_20260422_015552`. Acceptance: positive control + negative control + ≥2 class-specific dissociations ≥+20pp. **In flight on 5080.**
-2. **Stage 05 frontend refresh** on `run_20260422_015552` — code's ready, just needs the `02c → push → 05_visualize → http.server` round-trip and a browser spot-check. Visual acceptance criteria in HANDOFF §1.
-3. **Stage 08b** — Arditi-style permanent weight edit. NeurIPS-load-bearing.
-4. **Stage 08c** — sidecar wrapper. Equivalence test must pass before claim. Run alongside 08b for comparative benchmarking.
-5. **Stage 04b** — Claude API LLM labels (~$2 Haiku 4.5). Drops human-readable `clerp` strings into the frontend. Post-ICML.
-6. **`|r_L15|` magnitude diagnostic** — diff `harmful_train.json` between branches to explain the 3,123.9 vs 4,019.7 gap. Non-blocking; for publication rigor.
+1. **Stage 05 frontend refresh** on `run_20260422_015552` — needs the L15 raw graphs from HF reformatted via `02c → push → 05_visualize` and a browser spot-check. Code's ready; just plumbing the round-trip. Visual acceptance criteria in HANDOFF §1.
+2. **Stage 08 revisit** — see "Stage 08 revisit" section above. The 50-prompt run failed all 3 validation gates; before any 08b/08c GPU time, re-derive Stage 07 subcircuits with at least one of: per-prompt rules, attribution-to-`r_L15`, layer-restricted, or matched-size random-baseline. Reproduce an Anthropic *Biology of LLMs* MLP-suppression result on Gemma-3-4b-it as a harness sanity check.
+3. **Stage 08b** — Arditi-style permanent weight edit. NeurIPS-load-bearing. **Blocked on a passing 08a baseline.**
+4. **Stage 08c** — sidecar wrapper. Equivalence test must pass before claim. **Blocked on a passing 08a baseline.**
+5. **L15-direction attribution dashboard variant** (per Georg's Apr 26 ask) — expose attribution projected onto `r_L15` as a Stage 02 mode and a Stage 05 viewer toggle. Feeds the Stage 08 revisit (option b).
+6. **Stage 04b** — Claude API LLM labels (~$2 Haiku 4.5). Drops human-readable `clerp` strings into the frontend. Post-ICML.
+7. **`|r_L15|` magnitude diagnostic** — diff `harmful_train.json` between branches to explain the 3,123.9 vs 4,019.7 gap. Non-blocking; for publication rigor.
 
 ---
 
@@ -420,7 +444,7 @@ Hooks:
 
 | # | Question | Where it gets answered |
 |---|---|---|
-| 1 | Will Stage 08a hit the dissociation ≥+20pp threshold? | GPU smoke + full run (now) |
+| 1 | Will any revised Stage 07 rule produce a passing Stage 08a dissociation gate? | Stage 08 revisit (rules a–e in `Stage 08a` section above) |
 | 2 | Why does fiction flip at only 90% under Stage 06 when the other classes hit 97–100%? Narrative-distributed attention? | Pull the 2 unflipped fiction prompts (`causal_results.json`), look for structural commonalities |
 | 3 | Is Stage 08b's Arditi projection mathematically equivalent to 08a's runtime ablation in the limit of all-positions? | 08c equivalence test (must pass `torch.allclose(logits_08a, logits_08c)` on bf16 tolerance) |
 | 4 | Does the edited 08b model preserve general capabilities? | MMLU delta < 3pp on 300-prompt subset |
@@ -489,4 +513,4 @@ Local venv: `.venv/` at repo root. CPU torch + numpy + matplotlib + transformers
 
 ## Final Note
 
-The correlational pipeline (01/02/02b/03/04/07) is complete and validated on real data. The causal pipeline (06) is complete and validated. The patching pipeline's first step (08a) is code-complete and currently running its GPU smoke on the 5080. **If 08a's three validation gates land**, this becomes a viable NeurIPS-grade story; the remaining 08b/08c work is the path to a permanent, deployable model edit.
+The correlational pipeline (01/02/02b/03/04/07) is complete and validated on real data. The causal pipeline (06) is complete and validated. The patching pipeline's first step (08a) is code-complete and ran end-to-end on 50 prompts; **all three validation gates failed**, but the most plausible read is that the Stage 07 subcircuit-extraction rules — not the harness or the MLP path itself — are the wrong target. Anthropic's *On the Biology of Large Language Models* shows MLP-feature interventions DO suppress refusal/jailbreak behavior, so the path forward is to revisit how features are filtered into subcircuits (per-prompt rules, attribution-to-`r_L15`, layer-restricted, size-matched random control) before committing GPU time to 08b/08c.

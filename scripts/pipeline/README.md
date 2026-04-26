@@ -18,7 +18,7 @@ For the design philosophy, stage specs, and forward roadmap see **[PIPELINE_PLAN
 | 05 | `utils_viz.py` + `05_frontend_patches/` | Attribution circuit viewer with 3-way bare/ctrl/JB overlap coloring + subcircuit panel | ⚠️ Code ready but the new attribution graphs (L15 + 11 conditions + 2 modes) need the orchestrator + HF-JSON round trip verified end-to-end — **next priority** |
 | 06 | `06_causal_intervention.py` | Arditi-method causal intervention at L15 (bidirectional: pro-refusal add + anti-refusal sub) + benign force-refuse control (Tejas Script 20 port) | ✓ Done (run_20260422_015552) |
 | 07 | `07_identify_subcircuits.py` | Rule-based subcircuit identification (18 subcircuits: 11 legacy + 7 ctrl-aware) with `jb_vs_ctrl_contrast` novel metric | ✓ Done |
-| 08 | `08_ablate_subcircuits.py` | Targeted subcircuit ablation (uses Stage 07 definitions + 06 baseline) | Planned (next after Stage 05 viewer refresh) |
+| 08 | `08_ablate_subcircuits.py` | Targeted subcircuit ablation (uses Stage 07 definitions + 06 baseline) | ⚠️ Run on `run_20260422_015552` (50 prompts × 11 conds × 5 sets × 2 modes); **dissociation gate did not pass** — see "Stage 08 — subcircuit ablation results" below. Subcircuit definitions need rework. |
 
 Shared modules: `config.py` (model/layer/class constants), `utils.py` (run-dir helpers, prompt formatting, dataset selection).
 
@@ -636,6 +636,61 @@ Combining the three stages:
 2. **Stage 06** (causal): we can neutralize jailbreaks at 96.7% by pushing the residual stream along the L15 refusal axis — AND this intervention is generic (benign force-refuse 10/10), proving r is the refusal axis rather than a JB-specific trigger.
 
 The remaining framework step is Stage 08: show that ablating **specifically** the Stage 07 subcircuits (e.g. `jb_fiction_specific_vs_ctrl`'s 52 features) reproduces Stage 06's flip rate for that class alone — proving the subcircuits are not just correlationally present but causally sufficient. That's the "here's how we defeat fiction-class jailbreaks specifically by ablating these named features" claim.
+
+### D. Stage 08a — subcircuit ablation results
+
+Full run on `run_20260422_015552` (50 prompts × 11 conditions × 5 ablation sets × 2 position modes; 859 min on RunPod H100, committed `cd82623`). Methodology: zero-ablate transcoder features via `ReplacementModel.feature_intervention_generate`, classify baseline vs. ablated generations, compute per-class recovery (COMPLY → REFUSE) and bare break (REFUSE → COMPLY) rates.
+
+**Headline numbers** (`<run>/08_ablation/ABLATION_SUMMARY.md`):
+
+| Ablation | Mode | bare_break | jb_recovery_avg |
+|---|---|---|---|
+| `universal_refusal_core` (116 feat) | all | 21.7% | 30.6% |
+| `universal_refusal_core` | anchors | 21.4% | 38.3% |
+| `ctrl_shared_refusal` (50 feat) | all | 2.2% | 33.6% |
+| `ctrl_shared_refusal` | anchors | 2.4% | 21.9% |
+| `jb_fiction_specific_vs_ctrl` (52 feat) | all | 4.3% | 9.2% |
+| `jb_fiction_specific_vs_ctrl` | anchors | 2.4% | 13.9% |
+| `jb_analytical_specific_vs_ctrl` (69 feat) | all | 16.7% | 24.4% |
+| `jb_analytical_specific_vs_ctrl` | anchors | 7.1% | 13.2% |
+| `jb_cognitive_reframe_specific_vs_ctrl` (88 feat) | all | 11.9% | 23.2% |
+| `jb_cognitive_reframe_specific_vs_ctrl` | anchors | 2.4% | 9.6% |
+
+**Class-specific dissociation Δ** (target class recovery − other-class average; positive = class-selective patching):
+
+| Ablation | Mode | Target | Target rec | Others avg | Δ |
+|---|---|---|---|---|---|
+| `jb_fiction_specific_vs_ctrl` | all | fiction | 0.0% | 11.5% | **−11.5pp** |
+| `jb_fiction_specific_vs_ctrl` | anchors | fiction | 0.0% | 17.4% | **−17.4pp** |
+| `jb_analytical_specific_vs_ctrl` | all | analytical | 18.5% | 25.9% | **−7.4pp** |
+| `jb_analytical_specific_vs_ctrl` | anchors | analytical | 3.7% | 15.6% | **−11.9pp** |
+| `jb_cognitive_reframe_specific_vs_ctrl` | all | cognitive_reframe | 6.9% | 27.3% | **−20.4pp** |
+| `jb_cognitive_reframe_specific_vs_ctrl` | anchors | cognitive_reframe | 0.0% | 12.0% | **−12.0pp** |
+
+**Plan-level gates failed**:
+- Positive control (`universal_refusal_core` bare_break ≥ 39%) → **21.7%** ✗
+- Negative control (`ctrl_shared_refusal` JB flip ≤ 5pp) → **33.6%** ✗
+- Dissociation (≥2 class-specific ablations Δ ≥ +20pp) → **all 6 deltas negative** ✗
+
+**Diagnostic — features ARE correlationally selective, just not causally**: the activation audit (Stage 02 attribution data, `<run>/08_ablation/activation_audit.json`) shows the class-specific feature sets fire much more on their target class than elsewhere:
+
+| Set | Target-class top-50 hit rate | Other-class avg | Selectivity ratio |
+|---|---|---|---|
+| `jb_fiction_specific_vs_ctrl` | 12.08% on fiction | ~1% on others | **12×** |
+| `jb_analytical_specific_vs_ctrl` | 11.22% on analytical | ~3% on others | **4×** |
+| `jb_cognitive_reframe_specific_vs_ctrl` | 7.25% on its target | ~2% elsewhere | **3–4×** |
+
+So the rule extracts statistically-distinguishing features, but ablating them does not preferentially patch the target class. This is consistent with Stage 03's finding that the MLP path carries only ~0.4% of the L15→L32 refusal signal (~0.02% measured at L15) — class-specific *causal* machinery clearly lives in attention + embeddings, while MLP only carries the statistical fingerprint.
+
+**Other observations from the run**:
+- `jb_completion` baselines are unusable for dissociation (only 2/50 baseline COMPLY → no statistical power; treat as REFUSE-saturated).
+- `jb_fiction` is the hardest class to recover (0% recovery from `universal_refusal_core` in all-positions mode). Matches Stage 06's lowest pro-refusal flip rate (90% vs 97–100%).
+- `jb_roleplay` is the easiest (40–62% recovery from universal core).
+- Bare break correlates with feature **count** (universal 22% > analytical 17% > cog_reframe 12% > fiction 4% > ctrl_shared 2%). Looks additive, not specific.
+- `ctrl_shared_refusal` has 14% bare top-50 hit rate — **not** a clean negative control.
+- Anchors-only mode reduces bare-break collateral on class-specific ablations (2.4–7.1% vs 4.3–16.7% in all-positions). Useful as a tighter intervention.
+
+**Caveat — the result is not "MLP can't suppress refusal"**: Anthropic's *On the Biology of Large Language Models* demonstrates suppression of refusal/jailbreak behavior via MLP-feature intervention. The most plausible read of our negative result is that our **subcircuit-extraction rules** (Stage 07 corpus-aggregated top-50 set logic) select features that are statistically selective but not causally on the refusal path. Revisiting how features are filtered into subcircuits is the highest-leverage next step — see PIPELINE_PLAN.md "Stage 08 revisit" for the planned alternatives (per-prompt activation patching, attribution-to-L15-`r`, layerwise grouping).
 
 ---
 
