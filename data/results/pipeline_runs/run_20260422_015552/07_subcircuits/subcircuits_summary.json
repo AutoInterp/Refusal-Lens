@@ -775,14 +775,14 @@
       "jb_specific_frac": 0.184,
       "overlap_frac": 0.816
     },
-    "cognitive_reframe": {
-      "jb_top50": 228,
-      "ctrl_top50": 190,
-      "intersection": 140,
-      "jb_specific": 88,
-      "ctrl_specific": 50,
-      "jb_specific_frac": 0.386,
-      "overlap_frac": 0.614
+    "analytical": {
+      "jb_top50": 202,
+      "ctrl_top50": 188,
+      "intersection": 133,
+      "jb_specific": 69,
+      "ctrl_specific": 55,
+      "jb_specific_frac": 0.342,
+      "overlap_frac": 0.658
     },
     "fiction": {
       "jb_top50": 152,
@@ -790,15 +790,6 @@
       "intersection": 100,
       "jb_specific": 52,
       "ctrl_specific": 72,
-      "jb_specific_frac": 0.342,
-      "overlap_frac": 0.658
-    },
-    "analytical": {
-      "jb_top50": 202,
-      "ctrl_top50": 188,
-      "intersection": 133,
-      "jb_specific": 69,
-      "ctrl_specific": 55,
       "jb_specific_frac": 0.342,
       "overlap_frac": 0.658
     },
@@ -810,6 +801,15 @@
       "ctrl_specific": 47,
       "jb_specific_frac": 0.2,
       "overlap_frac": 0.8
+    },
+    "cognitive_reframe": {
+      "jb_top50": 228,
+      "ctrl_top50": 190,
+      "intersection": 140,
+      "jb_specific": 88,
+      "ctrl_specific": 50,
+      "jb_specific_frac": 0.386,
+      "overlap_frac": 0.614
     }
   }
 }
