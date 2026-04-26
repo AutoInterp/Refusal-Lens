@@ -52,17 +52,11 @@ tokenizer.padding_side = PADDING_SIDE
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
-if not TRANSCODER_SUBPATH:
-    raise ValueError(
-        "TRANSCODER_SUBPATH is empty in CONFIG.py — inspect "
-        f"https://huggingface.co/{TRANSCODER_REPO} and fill in the subpath "
-        "(analogous to Gemma's 'transcoder_all/width_16k_l0_small_affine')."
-    )
 
-print(f"Loading {MODEL_NAME} with transcoders {TRANSCODER_REPO}/{TRANSCODER_SUBPATH}...")
+print(f"Loading {MODEL_NAME} with transcoders {TRANSCODER_REPO + '/' + TRANSCODER_SUBPATH if TRANSCODER_SUBPATH else TRANSCODER_REPO}...")
 model = ReplacementModel.from_pretrained(
     MODEL_NAME,
-    f"{TRANSCODER_REPO}/{TRANSCODER_SUBPATH}",
+    f"{TRANSCODER_REPO}/{TRANSCODER_SUBPATH}" if TRANSCODER_SUBPATH else TRANSCODER_REPO,
     dtype=torch.float32,
     backend="nnsight",
     lazy_encoder=True,

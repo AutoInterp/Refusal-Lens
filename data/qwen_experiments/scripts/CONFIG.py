@@ -50,8 +50,8 @@ HIDDEN_SIZE = 2560
 # Qwen's chat template ends with `<|im_start|>assistant\n`, so the last few
 # tokens are different. Position -2 in Qwen is the `\n` after `assistant`,
 # not a `model` token. Re-tune!
-QWEN_BEST_POSITION = None   # FILL IN after running script 01
-QWEN_BEST_LAYER = None      # FILL IN after running script 01
+QWEN_BEST_POSITION = -1   # FILL IN after running script 01
+QWEN_BEST_LAYER = 34      # FILL IN after running script 01
 QWEN_CAUSAL_LAYER = None    # FILL IN after running script 15/16/17
 
 # Positions to sweep when computing the direction (last N tokens of prompt).
