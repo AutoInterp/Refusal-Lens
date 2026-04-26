@@ -74,9 +74,9 @@ SSH in via the RunPod web terminal or `ssh root@<pod-ip> -p <port> -i ~/.ssh/id_
 cd /workspace
 
 # Clone the repo (if not already there)
-git clone https://github.com/<your-fork>/Refusal-Lens.git
+git clone https://github.com/AutoInterp/Refusal-Lens.git
 cd Refusal-Lens
-git checkout tejas-circuit-experiments    # or your working branch
+git checkout qwen_experiments    # or your working branch
 
 # Persistent caches on the volume — saves re-downloading 30 GB of weights
 export HF_HOME=/workspace/.cache/huggingface
