@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -47,6 +48,8 @@ def parse_args():
                         "({idx}_{cond}_{mode}.pt). 'single' halves the download "
                         "when both multi + single are on HF. Default: both.")
     p.add_argument("--out-base", type=Path, default=None)
+    p.add_argument("--copy", action="store_true",
+                   help="Copy .pt files into dst (default: symlink, saves ~80 GB on disk-tight pods).")
     return p.parse_args()
 
 
@@ -111,11 +114,18 @@ def main():
         sys.exit(1)
 
     n, total_bytes = 0, 0
+    mode_word = "Copied" if args.copy else "Linked"
     for pt in sorted(src.glob("*.pt")):
-        shutil.copy2(pt, dst / pt.name)
+        target = dst / pt.name
+        if target.exists() or target.is_symlink():
+            target.unlink()
+        if args.copy:
+            shutil.copy2(pt, target)
+        else:
+            os.symlink(pt.resolve(), target)
         n += 1
         total_bytes += pt.stat().st_size
-    print(f"\nDONE! Copied {n} .pt files ({total_bytes/1e9:.2f} GB) to {dst}")
+    print(f"\nDONE! {mode_word} {n} .pt files ({total_bytes/1e9:.2f} GB) to {dst}")
 
 
 if __name__ == "__main__":
