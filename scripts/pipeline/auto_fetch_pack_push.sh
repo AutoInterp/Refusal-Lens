@@ -40,7 +40,11 @@ echo "[$(date)] Refusal-Lens Stage 05 automation"
 echo "  run:         $RUN_NAME"
 echo "  mode:        $MODE"
 echo "  dataset:     $DATASET_REPO"
-echo "  HF_TOKEN:    ${HF_TOKEN:+set}${HF_TOKEN:-NOT SET (will fail at push)}"
+if [[ -n "${HF_TOKEN:-}" ]]; then
+  echo "  HF_TOKEN:    set (length=${#HF_TOKEN})"
+else
+  echo "  HF_TOKEN:    NOT SET (will fail at push)"
+fi
 echo "============================================================"
 
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
