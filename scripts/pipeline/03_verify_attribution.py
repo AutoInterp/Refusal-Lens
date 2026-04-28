@@ -1,14 +1,25 @@
 """
 Stage 03: Verify Attribution Gap
 ================================
-Validates that CLT attribution sums correspond to the MLP contribution
-of the residual-stream dot product with the refusal direction.
+Validates that the circuit-tracer attribution-graph target row sum
+reconstructs the residual-stream projection onto the refusal direction.
+
+By circuit-tracer's methodology (Lindsey et al., "Circuit Tracing"), in the
+local replacement model the sum of edges from sources (transcoder features +
+errors + token embeddings) to a target equals the target's value modulo a
+small linearization baseline.
+
+CRITICAL: the comparison must be made at the *exact* residual-stream point
+where circuit-tracer measures. For Gemma-3 with feature_input_hook="mlp.hook_in"
+this is the OUTPUT of pre_feedforward_layernorm of the measurement layer
+(post-RMSNorm, pre-MLP). Earlier versions of this script used
+`out.hidden_states[L+1]` (the post-block residual), which is a totally
+different point in the residual stream and gave nonsense ratios.
 
 Computes:
-1. Full dot product <x^(L32, pos-2), r_hat> for each prompt
-2. Per-layer decomposition: (resid[L+1] - resid[L]) @ r_hat
-3. MLP vs attention breakdown
-4. Comparison with saved attribution net values
+1. Direct dot <r_hat, pre_feedforward_layernorm.output[L][pos]> for each prompt
+2. Per-layer decomposition: (resid[L+1] - resid[L]) @ r_hat (diagnostic only)
+3. Adjacency-sum vs direct-dot ratio (target: ≈ 1.0)
 
 Inputs:  02_attribution/attribution_results.json, 01_direction/refusal_direction.pt
 Outputs: 03_verification/verification_results.json, per_layer_decomposition.json
@@ -204,6 +215,28 @@ def main():
     r_hat_dev = r_hat.to(model.device)
 
     # ----------------------------------------------------------
+    # Resolve the measurement-point hook path (Gemma-3 specific).
+    # circuit-tracer's transcoder is configured with feature_input_hook=
+    # "mlp.hook_in", which the Gemma-3 nnsight mapping resolves to the
+    # OUTPUT of `pre_feedforward_layernorm` at the measurement layer.
+    # We hook the same module here so direct dot and attribution sum are
+    # comparable at the SAME residual stream point.
+    # ----------------------------------------------------------
+    def _get_layer_module(m, layer_idx):
+        # Gemma3ForConditionalGeneration: model.model.language_model.layers[L]
+        # Gemma3ForCausalLM:               model.model.layers[L]
+        if hasattr(m, "model") and hasattr(m.model, "language_model"):
+            return m.model.language_model.layers[layer_idx]
+        if hasattr(m, "model") and hasattr(m.model, "layers"):
+            return m.model.layers[layer_idx]
+        if hasattr(m, "language_model"):
+            return m.language_model.layers[layer_idx]
+        raise RuntimeError("Cannot resolve layer module path for this model class")
+
+    measurement_module = _get_layer_module(model, best_layer).pre_feedforward_layernorm
+    print(f"  Measurement hook: pre_feedforward_layernorm.output of layer {best_layer}")
+
+    # ----------------------------------------------------------
     # CHECK 1: Full dot product vs attribution sum for all prompts
     # ----------------------------------------------------------
     print("\n" + "=" * 60)
@@ -218,12 +251,21 @@ def main():
         formatted = format_prompt(tokenizer, prompt)
         inputs = tokenizer(formatted, return_tensors="pt").to(model.device)
 
-        with torch.no_grad():
-            out = model(**inputs, output_hidden_states=True)
+        # Capture residual at pre_feedforward_layernorm.output via forward hook
+        captured: dict[str, torch.Tensor] = {}
 
-        # Full residual-stream dot product at measurement point
-        # hidden_states[L+1] = output of layer L (hidden_states[0] = embeddings)
-        act = out.hidden_states[best_layer + 1][0, best_pos, :].to(torch.float32)
+        def hook_fn(module, inputs_, output):
+            captured["act"] = output.detach()
+
+        handle = measurement_module.register_forward_hook(hook_fn)
+        try:
+            with torch.no_grad():
+                out = model(**inputs, output_hidden_states=True)
+        finally:
+            handle.remove()
+
+        # Direct dot at the EXACT point circuit-tracer measures.
+        act = captured["act"][0, best_pos, :].to(torch.float32)
         dot_product = (act @ r_hat_dev).item()
 
         ratio = attr_net / dot_product if dot_product != 0 else float("nan")
@@ -266,15 +308,13 @@ def main():
     }
 
     print(f"\n{'='*60}")
-    print(f"SUMMARY: Attribution Gap Analysis ({len(verification_results)} prompts)")
+    print(f"SUMMARY: Attribution Methodology Check ({len(verification_results)} prompts)")
+    print(f"  measurement point: pre_feedforward_layernorm.output[L={best_layer}][pos={best_pos}]")
     print(f"{'='*60}")
-    print(f"  Full dot product <x, r_hat>:  {summary['dot_product_mean']:>10.2f} ± {summary['dot_product_std']:.2f}")
-    print(f"  MLP attribution sum:          {summary['attr_net_mean']:>10.2f} ± {summary['attr_net_std']:.2f}")
-    print(f"  MLP ratio:                    {summary['mlp_pct_mean']:>10.2f}% ± {summary['mlp_ratio_std']*100:.2f}%")
-    print(f"  Attention + embedding:        {summary['attention_pct_mean']:>10.2f}%")
-    print(f"\n  Interpretation: Transcoders decompose {summary['mlp_pct_mean']:.1f}% of")
-    print(f"  the refusal signal. The remaining {summary['attention_pct_mean']:.1f}% is carried")
-    print(f"  by attention heads and token embeddings.")
+    print(f"  Direct dot <r_hat, h>:        {summary['dot_product_mean']:>10.2f} ± {summary['dot_product_std']:.2f}")
+    print(f"  Adjacency target row sum:     {summary['attr_net_mean']:>10.2f} ± {summary['attr_net_std']:.2f}")
+    print(f"  Reconstruction ratio:         {summary['mlp_ratio_mean']:>10.4f} ± {summary['mlp_ratio_std']:.4f}")
+    print(f"  (1.0 = perfect; deviation = small linearization baseline + numerical precision)")
 
     # ----------------------------------------------------------
     # CHECK 2: Per-layer decomposition (subset of prompts)

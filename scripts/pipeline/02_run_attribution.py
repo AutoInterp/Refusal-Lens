@@ -229,6 +229,8 @@ def main():
                     attribution_targets=[target],
                     batch_size=args.batch_size,
                     max_feature_nodes=args.max_features,
+                    measurement_layer=config.MEASUREMENT_LAYER,
+                    measurement_position=config.MEASUREMENT_POSITION,
                     verbose=False,
                 )
                 summary = graph_summary(g)
