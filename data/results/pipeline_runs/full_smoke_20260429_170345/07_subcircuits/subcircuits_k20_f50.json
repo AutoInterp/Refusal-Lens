@@ -1,0 +1,1380 @@
+{
+  "metadata": {
+    "rule": "set logic over feature_labels.conditions_seen + feature_class_sets buckets + per_condition_top50 (ctrl-aware rules)",
+    "jb_classes": [
+      "analytical",
+      "cognitive_reframe",
+      "completion",
+      "fiction",
+      "roleplay"
+    ],
+    "n_features_input": 30,
+    "convergent_min_classes": 3,
+    "late_wave_range": [
+      24,
+      32
+    ],
+    "ctrl_available": true,
+    "config_name": "subcircuits_k20_f50",
+    "is_legacy": false,
+    "sweep_top_k": 20,
+    "sweep_effective_top_k": 20,
+    "sweep_freq_threshold": 0.5,
+    "sweep_graph_mode": "multi",
+    "n_prompts_per_condition": {
+      "bare": 3,
+      "jb_roleplay": 3,
+      "ctrl_roleplay": 3,
+      "jb_fiction": 3,
+      "ctrl_fiction": 3,
+      "jb_analytical": 3,
+      "ctrl_analytical": 3,
+      "jb_completion": 3,
+      "ctrl_completion": 3,
+      "jb_cognitive_reframe": 3,
+      "ctrl_cognitive_reframe": 3
+    }
+  },
+  "subcircuits": {
+    "universal_refusal_core": {
+      "name": "universal_refusal_core",
+      "size": 12,
+      "features": [
+        "L6:F779",
+        "L7:F384",
+        "L0:F144",
+        "L1:F266",
+        "L3:F198",
+        "L1:F338",
+        "L0:F92",
+        "L13:F51",
+        "L0:F66",
+        "L10:F111",
+        "L0:F460",
+        "L13:F471"
+      ],
+      "by_layer": [
+        4,
+        2,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 0,
+      "peak_count": 4,
+      "n_layers_occupied": 7,
+      "mean_activation_frequency": 0.00526,
+      "top_features": [
+        {
+          "key": "L0:F144",
+          "layer": 0,
+          "max_abs_attribution": 2833.9043,
+          "top_logits": [
+            "\u0bae\u0bcd",
+            "\uc774",
+            "oja"
+          ]
+        },
+        {
+          "key": "L0:F66",
+          "layer": 0,
+          "max_abs_attribution": 1047.5764,
+          "top_logits": [
+            "\u09c7",
+            "\u05d9\u05d5\u05ea",
+            "er"
+          ]
+        },
+        {
+          "key": "L10:F111",
+          "layer": 10,
+          "max_abs_attribution": 757.3358,
+          "top_logits": [
+            " T\u00e4m\u00e4",
+            " wielu",
+            " v\u00e1rias"
+          ]
+        },
+        {
+          "key": "L0:F460",
+          "layer": 0,
+          "max_abs_attribution": 715.3588,
+          "top_logits": [
+            "quired",
+            "CH",
+            "wg"
+          ]
+        },
+        {
+          "key": "L13:F471",
+          "layer": 13,
+          "max_abs_attribution": 688.7818,
+          "top_logits": [
+            " Nobel",
+            "Let",
+            " hadn"
+          ]
+        }
+      ]
+    },
+    "canonical_pro_refusal": {
+      "name": "canonical_pro_refusal",
+      "size": 3,
+      "features": [
+        "L15:F446",
+        "L11:F99",
+        "L13:F43"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 11,
+      "peak_count": 1,
+      "n_layers_occupied": 3,
+      "mean_activation_frequency": 0.011603,
+      "top_features": [
+        {
+          "key": "L11:F99",
+          "layer": 11,
+          "max_abs_attribution": 854.1027,
+          "top_logits": [
+            "\ud83d\udcd8",
+            "unk\u00f3w",
+            "\u0cbf\u0ca6\u0ccd\u0ca6\u0cc7\u0ca8\u0cc6"
+          ]
+        },
+        {
+          "key": "L13:F43",
+          "layer": 13,
+          "max_abs_attribution": 746.7374,
+          "top_logits": [
+            "Fol",
+            "Julia",
+            " \u0926\u0941\u0930\u094d\u0917"
+          ]
+        },
+        {
+          "key": "L15:F446",
+          "layer": 15,
+          "max_abs_attribution": 660.2005,
+          "top_logits": [
+            "\u043a\u043e",
+            "kari",
+            "\u043a\u0446\u0438\u0438"
+          ]
+        }
+      ]
+    },
+    "sign_flip_convergent": {
+      "name": "sign_flip_convergent",
+      "size": 15,
+      "features": [
+        "L13:F970",
+        "L13:F2106",
+        "L14:F64",
+        "L12:F491",
+        "L2:F542",
+        "L0:F3997",
+        "L11:F507",
+        "L10:F439",
+        "L9:F1060",
+        "L8:F221",
+        "L11:F828",
+        "L13:F14283",
+        "L12:F257",
+        "L9:F137",
+        "L0:F182"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": null,
+      "peak_count": 0,
+      "n_layers_occupied": 0,
+      "mean_activation_frequency": null,
+      "top_features": [
+        {
+          "key": "L13:F970",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L13:F2106",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L14:F64",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L12:F491",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L2:F542",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        }
+      ]
+    },
+    "dampening_specialists": {
+      "name": "dampening_specialists",
+      "size": 26,
+      "features": [
+        "L10:F234",
+        "L2:F343",
+        "L9:F11573",
+        "L7:F361",
+        "L9:F1080",
+        "L10:F439",
+        "L15:F383",
+        "L3:F4750",
+        "L11:F315",
+        "L3:F29",
+        "L13:F427",
+        "L14:F566",
+        "L0:F6994",
+        "L11:F9217",
+        "L9:F341",
+        "L15:F369",
+        "L13:F132",
+        "L13:F419",
+        "L8:F2746",
+        "L3:F15048",
+        "L11:F8241",
+        "L13:F500",
+        "L8:F452",
+        "L10:F422",
+        "L14:F619",
+        "L14:F189"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 11,
+      "peak_count": 1,
+      "n_layers_occupied": 2,
+      "mean_activation_frequency": 0.002392,
+      "top_features": [
+        {
+          "key": "L13:F427",
+          "layer": 13,
+          "max_abs_attribution": 923.1592,
+          "top_logits": [
+            " amic",
+            " Descent",
+            " Company"
+          ]
+        },
+        {
+          "key": "L11:F315",
+          "layer": 11,
+          "max_abs_attribution": 461.1237,
+          "top_logits": [
+            "3",
+            "About",
+            "'"
+          ]
+        },
+        {
+          "key": "L10:F234",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L2:F343",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L9:F11573",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        }
+      ]
+    },
+    "anti_refusal_amplifiers": {
+      "name": "anti_refusal_amplifiers",
+      "size": 19,
+      "features": [
+        "L13:F51",
+        "L14:F187",
+        "L13:F140",
+        "L13:F471",
+        "L14:F541",
+        "L15:F1341",
+        "L0:F460",
+        "L14:F426",
+        "L14:F42",
+        "L10:F7901",
+        "L0:F369",
+        "L14:F480",
+        "L15:F24",
+        "L13:F6712",
+        "L14:F738",
+        "L11:F762",
+        "L14:F167",
+        "L10:F9866",
+        "L13:F43"
+      ],
+      "by_layer": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 13,
+      "peak_count": 3,
+      "n_layers_occupied": 3,
+      "mean_activation_frequency": 0.007707,
+      "top_features": [
+        {
+          "key": "L13:F43",
+          "layer": 13,
+          "max_abs_attribution": 746.7374,
+          "top_logits": [
+            "Fol",
+            "Julia",
+            " \u0926\u0941\u0930\u094d\u0917"
+          ]
+        },
+        {
+          "key": "L0:F460",
+          "layer": 0,
+          "max_abs_attribution": 715.3588,
+          "top_logits": [
+            "quired",
+            "CH",
+            "wg"
+          ]
+        },
+        {
+          "key": "L13:F471",
+          "layer": 13,
+          "max_abs_attribution": 688.7818,
+          "top_logits": [
+            " Nobel",
+            "Let",
+            " hadn"
+          ]
+        },
+        {
+          "key": "L13:F51",
+          "layer": 13,
+          "max_abs_attribution": 534.4402,
+          "top_logits": [
+            " vicenda",
+            " se\u00f1ala",
+            "elesaian"
+          ]
+        },
+        {
+          "key": "L14:F480",
+          "layer": 14,
+          "max_abs_attribution": 430.4338,
+          "top_logits": [
+            " \u0645\u062d\u062f\u0648\u062f",
+            " overhauled",
+            " cromosoma"
+          ]
+        }
+      ]
+    },
+    "late_wave_layer24_32": {
+      "name": "late_wave_layer24_32",
+      "size": 0,
+      "features": [],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": null,
+      "peak_count": 0,
+      "n_layers_occupied": 0,
+      "mean_activation_frequency": null,
+      "top_features": []
+    },
+    "analytical_exclusive": {
+      "name": "analytical_exclusive",
+      "size": 1,
+      "features": [
+        "L14:F311"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 14,
+      "peak_count": 1,
+      "n_layers_occupied": 1,
+      "mean_activation_frequency": 0.004883,
+      "top_features": [
+        {
+          "key": "L14:F311",
+          "layer": 14,
+          "max_abs_attribution": 412.0462,
+          "top_logits": [
+            " gem\u00e4\u00df",
+            "neither",
+            "\u0431\u0435\u0437"
+          ]
+        }
+      ]
+    },
+    "cognitive_reframe_exclusive": {
+      "name": "cognitive_reframe_exclusive",
+      "size": 0,
+      "features": [],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": null,
+      "peak_count": 0,
+      "n_layers_occupied": 0,
+      "mean_activation_frequency": null,
+      "top_features": []
+    },
+    "completion_exclusive": {
+      "name": "completion_exclusive",
+      "size": 0,
+      "features": [],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": null,
+      "peak_count": 0,
+      "n_layers_occupied": 0,
+      "mean_activation_frequency": null,
+      "top_features": []
+    },
+    "fiction_exclusive": {
+      "name": "fiction_exclusive",
+      "size": 1,
+      "features": [
+        "L7:F141"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 7,
+      "peak_count": 1,
+      "n_layers_occupied": 1,
+      "mean_activation_frequency": 0.017407,
+      "top_features": [
+        {
+          "key": "L7:F141",
+          "layer": 7,
+          "max_abs_attribution": 394.3513,
+          "top_logits": [
+            " niche",
+            " niches",
+            "++;"
+          ]
+        }
+      ]
+    },
+    "roleplay_exclusive": {
+      "name": "roleplay_exclusive",
+      "size": 0,
+      "features": [],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": null,
+      "peak_count": 0,
+      "n_layers_occupied": 0,
+      "mean_activation_frequency": null,
+      "top_features": []
+    },
+    "ctrl_shared_refusal": {
+      "name": "ctrl_shared_refusal",
+      "size": 2,
+      "features": [
+        "L3:F44",
+        "L9:F254"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 3,
+      "peak_count": 1,
+      "n_layers_occupied": 2,
+      "mean_activation_frequency": 0.004059,
+      "top_features": [
+        {
+          "key": "L9:F254",
+          "layer": 9,
+          "max_abs_attribution": 493.7898,
+          "top_logits": [
+            " vaping",
+            " Kesehatan",
+            "\u7fa9\u52d9"
+          ]
+        },
+        {
+          "key": "L3:F44",
+          "layer": 3,
+          "max_abs_attribution": 471.839,
+          "top_logits": [
+            " \u092c\u093e\u0930",
+            "\u0baa",
+            " ---------------"
+          ]
+        }
+      ]
+    },
+    "ctrl_only": {
+      "name": "ctrl_only",
+      "size": 0,
+      "features": [],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": null,
+      "peak_count": 0,
+      "n_layers_occupied": 0,
+      "mean_activation_frequency": null,
+      "top_features": []
+    },
+    "jb_analytical_specific_vs_ctrl": {
+      "name": "jb_analytical_specific_vs_ctrl",
+      "size": 6,
+      "features": [
+        "L10:F219",
+        "L11:F315",
+        "L11:F99",
+        "L13:F427",
+        "L13:F43",
+        "L14:F311"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        0,
+        2,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 11,
+      "peak_count": 2,
+      "n_layers_occupied": 4,
+      "mean_activation_frequency": 0.007872,
+      "top_features": [
+        {
+          "key": "L13:F427",
+          "layer": 13,
+          "max_abs_attribution": 923.1592,
+          "top_logits": [
+            " amic",
+            " Descent",
+            " Company"
+          ]
+        },
+        {
+          "key": "L11:F99",
+          "layer": 11,
+          "max_abs_attribution": 854.1027,
+          "top_logits": [
+            "\ud83d\udcd8",
+            "unk\u00f3w",
+            "\u0cbf\u0ca6\u0ccd\u0ca6\u0cc7\u0ca8\u0cc6"
+          ]
+        },
+        {
+          "key": "L13:F43",
+          "layer": 13,
+          "max_abs_attribution": 746.7374,
+          "top_logits": [
+            "Fol",
+            "Julia",
+            " \u0926\u0941\u0930\u094d\u0917"
+          ]
+        },
+        {
+          "key": "L10:F219",
+          "layer": 10,
+          "max_abs_attribution": 468.0991,
+          "top_logits": [
+            "\u8ff3",
+            " k\u00f6nnte",
+            " Tomcat"
+          ]
+        },
+        {
+          "key": "L11:F315",
+          "layer": 11,
+          "max_abs_attribution": 461.1237,
+          "top_logits": [
+            "3",
+            "About",
+            "'"
+          ]
+        }
+      ]
+    },
+    "jb_cognitive_reframe_specific_vs_ctrl": {
+      "name": "jb_cognitive_reframe_specific_vs_ctrl",
+      "size": 2,
+      "features": [
+        "L13:F51",
+        "L9:F237"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 9,
+      "peak_count": 1,
+      "n_layers_occupied": 2,
+      "mean_activation_frequency": 0.015116,
+      "top_features": [
+        {
+          "key": "L13:F51",
+          "layer": 13,
+          "max_abs_attribution": 534.4402,
+          "top_logits": [
+            " vicenda",
+            " se\u00f1ala",
+            "elesaian"
+          ]
+        },
+        {
+          "key": "L9:F237",
+          "layer": 9,
+          "max_abs_attribution": 451.1929,
+          "top_logits": [
+            " IAU",
+            " $(<",
+            "Downloading"
+          ]
+        }
+      ]
+    },
+    "jb_completion_specific_vs_ctrl": {
+      "name": "jb_completion_specific_vs_ctrl",
+      "size": 2,
+      "features": [
+        "L10:F219",
+        "L14:F480"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 10,
+      "peak_count": 1,
+      "n_layers_occupied": 2,
+      "mean_activation_frequency": 0.007246,
+      "top_features": [
+        {
+          "key": "L10:F219",
+          "layer": 10,
+          "max_abs_attribution": 468.0991,
+          "top_logits": [
+            "\u8ff3",
+            " k\u00f6nnte",
+            " Tomcat"
+          ]
+        },
+        {
+          "key": "L14:F480",
+          "layer": 14,
+          "max_abs_attribution": 430.4338,
+          "top_logits": [
+            " \u0645\u062d\u062f\u0648\u062f",
+            " overhauled",
+            " cromosoma"
+          ]
+        }
+      ]
+    },
+    "jb_fiction_specific_vs_ctrl": {
+      "name": "jb_fiction_specific_vs_ctrl",
+      "size": 1,
+      "features": [
+        "L7:F141"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 7,
+      "peak_count": 1,
+      "n_layers_occupied": 1,
+      "mean_activation_frequency": 0.017407,
+      "top_features": [
+        {
+          "key": "L7:F141",
+          "layer": 7,
+          "max_abs_attribution": 394.3513,
+          "top_logits": [
+            " niche",
+            " niches",
+            "++;"
+          ]
+        }
+      ]
+    },
+    "jb_roleplay_specific_vs_ctrl": {
+      "name": "jb_roleplay_specific_vs_ctrl",
+      "size": 1,
+      "features": [
+        "L9:F237"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 9,
+      "peak_count": 1,
+      "n_layers_occupied": 1,
+      "mean_activation_frequency": 0.01087,
+      "top_features": [
+        {
+          "key": "L9:F237",
+          "layer": 9,
+          "max_abs_attribution": 451.1929,
+          "top_logits": [
+            " IAU",
+            " $(<",
+            "Downloading"
+          ]
+        }
+      ]
+    }
+  },
+  "jb_vs_ctrl_contrast": {
+    "completion": {
+      "jb_top50": 20,
+      "ctrl_top50": 20,
+      "intersection": 18,
+      "jb_specific": 2,
+      "ctrl_specific": 2,
+      "jb_specific_frac": 0.1,
+      "overlap_frac": 0.9
+    },
+    "fiction": {
+      "jb_top50": 20,
+      "ctrl_top50": 21,
+      "intersection": 19,
+      "jb_specific": 1,
+      "ctrl_specific": 2,
+      "jb_specific_frac": 0.05,
+      "overlap_frac": 0.95
+    },
+    "roleplay": {
+      "jb_top50": 21,
+      "ctrl_top50": 21,
+      "intersection": 20,
+      "jb_specific": 1,
+      "ctrl_specific": 1,
+      "jb_specific_frac": 0.048,
+      "overlap_frac": 0.952
+    },
+    "cognitive_reframe": {
+      "jb_top50": 20,
+      "ctrl_top50": 21,
+      "intersection": 18,
+      "jb_specific": 2,
+      "ctrl_specific": 3,
+      "jb_specific_frac": 0.1,
+      "overlap_frac": 0.9
+    },
+    "analytical": {
+      "jb_top50": 22,
+      "ctrl_top50": 19,
+      "intersection": 16,
+      "jb_specific": 6,
+      "ctrl_specific": 3,
+      "jb_specific_frac": 0.273,
+      "overlap_frac": 0.727
+    }
+  }
+}
