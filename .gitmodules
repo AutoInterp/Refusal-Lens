@@ -1,4 +1,4 @@
 [submodule "vendor/circuit-tracer"]
 	path = vendor/circuit-tracer
 	url = https://github.com/AutoInterp/circuit-tracer.git
-	branch = refusal-lens-measurement-patch
+	branch = refusal-lens-multi-position-fix
