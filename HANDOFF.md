@@ -129,6 +129,17 @@ n_feat counts now 10,326-18,111 per condition (vs ~5,000 in buggy regime) — co
 
 ## P7 — RunPod execution plan (only remaining task)
 
+> **Quick path (one-shot, tmux-persistent, no reuse)**:
+> `bash scripts/pipeline/run_p7.sh` chains a fresh smoke → verdict → fresh full
+> → HF push (raw .pt + packed .json.gz + run meta) inside a detached tmux
+> session named `p7`. Every stage — including Stage 01 (direction) and Stage
+> 06 (causal) — runs fresh in each new run dir; nothing is symlinked from
+> prior runs, so the bug-fix patches are exercised end-to-end. Add
+> `--git-push-results` to also commit the small result JSONs back to
+> `l15-refactor`. See script header for flags. The manual step-by-step below
+> still documents what each stage does and is useful when debugging a failed
+> sub-step.
+
 ### Step 0: Pull latest code + verify
 
 ```bash
