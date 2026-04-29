@@ -312,6 +312,7 @@ if [[ "$MODE" == "smoke" || "$MODE" == "both" ]]; then
         --run-dir "$SMOKE" --max-prompts $SMOKE_PROMPTS --positions all \
         --max-new-tokens 80 \
         --skip-baseline \
+        --subcircuits-file $SUBCIRCUITS_FILE \
         --subcircuits universal_refusal_core,jb_fiction_specific_vs_ctrl
 
     STEP="smoke_verdict"
