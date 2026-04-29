@@ -1,14 +1,16 @@
 # Refusal-Lens — Pipeline State & Remaining Tasks
 
-**Last updated 2026-04-29** — Mentor's three-bug fixes integrated (P1-P3). Stage 07/08 refactored for per-prompt subcircuit construction + comply-weighted ablation summary (P4-P6). Local test suite green at **244 passed / 0 failed / 1 skipped**. **P7 (full pipeline rerun on RunPod) is the only remaining task.**
+**Last updated 2026-04-29 (evening)** — P7 launched. Tmux-persistent orchestrator (`scripts/pipeline/run_p7.sh`) added; smoke validated end-to-end on a fresh self-contained run dir; an additional list-typed `measurement_position` bug in mentor's patch was found and fixed (committed to `vendor/circuit-tracer` on `refusal-lens-multi-position-fix`); full pipeline kicked off in tmux session `p7` with `--mode full --positions all` (Option B: drops the `anchors` position-mode comparative analysis to fit ~20-25 h budget). Recovery drilldown post-hoc script (`scripts/pipeline/08_recovery_drilldown.py`) added for per-prompt comply-baseline visibility.
 
 ## TL;DR for new session
 
-1. **Mentor (Georg) found 3 stacked bugs** in attribution measurement (cherry-picked as `f307c65` on `l15-refactor`). The fix changes `circuit-tracer`'s measurement basis from `pre_feedforward_layernorm.output[L]` → `hook_resid_post[L]`, which matches where Stage 01 extracts the refusal direction. **All previous Stage 02/02b/04/05/07/08 outputs are stale until the rerun.** Stage 06 causal results are unaffected and will be reused.
-2. **All P1-P6 refactors are landed and tested** (244 passed / 0 failed / 1 skipped). Smoke test on RunPod confirmed identity holds: `Σ edges + baseline ≈ direct_dot`, `attr/dot ratio = 1.6841` (mentor saw 1.73). Backend switched to TransformerLens (the nnsight backend has runtime issues with `hook_resid_post`).
-3. **P7 is the only outstanding task**: full pipeline rerun on RunPod. **Smoke first** (3 prompts, ~30 min), then **full** (50 prompts, ~10-12 h).
-4. **Priority for new session**: walk through the smoke commands in [P7 — RunPod execution plan](#p7--runpod-execution-plan-only-remaining-task) below, capture the verdict, then launch the full run.
-5. All P1-P6 changes are pushed to `origin/l15-refactor` — just `git pull` on RunPod and proceed.
+1. **Pipeline is mid-execution.** Full run kicked off ~2026-04-29 PM in tmux `p7` on RunPod, expected 17-28 h. When you arrive, first thing: `tmux attach -t p7` (or `tail -f /tmp/p7_pipeline.log`); look for `<run-dir>/.P7_DONE` (success) or `<run-dir>/.P7_FAIL` (which stage). Run dir lives at `data/results/pipeline_runs/run_<TS>/`.
+2. **Two upstream patches landed in this session** (commit them upstream after the run finishes):
+   - **Mentor's measurement_hook patch** (commit `7c6cfa4` of vendor/circuit-tracer) had a follow-up bug: `_run_attribution` hardcoded `torch.full(shape, _mp)` which crashes when `measurement_position` is a list (the multi-position pass `[-5, -3, -2]`). Fixed locally on a new submodule branch `refusal-lens-multi-position-fix` (one commit on top of `7c6cfa4`); both `attribute_transformerlens.py` and `attribute_nnsight.py` patched. Parent repo `.gitmodules` retargeted to this branch and submodule pointer bumped. **Tell Georg** so he can decide whether to merge the fix back into `refusal-lens-residual-stream-hook` upstream.
+   - **All P1-P6 work** from the previous session, untouched.
+3. **The P7 orchestrator does NOT reuse anything** from prior runs — every stage (Stage 01 direction, Stage 06 causal, etc.) runs fresh in each new run dir, so the bug fixes are exercised end-to-end. Old `run_20260422_015552` is no longer symlinked or referenced.
+4. **Smoke validated everything works** at N=3 (`data/results/pipeline_runs/full_smoke_20260429_170345/`): Stage 03 ratio = 1.6988 (single), 1.8170 (multi); baseline_offset = +20,221 ± 532 (matches mentor's reference); Stage 06 = 100/100/100% (5/5, 3/3, 10/10); Stage 08 dissociation diagnostic correctly identifies that `jb_fiction_specific_vs_ctrl` features fire 57% on jb_fiction vs 0% on all controls. **The smoke was unable to measure dissociation Δ for fiction (0 baseline complies at N=3); the full N=50 run will resolve.**
+5. **After the full finishes**: run `scripts/pipeline/08_recovery_drilldown.py --run-dir <new-run-dir>` for the per-prompt comply-baseline view, then write up the headline numbers (see [Headline numbers to record](#step-3-after-completion--push-to-hf--record-headline-numbers)). HF push is automatic at the end of the orchestrator. `--git-push-results` was NOT passed by default — to commit small result JSONs back to git, re-run with that flag or do it manually.
 
 ---
 
@@ -17,7 +19,7 @@
 Mechanistic interpretability research on **Gemma-3-4b-it** — attributing the model's refusal circuit using Anthropic's circuit-tracer (CLT). Mentor: Georg. Research arc: *"Here are the circuits, they're real, here's what they encode, and here's what happens when you manipulate them."*
 
 - **Repo**: `AutoInterp/Refusal-Lens`, working branch `l15-refactor`
-- **Submodule**: `vendor/circuit-tracer` on branch `refusal-lens-residual-stream-hook`, commit `7c6cfa4` (mentor's residual-stream measurement_hook patch)
+- **Submodule**: `vendor/circuit-tracer` on branch `refusal-lens-multi-position-fix` (one commit on top of mentor's `7c6cfa4` measurement_hook patch — fixes list-typed `measurement_position` crash, see [P7 — multi-position fix](#p7-session-2026-04-29-evening--multi-position-fix--launch))
 - **HF dataset**: `moon70/refusal-lens-graphs`
 
 ### Team
@@ -111,7 +113,96 @@ PYTHONPATH=src python3 scripts/pipeline/tests/test_pipeline_local.py --stage all
 
 New stage flags: `--stage 07-sweep` and `--stage 08-cov`.
 
-### Smoke verification on RunPod (P3 sanity)
+### P7 (session 2026-04-29 evening) — Multi-position fix + launch
+
+This session brought P7 from "ready-to-run" to "launched and validated end-to-end". Key landings:
+
+#### Orchestrator: `scripts/pipeline/run_p7.sh`
+
+Single bash entrypoint. Self-relaunches into a detached tmux session named `p7` so it survives SSH disconnects. Modes: `smoke` (3 prompts, ~1.5 h), `full` (50 prompts, ~17-28 h), `both` (chain). Every stage runs **fresh in each new run dir** — no symlinks from prior runs, so the bug fixes are exercised end-to-end. Stage order in both phases:
+
+```
+01 → 02 (--save-graphs) → 02b → 03×2 (multi+single) → 04 → 02c → 07 → 06 → 08 (--skip-baseline)
+```
+
+Auto-pushes raw `.pt` (`push_raw_graphs.py`), packed `.json.gz` (`push_graph_data.py --source 02c`), and run metadata (`push_run.py --skip-graphs`) to HF after the full completes. `--git-push-results` flag optionally also commits small result JSONs (03/04/06/07/08 + 02b_stats) back to `l15-refactor`.
+
+Logs: per-stage `<run-dir>/_<stage>.log`, combined `/tmp/p7_pipeline_<ts>.log` (symlinked to `/tmp/p7_pipeline.log`). Markers: `<run-dir>/.P7_DONE` on success; `<run-dir>/.P7_FAIL` (with phase/step name) on failure plus tail of dying stage's log.
+
+Stage 08 invocations carry `--max-new-tokens 80` (Tejas's overnight optimization — refusal/comply classification is decided in first ~30 tokens), `--skip-baseline` (reuses Stage 06's), and for the full also `--resume --checkpoint-every 5` (free safety net for the 9-21 h ablation pass).
+
+#### Multi-position fix in vendor/circuit-tracer
+
+Smoke first attempt (`full_smoke_20260429_150126`) hit `ERROR — full(): argument 'fill_value' (position 2) must be Number, not list` on every `[multi]` graph for every condition. Single mode worked. Root cause was in mentor's `7c6cfa4` patch:
+
+```python
+# vendor/circuit-tracer/circuit_tracer/attribution/attribute_transformerlens.py L225 (and same in attribute_nnsight.py L243)
+positions=torch.full((batch.shape[0],), _mp),  # _mp is a list when measurement_position=[-5,-3,-2]
+```
+
+Mentor's API accepts both scalar and list `measurement_position`, but the Phase-3 inner loop hardcoded `torch.full(shape, scalar)`. Fixed by branching on `isinstance(_mp, (list, tuple))`:
+
+```python
+positions = (
+    torch.as_tensor(_mp[i : i + batch.shape[0]], dtype=torch.long)
+    if isinstance(_mp, (list, tuple))
+    else torch.full((batch.shape[0],), _mp)
+)
+```
+
+Identical patch in both backends. Committed on a new submodule branch `refusal-lens-multi-position-fix` (one commit on top of `7c6cfa4`). `.gitmodules` retargeted. **Coordinate with Georg post-ICML to merge upstream into `refusal-lens-residual-stream-hook`.**
+
+#### Other Stage-02 / Stage-08 fixes via the orchestrator
+
+Two additional flag-coverage gaps caught during smoke and added to the script:
+
+| Issue | Fix in `run_p7.sh` |
+|---|---|
+| Stage 02 didn't save `.pt` files → Stage 02c failed with "graphs/ does not exist" → push_raw_graphs would also have failed | Added `--save-graphs` to both smoke and full Stage 02 calls |
+| Stage 08 smoke read legacy `subcircuits.json` (the orchestrator default) instead of the per-prompt `subcircuits_k50_f50.json` that the full uses → smoke didn't validate the production headline path | Smoke now passes `--subcircuits-file $SUBCIRCUITS_FILE` (default `subcircuits_k50_f50.json`), same as full |
+| Stage 08 max_new_tokens defaulted to 200 → wall clock 2.5× longer than necessary | Both smoke and full Stage 08 now pass `--max-new-tokens 80` |
+
+#### Smoke validation (`full_smoke_20260429_170345`, N=3)
+
+Wall: ~1.8 h end-to-end. Identity / correctness / wiring all green:
+
+| Check | Smoke result | Reference / verdict |
+|---|---|---|
+| Stage 03 `attr/dot ratio` (single) | **1.6988** | mentor: 1.73 — ✓ in expected `[1.5, 2.0]` |
+| Stage 03 `attr/dot ratio` (multi) | **1.8170** | ✓ multi-position fix working; both modes report numbers, no `ERROR — full(): ...` lines anywhere |
+| Stage 03 `baseline_offset` (single) | **+20,221 ± 532** | mentor: +21,625 — ✓ within 7%; per-prompt diffs [+19,639, +20,100, +20,925] — stable |
+| Stage 03 reconstruction error | 0.0008 – 0.0036 | ✓ linearization is essentially exact |
+| Stage 06 pro / anti / benign | **100% / 100% / 100%** (5/5, 3/3, 10/10) | matches/improves on prior `run_20260422_015552` 96.7/100/100; perfect bidirectional intervention |
+| Stage 07 sweep configs produced | `subcircuits.json` + 3 sweep configs | ✓ all invariants pass; `subcircuits_k50_f50.json` is 5-10× smaller than legacy (universal=25, jb_*_specific=8-17 features) |
+| Stage 08 activation audit | jb_fiction features: 57% top-50 hit rate on `jb_fiction`, **0% on all `ctrl_*`**, 2-12% on other JBs | ✓ class-specificity confirmed |
+| Stage 08 dissociation Δ (target=fiction) | **-37.5pp (uninterpretable)** | ⚠ vacuous: 0 baseline complies on jb_fiction at N=3, denominator=0. NOT a failure of the subcircuit — small-N artifact. At N=50 fiction will have ~20 complies (per Phase B). |
+
+#### New per-prompt drilldown: `scripts/pipeline/08_recovery_drilldown.py`
+
+Post-hoc script that reads `08_ablation/ablation_results.json` and emits a comply-baseline-only per-prompt view. **Doesn't change Stage 08 itself** (zero risk to the long-running ablation pass; can be run any time after Stage 08 completes). For each baseline-COMPLY JB case, emits `(prompt_id, jb_class, ablation, baseline_response, ablated_response, flipped_to_refuse, ablated_coherent, coverage)`.
+
+Outputs (in `<run-dir>/08_ablation/`):
+- `recovery_drilldown.json` — `by_class[cls].per_ablation[abl][pos_mode].prompts[]` with both `recovery_rate` and `coherent_recovery_rate`
+- `recovery_drilldown.csv` — flat one-row-per-(prompt × ablation × pos_mode) for spreadsheet review
+
+Validated against the smoke output: produces 10 records across 5 baseline complies, recovery rates match the aggregate `ablation_summary.json` exactly.
+
+Run after the full completes:
+```bash
+PYTHONPATH=src python3 scripts/pipeline/08_recovery_drilldown.py \
+    --run-dir data/results/pipeline_runs/run_<TS>
+```
+
+#### Paper-grade insights surfaced during smoke validation
+
+These are real findings from the smoke that should land in the writeup (caveat: N=3, will be confirmed at N=50):
+
+1. **L33 dominates the late-layer pro-refusal flip.** Stage 03 per-layer decomposition: L0–L19 cumulative ≈ -28,200 (anti-refusal, with L11/L10/L9 contributing -4,855 / -3,969 / -3,437 respectively), L20–L32 cumulative ≈ +5,000 (mostly pro-refusal), and **L33 alone = +33,160** — overrides everything else combined. The two-stage circuit story is cleaner than the previous "L14 hotspot" framing (which was a basis-mismatch artifact).
+2. **Effect sizes 2-3× larger in the corrected basis.** `vs_bare` Cohen's d went from -2.05 → -4.99 (cognitive_reframe), -4.07 → -8.62 (analytical). At N=50 these will easily clear significance.
+3. **Class-specific subcircuits ARE specific** (per activation audit, smoke). `jb_fiction_specific_vs_ctrl` features fire on 57% of jb_fiction prompts vs 0% on every `ctrl_*` and 2-12% on other JBs.
+4. **Empirical Stage 08 wall-clock model**: 65 s/gen at max_new_tokens=200 with 26-feature subcircuits on H100 SXM. HANDOFF's 14 h estimate proved ~3× optimistic; realistic budget for full at max_new_tokens=80 + 12-feature avg subcircuits + `--positions all` is **17-28 h** for the whole P7 pipeline.
+
+### Smoke verification on RunPod (P3 sanity, pre-this-session)
 
 Ran a 1-prompt × 11-condition smoke through Stage 02 + Stage 03 with the new `measurement_hook="hook_resid_post"` + `backend="transformerlens"`:
 
@@ -278,33 +369,46 @@ PYTHONPATH=src python3 scripts/pipeline/push_graph_data.py \
 
 ---
 
-## Stage-by-stage status (2026-04-29)
+## Stage-by-stage status (2026-04-29 evening, post-launch)
 
 | # | Stage | Code status | Validated post-fix? | Notes |
 |---|---|---|---|---|
-| 01 | `01_compute_direction.py` | ✅ | ✅ (existing run reusable — independent of fix) | Per-layer @ pos=-2 + per-position at L15. |
-| 02 | `02_run_attribution.py` | ✅ + `--measurement-hook` + `--backend` flags | ✅ (1-prompt smoke) | TL backend; saves top-100 features. |
-| 02b | `02b_statistical_analysis.py` | ✅ no changes | ⏳ pending P7 | Will produce new effect sizes. |
-| 02c | `02c_pack_graphs.py` | ✅ no changes | ⏳ pending P7 | — |
-| 03 | `03_verify_attribution.py` | ✅ hook-aware | ✅ (smoke ratio = 1.6841) | Identity check `Σ edges + baseline ≈ direct_dot`. |
-| 04 | `04_label_features.py` | ✅ no changes | ⏳ pending P7 | HF feature labels. |
+| 01 | `01_compute_direction.py` | ✅ | ✅ (smoke — fresh run dir) | Per-layer @ pos=-2 + per-position at L15. **No longer reused; runs fresh each time.** |
+| 02 | `02_run_attribution.py` | ✅ + `--measurement-hook` + `--backend` + multi-position-fix in vendor | ✅ (3-prompt smoke; both modes work) | TL backend; orchestrator passes `--save-graphs` so 02c + push_raw can consume. |
+| 02b | `02b_statistical_analysis.py` | ✅ no changes | ✅ (smoke — d=-8.62 analytical, d=-4.99 cog_reframe vs_bare; ~2× the buggy basis) | Effect sizes will lock in at N=50. |
+| 02c | `02c_pack_graphs.py` | ✅ no changes | ✅ (smoke; 66 .pt → 66 .json.gz, ×6.9 compression) | Requires Stage 02 `--save-graphs`. |
+| 03 | `03_verify_attribution.py` | ✅ hook-aware | ✅ (smoke ratio = 1.6988 single, 1.8170 multi; baseline +20,221 single matches mentor's +21,625) | Identity check `Σ edges + baseline ≈ direct_dot`. |
+| 04 | `04_label_features.py` | ✅ no changes | ✅ (smoke — 379/379 features labeled, all 100%) | HF feature labels. |
 | 04b | `04b_delphi_labels.py` | ⏳ not started | — | Post-NeurIPS / lower priority. |
-| 05 | `05_visualize_circuits.py` | ✅ no changes | ⏳ pending P7 | Browser sanity check after rerun. |
-| 06 | `06_causal_intervention.py` | ✅ done | ✅ on `run_20260422_015552` (independent of fix) | **Symlink existing results into new run dir.** |
-| 07 | `07_identify_subcircuits.py` | ✅ + sweep configs (P4) | ✅ (legacy + 3 sweep configs on existing data) | Emits `subcircuits.json` + `subcircuits_k{K}_f{F:02.0f}.json` ×3. |
-| 08 | `08_ablate_subcircuits.py` | ✅ + coverage + weighted (P5) | ⏳ pending P7 | `--subcircuits-file`, per-prompt coverage diagnostic, comply-weighted summary. |
+| 05 | `05_visualize_circuits.py` | ✅ no changes | ⏳ pending full | Browser sanity check after rerun. **Not run by `run_p7.sh`** — invoke manually if frontend bundle wanted. |
+| 06 | `06_causal_intervention.py` | ✅ done | ✅ (smoke — 100/100/100% at N=3, matches/improves prior 96.7/100/100) | **Now runs fresh in each P7 run dir** (orchestrator passes `--max-prompts $FULL_PROMPTS`); no longer symlinked from old run. |
+| 07 | `07_identify_subcircuits.py` | ✅ + sweep configs (P4) | ✅ (smoke — all 4 configs produced; k50_f50 sizes: universal=25, jb_*_specific=8-17) | Emits `subcircuits.json` + `subcircuits_k{K}_f{F:02.0f}.json` ×3. |
+| 08 | `08_ablate_subcircuits.py` | ✅ + coverage + weighted (P5) | ✅ (smoke — wiring confirmed; activation audit shows class-specificity 57% / 0%) | Orchestrator passes `--subcircuits-file subcircuits_k50_f50.json --skip-baseline --max-new-tokens 80 --resume --checkpoint-every 5`. |
+| 08b | `08_recovery_drilldown.py` | ✅ NEW (this session) | ✅ (smoke — produces 10 records across 5 baseline complies, rates match aggregate) | Post-hoc; reads `08_ablation/ablation_results.json`, emits `recovery_drilldown.json` + `.csv` with per-prompt comply→ablated outcomes. Run after full completes. |
 
 ---
 
 ## Commits on `l15-refactor` from this session (all pushed)
 
 ```
+# === P7 launch session (2026-04-29 evening) ===
+<NEW>  Stage 08 smoke + full: --max-new-tokens 80, smoke now uses subcircuits_k50_f50
+<NEW>  Stage 02 smoke + full now pass --save-graphs (Stage 02c needs the .pt files)
+<NEW>  Bump vendor/circuit-tracer to multi-position fix branch
+<NEW>  Add P7 unified pipeline runner (smoke + full + HF push, tmux-persistent)
+
+# Plus on the SUBMODULE (vendor/circuit-tracer, refusal-lens-multi-position-fix branch):
+<NEW>  Fix list-typed measurement_position in measurement_hook patch
+
+# === Prior P1-P6 session (still on l15-refactor) ===
 3c463f0 local tests passed                                    [P5/P6]
 37e56a0 refactored stage 07 to handle per prompt feature segmentation  [P4]
 3ec0492 add --backend flag for stage 02                       [P2/P3]
 4c5188d f307c65 on l15-refactor; vendor/circuit-tracer → 7c6cfa4 with measurement_hook API, config.py with new measurement hook from georg  [P1 + config bump]
 f307c65 Fix three stacked bugs in attribution pipeline        [P1 cherry-pick]
 ```
+
+(The four `<NEW>` commits above are from this session — replace with actual SHAs once `git log` shows them on `origin/l15-refactor`.)
 
 Files modified across the session:
 - `scripts/pipeline/config.py` — `MEASUREMENT_HOOK`, `BACKEND`, `SAVE_TOP_FEATURES`
@@ -319,7 +423,21 @@ Files modified across the session:
 
 ---
 
-## New gotchas (this session)
+## New gotchas (P7 launch session, 2026-04-29 evening)
+
+1. **`measurement_position` as a list crashes mentor's patch** — fixed locally on `refusal-lens-multi-position-fix` submodule branch but **NOT yet upstreamed**. If you ever rebase `vendor/circuit-tracer` onto a fresh upstream commit (e.g., a future Anthropic release), make sure the `torch.full(shape, _mp)` → branch-on-`isinstance(_mp, (list, tuple))` patch in both `attribute_transformerlens.py` and `attribute_nnsight.py` survives. See P7-session details above.
+
+2. **Stage 02 needs `--save-graphs` for downstream consumers**. The orchestrator passes it. If you invoke Stage 02 manually (without the orchestrator), remember to add it — otherwise Stage 02c, push_raw_graphs, and push_graph_data all fail with "graphs/ does not exist".
+
+3. **Stage 08's `recovery_rate` is `n_recovered_refusal / n_baseline_comply`** — when a target class has 0 baseline complies (likely at small N for fiction/completion/roleplay), the rate defaults to 0.0 but is **mathematically vacuous**. The `dissociation_delta` can read negative for purely small-sample reasons. Cross-check with the `activation_audit` block (in `08_ablation/ABLATION_SUMMARY.md` and `ablation_results.json`) — per-class top-50 hit rate is the correctness check that's robust to N. Per Phase B, at N=50 expect baseline complies: analytical 27, cognitive_reframe 33, fiction 20, roleplay 9, completion 1 — so completion's recovery_rate will still be N-limited even at full size.
+
+4. **HANDOFF's Stage 08 14-h estimate is ~3× optimistic** for the new measurement_hook regime. Empirical: 65 s/gen at max_new_tokens=200 with 26-feature subcircuits on H100 SXM. Realistic for full at max_new_tokens=80 + 12-feature avg subcircuits + `--positions all`: ~17-28 h end-to-end (Stage 08 ~9-21 h alone). Use `--positions both` only if you have a 30-50 h budget. The orchestrator's `--resume --checkpoint-every 5` for Stage 08 protects against pod restarts mid-run.
+
+5. **`run_p7.sh` self-relaunches into tmux session `p7`**. If a prior session is still alive (e.g., a failed run that didn't clean up), the script aborts. Either `tmux kill-session -t p7 2>/dev/null || true` first, or pass `--session OTHER_NAME`. The `--no-tmux` flag bypasses self-relaunch (useful for debugging in the foreground).
+
+6. **GHP_TOKEN was exposed locally on the user's Mac** in `.git/modules/vendor/circuit-tracer/config` (URL-embedded PAT). Not pushed to GitHub (verified: `git log --all -p -S "ghp_..."` finds nothing). User to rotate token + `git -C vendor/circuit-tracer remote set-url origin https://github.com/AutoInterp/circuit-tracer.git` after the run wraps. Do NOT proactively echo the token in tool output if you re-investigate.
+
+## Older gotchas (P1-P6 session)
 
 1. **TransformerLens, not nnsight, for Stage 02**. The `hook_resid_post` measurement hook needs the TL backend; nnsight's `.grad-on-non-module-output` limitation breaks it at runtime with `ValueError: Execution complete but '...' grad was not provided`. Mentor verified TL works bit-exact with Gemma-3-4b-it on the patched circuit-tracer. Memory note "Gemma-3 requires nnsight" is out of date.
 
@@ -388,18 +506,23 @@ The original Stage 08a was implemented on Apr 24 with corpus-aggregated subcircu
 
 | What | Path |
 |---|---|
+| **P7 unified orchestrator (NEW this session)** | `scripts/pipeline/run_p7.sh` |
+| **Stage 08 recovery drilldown (NEW this session)** | `scripts/pipeline/08_recovery_drilldown.py` |
 | Main pipeline stages | `scripts/pipeline/0X_*.py` |
 | Shared helpers | `scripts/pipeline/{utils,utils_viz,config}.py` |
 | Local tests | `scripts/pipeline/tests/test_pipeline_local.py` |
 | RunPod test (GPU) | `scripts/pipeline/tests/test_runpod_1_4.py` |
 | Controlled dataset | `dataset/refusal_lens_controlled_dataset.json` |
 | **Mentor's three-bug writeup** | `MENTEE_NOTE_three_bugs.md` |
-| Latest run (post-fix, pending P7) | `data/results/pipeline_runs/run_<TIMESTAMP>/` |
-| Pre-fix reference run (Stage 06 reusable) | `data/results/pipeline_runs/run_20260422_015552/` |
+| **Validated smoke run (this session)** | `data/results/pipeline_runs/full_smoke_20260429_170345/` |
+| **Full run (in flight or completed)** | `data/results/pipeline_runs/run_<TIMESTAMP>/` |
+| Pre-fix reference run (no longer reused — kept for archaeology) | `data/results/pipeline_runs/run_20260422_015552/` |
 | Tejas's bulletproof causal script | `git show origin/tejas-circuit-experiments:data/tejas_experiments/scripts/20_bulletproof_pipeline.py` |
 | HF push helper (JSON.gz bundle) | `scripts/pipeline/push_graph_data.py` |
+| HF push helper (raw .pt) | `scripts/pipeline/push_raw_graphs.py` |
+| HF push helper (full run meta, --skip-graphs flag) | `scripts/pipeline/push_run.py` |
 | `.pt → JSON.gz` packer | `scripts/pipeline/02c_pack_graphs.py` |
-| Patched circuit-tracer | `vendor/circuit-tracer` @ `7c6cfa4` (`refusal-lens-residual-stream-hook` branch) |
+| Patched circuit-tracer (multi-position fix on top of mentor's hook patch) | `vendor/circuit-tracer` @ `refusal-lens-multi-position-fix` branch |
 
 ---
 
@@ -500,6 +623,41 @@ PYTHONPATH=src python3 scripts/pipeline/tests/test_pipeline_local.py --stage all
 
 ---
 
+## Remaining tasks (queued for next session)
+
+In rough priority order:
+
+1. **Babysit the running full pipeline.** `tmux attach -t p7` on RunPod, or `tail -f /tmp/p7_pipeline.log`. Expected wall ~17-28 h from launch. Look for `<run-dir>/.P7_DONE` (success) or `<run-dir>/.P7_FAIL` (which stage). The `--resume --checkpoint-every 5` on Stage 08 protects against pod restarts.
+
+2. **After the full completes — generate the recovery drilldown:**
+   ```bash
+   PYTHONPATH=src python3 scripts/pipeline/08_recovery_drilldown.py \
+       --run-dir data/results/pipeline_runs/run_<TS>
+   ```
+   Produces per-prompt comply→ablated outcome view as JSON + CSV.
+
+3. **Capture the headline numbers** for the ICML/NeurIPS write-up (see [Step 3](#step-3-after-completion--push-to-hf--record-headline-numbers) for exact paths). Critical fields:
+   - `03_verification/verification_results.json[summary].attr_to_dot_ratio_mean` (multi + single)
+   - `08_ablation/ablation_summary.json[per_ablation][abl][positions][all][weighted]` per ablation
+   - `08_ablation/ablation_summary.json[dissociation]` per JB class
+   - `08_ablation/recovery_drilldown.json[by_class]` for the per-prompt visibility
+   - Stage 03 per-layer table — confirm L33 dominance + L9-L11 anti-refusal hotspot at N=50
+
+4. **Coordinate with Georg (mentor)** to merge the multi-position fix back upstream into `refusal-lens-residual-stream-hook` (currently lives only on our `refusal-lens-multi-position-fix` branch on the AutoInterp/circuit-tracer fork).
+
+5. **Optionally re-run with `--positions both`** post-ICML to add the anchors-position-mode comparison to the dissociation matrix figure. Budget another ~15-25 h. Or trim to anchors-only re-run on existing run dir (just re-invoke Stage 08 with `--positions anchors`, ~half the time).
+
+6. **Rotate the leaked GHP_TOKEN** on the user's Mac (URL-embedded in `.git/modules/vendor/circuit-tracer/config`). Not pushed publicly but exposed in the conversation transcript. Then `git -C vendor/circuit-tracer remote set-url origin https://github.com/AutoInterp/circuit-tracer.git` to remove the embedded credential.
+
+7. **Stage 04b (Delphi labels via Ruqiya)** — still unstarted. Lower priority; post-NeurIPS unless Ruqiya delivers in the meantime.
+
+8. **Stage 05 frontend regeneration** — not run by the orchestrator. Invoke manually on the new run dir if you want the browseable circuit explorer:
+   ```bash
+   PYTHONPATH=src python3 scripts/pipeline/05_visualize_circuits.py --run-dir <new-run-dir>
+   ```
+
 ## Final note for new session
 
-You're picking up at the cleanest possible handoff: all refactor + bug-fix work is done, all tests pass, and the only outstanding work is a single RunPod run sequence (smoke + full). Walk through the [P7 — RunPod execution plan](#p7--runpod-execution-plan-only-remaining-task) above end-to-end. Smoke first, share the verdict, then launch the full run unattended in tmux. Capture the headline numbers from `03_verification`, `07_subcircuits/subcircuits_k50_f50.json`, and `08_ablation/ablation_summary.json` for the NeurIPS write-up.
+You're picking up mid-execution: orchestrator is launched, smoke validated end-to-end, full pipeline running in tmux on RunPod with `--mode full --positions all` (Option B). All bug fixes are landed and committed (parent on `l15-refactor`, submodule on `refusal-lens-multi-position-fix`). When the full finishes, run the recovery drilldown, push results, and report the headline numbers — instructions in the [Remaining tasks](#remaining-tasks-queued-for-next-session) block above.
+
+The big science updates from this session are: (1) effect sizes are 2-3× larger in the corrected basis, (2) L33 dominates the late-layer pro-refusal flip (the previous "L14 hotspot" was a basis-mismatch artifact), (3) class-specific subcircuits ARE selective (per the Stage 08 activation audit, jb_fiction features fire 57% on jb_fiction vs 0% on every control). All of these need N=50 confirmation but are robust at N=3.
