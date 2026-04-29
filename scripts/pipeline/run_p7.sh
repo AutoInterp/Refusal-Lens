@@ -310,6 +310,7 @@ if [[ "$MODE" == "smoke" || "$MODE" == "both" ]]; then
 
     run_stage "08_smoke" python3 scripts/pipeline/08_ablate_subcircuits.py \
         --run-dir "$SMOKE" --max-prompts $SMOKE_PROMPTS --positions all \
+        --max-new-tokens 80 \
         --skip-baseline \
         --subcircuits universal_refusal_core,jb_fiction_specific_vs_ctrl
 
@@ -395,7 +396,8 @@ run_stage "06"  python3 scripts/pipeline/06_causal_intervention.py \
 
 run_stage "08" python3 scripts/pipeline/08_ablate_subcircuits.py \
     --run-dir "$RUN" --positions $POSITIONS \
-    --skip-baseline \
+    --max-new-tokens 80 \
+    --skip-baseline --resume --checkpoint-every 5 \
     --subcircuits-file $SUBCIRCUITS_FILE
 
 # ============================================================
