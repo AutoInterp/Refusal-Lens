@@ -2999,6 +2999,24 @@
     }
   },
   "jb_vs_ctrl_contrast": {
+    "completion": {
+      "jb_top50": 174,
+      "ctrl_top50": 183,
+      "intersection": 142,
+      "jb_specific": 32,
+      "ctrl_specific": 41,
+      "jb_specific_frac": 0.184,
+      "overlap_frac": 0.816
+    },
+    "fiction": {
+      "jb_top50": 152,
+      "ctrl_top50": 172,
+      "intersection": 100,
+      "jb_specific": 52,
+      "ctrl_specific": 72,
+      "jb_specific_frac": 0.342,
+      "overlap_frac": 0.658
+    },
     "analytical": {
       "jb_top50": 202,
       "ctrl_top50": 188,
@@ -3025,24 +3043,6 @@
       "ctrl_specific": 50,
       "jb_specific_frac": 0.386,
       "overlap_frac": 0.614
-    },
-    "fiction": {
-      "jb_top50": 152,
-      "ctrl_top50": 172,
-      "intersection": 100,
-      "jb_specific": 52,
-      "ctrl_specific": 72,
-      "jb_specific_frac": 0.342,
-      "overlap_frac": 0.658
-    },
-    "completion": {
-      "jb_top50": 174,
-      "ctrl_top50": 183,
-      "intersection": 142,
-      "jb_specific": 32,
-      "ctrl_specific": 41,
-      "jb_specific_frac": 0.184,
-      "overlap_frac": 0.816
     }
   }
 }

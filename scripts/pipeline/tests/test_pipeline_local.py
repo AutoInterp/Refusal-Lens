@@ -1891,6 +1891,11 @@ def test_stage_07():
         convergent_min = 3                                                                                                      
         late_wave_start = 24                                                                                                    
         late_wave_end = 32                         
+        # New flags from P4 (sweep configs); keep disabled in legacy-path tests.
+        sweep_configs = ""
+        graph_mode = "multi"
+        skip_legacy = False
+        skip_sweep = True
                                                                                                                                 
     mock = MockArgs()                        
     mock.run_dir = run_dir                                                                                                      
@@ -2100,6 +2105,11 @@ def test_stage_07_synthetic_ctrl():
             convergent_min = 3
             late_wave_start = 24
             late_wave_end = 32
+            # New flags from P4 (sweep configs); keep disabled in legacy-path tests.
+            sweep_configs = ""
+            graph_mode = "multi"
+            skip_legacy = False
+            skip_sweep = True
         mock = MockArgs()
         mock.run_dir = run_dir
         orig = stage07.parse_args
@@ -2415,6 +2425,338 @@ def test_stage_08():
     )
 
 
+def test_stage_07_sweep():
+    """T-S7sweep: per-prompt subcircuit construction (P4).
+
+    Builds a synthetic attribution_results.json + Stage 04 outputs, runs
+    Stage 07 with a single sweep config, and verifies the per-config output
+    files are emitted with the expected metadata + class-set arithmetic.
+    """
+    import importlib
+    import tempfile
+
+    print("\n" + "=" * 60)
+    print("STAGE 07 SWEEP TESTS (per-prompt subcircuit construction, T-S7sweep)")
+    print("=" * 60)
+
+    stage07 = importlib.import_module("07_identify_subcircuits")
+
+    JB_CLASSES = ["analytical", "cognitive_reframe", "completion", "fiction", "roleplay"]
+
+    # Construct synthetic attribution_results: 2 prompts × 11 conditions, each
+    # with a top_features dict. Choose memberships so per-prompt frequency at
+    # threshold=0.5 (i.e., feature must appear in BOTH prompts) yields a known
+    # subcircuit.
+    #   fA: in bare top_features for BOTH prompts            → bare per-cond set
+    #   fB: in jb_fiction for BOTH prompts only              → only jb_fiction
+    #   fC: in jb_fiction for prompt 1 only                  → drops at freq=0.5
+    #   fD: in ctrl_fiction for BOTH prompts                 → ctrl_fiction
+    #   fE: in jb_fiction AND ctrl_fiction for BOTH prompts  → both
+    def cond_top(*keys):
+        return {k: 0.5 for k in keys}
+
+    def make_row(pid: int, fc_jb_extra: list[str]) -> dict:
+        conds: dict = {"bare": {"graphs": {"multi": {"top_features": cond_top("fA")}}}}
+        for cls in JB_CLASSES:
+            jb_keys = ["fX"]                  # noise feature, won't hit freq
+            ctrl_keys = ["fY"]
+            if cls == "fiction":
+                jb_keys = ["fB", "fE"] + fc_jb_extra
+                ctrl_keys = ["fD", "fE"]
+            conds[f"jb_{cls}"] = {"graphs": {"multi": {"top_features": cond_top(*jb_keys)}}}
+            conds[f"ctrl_{cls}"] = {"graphs": {"multi": {"top_features": cond_top(*ctrl_keys)}}}
+        return {"prompt_idx": pid, "prompt_id": pid, "conditions": conds}
+
+    attribution_results = {
+        "metadata": {"measurement_layer": 15, "measurement_hook": "hook_resid_post"},
+        "results": [
+            make_row(0, fc_jb_extra=["fC"]),  # prompt 0 has fC in jb_fiction
+            make_row(1, fc_jb_extra=[]),       # prompt 1 lacks fC
+        ],
+    }
+
+    # Stage 04 outputs: minimal feature_labels + feature_class_sets.
+    # per_condition_top50 will be IGNORED in sweep mode (we override it from
+    # attribution_results), so we leave it empty.
+    feature_labels = {
+        k: {"layer": 12, "feature_idx": i, "max_abs_attribution": 1.0,
+            "conditions_seen": [], "top50_conditions": [],
+            "top_logits": [], "bottom_logits": [],
+            "activation_frequency": 0.01, "examples": [], "labeled": False}
+        for i, k in enumerate(["fA", "fB", "fC", "fD", "fE", "fX", "fY"])
+    }
+    class_sets = {
+        "n_classes": 5,
+        "classes": sorted(JB_CLASSES),
+        "by_bucket": {
+            "sign_flipped": {"total": 0, "features": {}},
+            "dampened": {"total": 0, "features": {}},
+            "amplified_anti": {"total": 0, "features": {}},
+        },
+        "combined": {"total": 0, "features": {}},
+        "per_condition_top50": {},
+    }
+
+    with tempfile.TemporaryDirectory() as td:
+        run_dir = Path(td) / "synthetic_run"
+        labels_dir = run_dir / "04_labels"
+        attr_dir = run_dir / "02_attribution"
+        labels_dir.mkdir(parents=True)
+        attr_dir.mkdir(parents=True)
+        (labels_dir / "feature_labels.json").write_text(json.dumps(feature_labels))
+        (labels_dir / "feature_class_sets.json").write_text(json.dumps(class_sets))
+        (attr_dir / "attribution_results.json").write_text(json.dumps(attribution_results))
+
+        class MockArgs:
+            convergent_min = 3
+            late_wave_start = 24
+            late_wave_end = 32
+            # Run two configs at once: lax (0.5 → ≥1 of 2 prompts) and strict
+            # (1.0 → both prompts). Distinct outputs verify the threshold logic.
+            sweep_configs = "50:0.5,50:1.0"
+            graph_mode = "multi"
+            skip_legacy = True          # only emit the sweep files
+            skip_sweep = False
+        mock = MockArgs()
+        mock.run_dir = run_dir
+        orig = stage07.parse_args
+        stage07.parse_args = lambda: mock
+        try:
+            stage07.main()
+        finally:
+            stage07.parse_args = orig
+
+        sweep_path = run_dir / "07_subcircuits" / "subcircuits_k50_f50.json"
+        sweep_summary_path = run_dir / "07_subcircuits" / "subcircuits_k50_f50_summary.json"
+        sweep_path_strict = run_dir / "07_subcircuits" / "subcircuits_k50_f100.json"
+        log_test(
+            "T-S7sweep-a: subcircuits_k50_f50.json emitted",
+            sweep_path.exists(), str(sweep_path),
+        )
+        log_test(
+            "T-S7sweep-b: subcircuits_k50_f50_summary.json emitted",
+            sweep_summary_path.exists(), str(sweep_summary_path),
+        )
+        log_test(
+            "T-S7sweep-b2: subcircuits_k50_f100.json (strict freq=1.0) emitted",
+            sweep_path_strict.exists(), str(sweep_path_strict),
+        )
+        if not sweep_path.exists() or not sweep_path_strict.exists():
+            return
+        out_lax = json.loads(sweep_path.read_text())
+        out_strict = json.loads(sweep_path_strict.read_text())
+        meta = out_lax.get("metadata", {})
+        log_test(
+            "T-S7sweep-c: metadata records sweep_top_k=50, sweep_freq_threshold=0.5",
+            meta.get("sweep_top_k") == 50 and meta.get("sweep_freq_threshold") == 0.5,
+            f"got {meta}",
+        )
+        log_test(
+            "T-S7sweep-d: metadata.is_legacy is False",
+            meta.get("is_legacy") is False,
+            f"got is_legacy={meta.get('is_legacy')}",
+        )
+        log_test(
+            "T-S7sweep-e: metadata.n_prompts_per_condition recorded for all 11 conds",
+            isinstance(meta.get("n_prompts_per_condition"), dict)
+            and len(meta["n_prompts_per_condition"]) == 11,
+            f"got {meta.get('n_prompts_per_condition')}",
+        )
+        # Lax (freq=0.5, threshold=1 of 2): both fB (both prompts) and fC (prompt 0
+        # only) qualify for jb_fiction; fE qualifies for both jb and ctrl fiction;
+        # so jb_fiction_specific_vs_ctrl = {fB, fC}.
+        lax_spec = set(out_lax["subcircuits"]["jb_fiction_specific_vs_ctrl"]["features"])
+        log_test(
+            "T-S7sweep-f: lax (freq=0.5) jb_fiction_specific_vs_ctrl == {fB, fC}",
+            lax_spec == {"fB", "fC"},
+            f"got {lax_spec}",
+        )
+        # Strict (freq=1.0, threshold=2 of 2): fC drops out (only prompt 0 had
+        # it); only fB qualifies for jb_fiction.
+        strict_spec = set(out_strict["subcircuits"]["jb_fiction_specific_vs_ctrl"]["features"])
+        log_test(
+            "T-S7sweep-g: strict (freq=1.0) jb_fiction_specific_vs_ctrl == {fB}",
+            strict_spec == {"fB"},
+            f"got {strict_spec}",
+        )
+        # Strict subcircuit ⊆ lax subcircuit (raising the threshold can only
+        # remove features).
+        log_test(
+            "T-S7sweep-h: strict subcircuit ⊆ lax (raising freq threshold drops only)",
+            strict_spec.issubset(lax_spec),
+            f"strict={strict_spec}, lax={lax_spec}",
+        )
+
+
+def test_stage_08_coverage():
+    """T-S8cov: Stage 08 per-prompt coverage diagnostic + comply-weighted summary
+    (P5). Pure-function tests; no GPU.
+    """
+    import importlib
+
+    print("\n" + "=" * 60)
+    print("STAGE 08 COVERAGE / WEIGHTED-SUMMARY TESTS (T-S8cov)")
+    print("=" * 60)
+
+    s08 = importlib.import_module("08_ablate_subcircuits")
+
+    # T-S8cov-a: compute_coverage with full / partial / zero overlap
+    feat_keys = ["L10:F1", "L10:F2", "L11:F3", "L12:F4"]
+    prompt_top = {
+        "jb_fiction": {"L10:F1": 0.5, "L11:F3": 0.2, "L20:F99": 0.05},
+        "bare": {"L10:F2": 0.1},
+    }
+    cov_jbf = s08.compute_coverage(feat_keys, prompt_top, "jb_fiction")
+    log_test(
+        "T-S8cov-a: 2 of 4 features in jb_fiction top → frac=0.5",
+        cov_jbf["n_features"] == 4
+        and cov_jbf["n_in_top_k"] == 2
+        and cov_jbf["frac_in_top_k"] == 0.5
+        and abs(cov_jbf["sum_abs_attribution"] - 0.7) < 1e-6,
+        f"got {cov_jbf}",
+    )
+    cov_bare = s08.compute_coverage(feat_keys, prompt_top, "bare")
+    log_test(
+        "T-S8cov-b: 1 of 4 features in bare top → frac=0.25",
+        cov_bare["n_in_top_k"] == 1 and cov_bare["frac_in_top_k"] == 0.25,
+        f"got {cov_bare}",
+    )
+    cov_missing = s08.compute_coverage(feat_keys, prompt_top, "ctrl_fiction")
+    log_test(
+        "T-S8cov-c: missing condition → frac=0",
+        cov_missing["n_in_top_k"] == 0 and cov_missing["frac_in_top_k"] == 0.0,
+        f"got {cov_missing}",
+    )
+
+    # T-S8cov-d: aggregate_coverage_summary — averages frac over prompts,
+    # counts low-coverage prompts.
+    synth_results = [
+        {
+            "prompt_id": 1,
+            "ablations": {
+                "S1": {
+                    "n_features": 4,
+                    "all": {
+                        "jb_fiction": {
+                            "cls": "REFUSE",
+                            "coverage": {
+                                "n_features": 4, "n_in_top_k": 2,
+                                "frac_in_top_k": 0.5,
+                                "sum_abs_attribution": 0.5,
+                                "low_coverage": False,
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        {
+            "prompt_id": 2,
+            "ablations": {
+                "S1": {
+                    "n_features": 4,
+                    "all": {
+                        "jb_fiction": {
+                            "cls": "COMPLY",
+                            "coverage": {
+                                "n_features": 4, "n_in_top_k": 0,
+                                "frac_in_top_k": 0.0,
+                                "sum_abs_attribution": 0.0,
+                                "low_coverage": True,
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    ]
+    cov_summary = s08.aggregate_coverage_summary(synth_results)
+    jbf = cov_summary["S1"]["all"]["jb_fiction"]
+    log_test(
+        "T-S8cov-d: aggregate mean frac = (0.5 + 0.0) / 2 = 0.25",
+        abs(jbf["mean_frac_in_top_k"] - 0.25) < 1e-6
+        and jbf["n_low_coverage_prompts"] == 1
+        and jbf["n_prompts"] == 2
+        and jbf["frac_low_coverage"] == 0.5,
+        f"got {jbf}",
+    )
+
+    # T-S8cov-e: aggregate_weighted_summary computes comply-weighted JB recovery
+    fake = {
+        "per_ablation": {
+            "X": {
+                "n_features": 10,
+                "positions": {
+                    "all": {
+                        "bare": {"recovery_rate": 0.0, "break_rate": 0.5,
+                                 "n_baseline_comply": 0, "n_baseline_refuse": 50,
+                                 "n_recovered_refusal": 0},
+                        "jb_fiction": {"recovery_rate": 1.0, "break_rate": 0.0,
+                                       "n_baseline_comply": 20, "n_baseline_refuse": 30,
+                                       "n_recovered_refusal": 20},
+                        "jb_analytical": {"recovery_rate": 0.5, "break_rate": 0.0,
+                                          "n_baseline_comply": 10, "n_baseline_refuse": 40,
+                                          "n_recovered_refusal": 5},
+                        # Fill the remaining 3 jb_* + 5 ctrl_* with no-op rows.
+                        "jb_cognitive_reframe": {"recovery_rate": 0.0, "break_rate": 0.0,
+                                                 "n_baseline_comply": 0, "n_baseline_refuse": 50,
+                                                 "n_recovered_refusal": 0},
+                        "jb_completion": {"recovery_rate": 0.0, "break_rate": 0.0,
+                                          "n_baseline_comply": 0, "n_baseline_refuse": 50,
+                                          "n_recovered_refusal": 0},
+                        "jb_roleplay": {"recovery_rate": 0.0, "break_rate": 0.0,
+                                        "n_baseline_comply": 0, "n_baseline_refuse": 50,
+                                        "n_recovered_refusal": 0},
+                        "ctrl_fiction": {"recovery_rate": 0.0, "break_rate": 0.2,
+                                         "n_baseline_comply": 5, "n_baseline_refuse": 45,
+                                         "n_recovered_refusal": 0},
+                        "ctrl_analytical": {"recovery_rate": 0.0, "break_rate": 0.1,
+                                            "n_baseline_comply": 5, "n_baseline_refuse": 45,
+                                            "n_recovered_refusal": 0},
+                        "ctrl_cognitive_reframe": {"recovery_rate": 0.0, "break_rate": 0.0,
+                                                   "n_baseline_comply": 0, "n_baseline_refuse": 50,
+                                                   "n_recovered_refusal": 0},
+                        "ctrl_completion": {"recovery_rate": 0.0, "break_rate": 0.0,
+                                            "n_baseline_comply": 0, "n_baseline_refuse": 50,
+                                            "n_recovered_refusal": 0},
+                        "ctrl_roleplay": {"recovery_rate": 0.0, "break_rate": 0.0,
+                                          "n_baseline_comply": 0, "n_baseline_refuse": 50,
+                                          "n_recovered_refusal": 0},
+                    },
+                },
+            },
+        },
+    }
+    w_summary = s08.aggregate_weighted_summary(fake)
+    w = w_summary["per_ablation"]["X"]["positions"]["all"]["weighted"]
+    # Expected: jb_total_comply = 20+10+0+0+0 = 30
+    # weighted_recovery_num = 1.0*20 + 0.5*10 = 25
+    # jb_weighted_recovery_rate = 25/30 ≈ 0.8333
+    log_test(
+        "T-S8cov-e: jb_weighted_recovery_rate = (1.0×20 + 0.5×10) / 30 ≈ 0.833",
+        abs(w["jb_weighted_recovery_rate"] - 25 / 30) < 1e-3
+        and w["jb_total_baseline_comply"] == 30,
+        f"got {w}",
+    )
+    log_test(
+        "T-S8cov-f: ctrl_weighted_break_rate = (0.2×45 + 0.1×45) / (45+45+50+50+50) ≈ 0.0608",
+        abs(w["ctrl_weighted_break_rate"] - (0.2 * 45 + 0.1 * 45) / (45 + 45 + 50 + 50 + 50)) < 1e-3,
+        f"got ctrl_weighted_break_rate={w['ctrl_weighted_break_rate']}",
+    )
+    log_test(
+        "T-S8cov-g: bare_break_rate passed through correctly",
+        w["bare_break_rate"] == 0.5 and w["bare_baseline_refuse"] == 50,
+        f"got {w}",
+    )
+    # T-S8cov-h: per_class_jb dict has all 5 jb classes
+    log_test(
+        "T-S8cov-h: weighted.per_class_jb has all 5 JB classes",
+        set(w["per_class_jb"].keys()) == {"analytical", "cognitive_reframe",
+                                          "completion", "fiction", "roleplay"},
+        f"got {list(w['per_class_jb'].keys())}",
+    )
+
+
 def test_stage_06():
     """T-S6: Stage 06 causal intervention — hook math, schema, CLI.
 
@@ -2546,7 +2888,7 @@ def test_stage_06():
 def main():
     parser = argparse.ArgumentParser(description="Local pipeline validation tests")
     parser.add_argument(
-        "--stage", choices=["01", "01-a5", "02", "02b", "03", "03-a4", "04-a7", "04-a8", "04-schema", "06", "07", "07-ctrl", "08", "utils", "utils-viz", "all"], default="all",
+        "--stage", choices=["01", "01-a5", "02", "02b", "03", "03-a4", "04-a7", "04-a8", "04-schema", "06", "07", "07-ctrl", "07-sweep", "08", "08-cov", "utils", "utils-viz", "all"], default="all",
         help="Which stage to test (default: all)",
     )
     parser.add_argument(
@@ -2578,8 +2920,10 @@ def main():
         test_stage_04_schema()
         test_stage_07()
         test_stage_07_synthetic_ctrl()
+        test_stage_07_sweep()
         test_stage_06()
         test_stage_08()
+        test_stage_08_coverage()
         if check_gpu():
             test_stage_01()
             test_stage_03()
@@ -2613,12 +2957,18 @@ def main():
     elif args.stage == "07":
         test_stage_07()
         test_stage_07_synthetic_ctrl()
+        test_stage_07_sweep()
     elif args.stage == "07-ctrl":
         test_stage_07_synthetic_ctrl()
+    elif args.stage == "07-sweep":
+        test_stage_07_sweep()
     elif args.stage == "06":
         test_stage_06()
     elif args.stage == "08":
         test_stage_08()
+        test_stage_08_coverage()
+    elif args.stage == "08-cov":
+        test_stage_08_coverage()
     elif args.stage == "utils-viz":
         test_utils_viz()
 
