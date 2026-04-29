@@ -124,10 +124,19 @@ if [[ $USE_TMUX -eq 1 ]] && [[ -z "${TMUX:-}" ]]; then
     hft=$(printf '%q' "${HF_TOKEN:-}")
     ghpt=$(printf '%q' "${GHP_TOKEN:-}")
     hfh=$(printf '%q' "${HF_HOME:-}")
+    # Explicitly forward the venv + PATH into the tmux session's env so the
+    # session works even if a stale tmux server is already running with a
+    # different env than the launching shell. Without this, tmux's "global
+    # environment" is captured at server start and only refreshed on attach,
+    # which can cause `python3` to resolve to system Python missing pip-installed
+    # editable packages like circuit-tracer.
+    venv_root=$(printf '%q' "${VIRTUAL_ENV:-}")
+    path_prop=$(printf '%q' "$PATH")
+    pyhome=$(printf '%q' "${PYTHONHOME:-}")
     quoted_inner=$(printf '%q ' "${inner_args[@]}")
 
     tmux new-session -d -s "$TMUX_SESSION" \
-        "export HF_TOKEN=$hft GHP_TOKEN=$ghpt HF_HOME=$hfh; cd $(printf '%q' "$REPO_ROOT") && exec bash $(printf '%q' "$SCRIPT_PATH") $quoted_inner"
+        "export PATH=$path_prop VIRTUAL_ENV=$venv_root PYTHONHOME=$pyhome HF_TOKEN=$hft GHP_TOKEN=$ghpt HF_HOME=$hfh; cd $(printf '%q' "$REPO_ROOT") && exec bash $(printf '%q' "$SCRIPT_PATH") $quoted_inner"
 
     echo "============================================================"
     echo "P7 pipeline launched in tmux session '$TMUX_SESSION'"
@@ -220,6 +229,8 @@ echo "  HF push run meta:       $([[ $PUSH_RUN_META -eq 1 ]] && echo yes || echo
 echo "  Git push results:       $([[ $GIT_PUSH_RESULTS -eq 1 ]] && echo yes || echo no)"
 [[ -n "${HF_TOKEN:-}" ]] && echo "  HF_TOKEN env:           set" || echo "  HF_TOKEN env:           NOT SET (will use ~/.cache/huggingface/token if logged in)"
 [[ -n "${GHP_TOKEN:-}" ]] && echo "  GHP_TOKEN env:          set" || echo "  GHP_TOKEN env:          NOT SET"
+[[ -n "${VIRTUAL_ENV:-}" ]] && echo "  VIRTUAL_ENV:            $VIRTUAL_ENV" || echo "  VIRTUAL_ENV:            NOT SET (relying on PATH for python3)"
+echo "  python3 resolves to:    $(command -v python3 2>/dev/null || echo NOT FOUND)"
 echo "  Repo root:              $REPO_ROOT"
 echo "  Branch:                 $BRANCH"
 echo "  Log:                    $LOG"
