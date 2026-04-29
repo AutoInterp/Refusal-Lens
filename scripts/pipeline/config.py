@@ -19,6 +19,15 @@ D_MODEL = 2560
 # the layer we can actually intervene on.
 MEASUREMENT_LAYER = 15
 MEASUREMENT_POSITION = -2 # "model" token in Gemma-3 chat template
+# Where in the block circuit-tracer injects the cotangent. The transcoder's
+# feature_input_hook is "mlp.hook_in" (post-RMSNorm pre-MLP), but the refusal
+# direction is extracted from the residual stream (Stage 01 reads
+# hidden_states[L+1]). Without overriding, the cotangent gets applied at
+# pre_feedforward_layernorm.output[L] — a different basis ~1700x off in
+# magnitude. "hook_resid_post" injects the cotangent at the residual stream
+# (= hidden_states[L+1]), matching where r̂ was extracted. See
+# MENTEE_NOTE_three_bugs.md (Bug 3).
+MEASUREMENT_HOOK = "hook_resid_post"
 CAUSAL_LAYER = 15         # Best causal effectiveness (Tejas Script 16)
 
 # ============================================================

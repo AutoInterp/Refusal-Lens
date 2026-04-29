@@ -1,14 +1,24 @@
 """
 Stage 03: Verify Attribution Gap
 ================================
-Validates that CLT attribution sums correspond to the MLP contribution
-of the residual-stream dot product with the refusal direction.
+Validates that the circuit-tracer attribution-graph target row sum
+reconstructs the residual-stream projection onto the refusal direction.
+
+By circuit-tracer's methodology (Lindsey et al., "Circuit Tracing"), in the
+local replacement model the sum of edges from sources (transcoder features +
+errors + token embeddings) to a target equals the target's value modulo a
+small linearization baseline:  Σ edges + baseline = direct_dot.
+
+CRITICAL: the comparison must be made at the *exact* residual-stream point
+where circuit-tracer measures (see MENTEE_NOTE_three_bugs.md). The point is
+controlled by Stage 02's --measurement-hook:
+  * hook_resid_post (current default): residual stream, == hidden_states[L+1]
+  * mlp.hook_in / default (legacy): output of pre_feedforward_layernorm[L]
 
 Computes:
-1. Full dot product <x^(L32, pos-2), r_hat> for each prompt
-2. Per-layer decomposition: (resid[L+1] - resid[L]) @ r_hat
-3. MLP vs attention breakdown
-4. Comparison with saved attribution net values
+1. Direct dot at the matching residual point for each prompt
+2. Per-layer decomposition: (resid[L+1] - resid[L]) @ r_hat (diagnostic only)
+3. attr_to_dot_ratio (target: ≈ 1.0 modulo baseline)
 
 Inputs:  02_attribution/attribution_results.json, 01_direction/refusal_direction.pt
 Outputs: 03_verification/verification_results.json, per_layer_decomposition.json
@@ -120,33 +130,106 @@ def _load_mode_directions(
     return out
 
 
-def _compute_target_scalar(
-    model, tokenizer, r_hats: dict[int, torch.Tensor], prompt: str,
-    target_layer: int, positions: list[int],
-) -> tuple[float, dict[int, float]]:
-    """Compute sum_{p in positions} <r_hats[p], h_{target_layer}[p]> for one prompt.
-    Returns (total_scalar, per_position_dict).
+def _resolve_layer_module(model, layer_idx: int):
+    """Return the transformer block at `layer_idx`, regardless of model class.
+
+    Gemma-3 wraps layers under `model.model.language_model.layers[L]`
+    (Gemma3ForConditionalGeneration) or `model.model.layers[L]`
+    (Gemma3ForCausalLM); guard for both.
+    """
+    if hasattr(model, "model") and hasattr(model.model, "language_model"):
+        return model.model.language_model.layers[layer_idx]
+    if hasattr(model, "model") and hasattr(model.model, "layers"):
+        return model.model.layers[layer_idx]
+    if hasattr(model, "language_model"):
+        return model.language_model.layers[layer_idx]
+    raise RuntimeError(
+        f"Cannot resolve layer module for {type(model).__name__}"
+    )
+
+
+def _capture_residual(
+    model, tokenizer, prompt: str, target_layer: int, measurement_hook: str,
+) -> tuple[torch.Tensor, int, int]:
+    """Run a forward pass and capture the residual at the *exact* point that
+    Stage 02 measured at, given `measurement_hook`.
+
+    Returns (act_tensor[seq_len, d_model], seq_len, total_tokens).
+
+    Hooks supported:
+      * "hook_resid_post" / "" / "default" / None — residual stream after the
+        block. Equivalent to HF's `hidden_states[L+1]`.
+      * "mlp.hook_in" / "pre_feedforward_layernorm" — post-RMSNorm pre-MLP.
+        Read via forward hook on `pre_feedforward_layernorm`.
     """
     formatted = format_prompt(tokenizer, prompt)
     inputs = tokenizer(formatted, return_tensors="pt").to(model.device)
-    with torch.no_grad():
-        out = model(**inputs, output_hidden_states=True)
-
     seq_len = int(inputs["attention_mask"].sum().item())
     total_tokens = inputs["input_ids"].shape[1]
+
+    # Dispatch on hook name. "hook_resid_post" → residual stream
+    # (= hidden_states[L+1]). Anything else (legacy default, mlp.hook_in,
+    # empty/None) → forward-hook on pre_feedforward_layernorm, which is
+    # circuit-tracer's actual default for transcoders configured with
+    # feature_input_hook="mlp.hook_in".
+    hk = (measurement_hook or "").lower()
+    use_resid_post = hk in {"hook_resid_post", "blocks.{l}.hook_resid_post"}
+
+    if use_resid_post:
+        with torch.no_grad():
+            out = model(**inputs, output_hidden_states=True)
+        # hidden_states[L+1] is the residual *after* layer L.
+        act = out.hidden_states[target_layer + 1][0].to(torch.float32)
+        del out
+    else:
+        # Legacy / default circuit-tracer measurement point (mlp.hook_in maps
+        # to pre_feedforward_layernorm.output in Gemma-3).
+        captured: dict[str, torch.Tensor] = {}
+
+        def hook_fn(_module, _inputs, output):
+            captured["act"] = output.detach()
+
+        layer_mod = _resolve_layer_module(model, target_layer)
+        if not hasattr(layer_mod, "pre_feedforward_layernorm"):
+            raise RuntimeError(
+                f"Layer {target_layer} on {type(model).__name__} has no "
+                f"pre_feedforward_layernorm — cannot match measurement hook "
+                f"{measurement_hook!r}."
+            )
+        handle = layer_mod.pre_feedforward_layernorm.register_forward_hook(hook_fn)
+        try:
+            with torch.no_grad():
+                model(**inputs)
+        finally:
+            handle.remove()
+        act = captured["act"][0].to(torch.float32)
+
+    return act, seq_len, total_tokens
+
+
+def _compute_target_scalar(
+    model, tokenizer, r_hats: dict[int, torch.Tensor], prompt: str,
+    target_layer: int, positions: list[int], measurement_hook: str = "hook_resid_post",
+) -> tuple[float, dict[int, float]]:
+    """Compute sum_{p in positions} <r_hats[p], h_{target_layer}[p]> for one
+    prompt. The residual is captured at the point matching `measurement_hook`
+    (which mirrors Stage 02's `--measurement-hook` choice). Returns
+    (total_scalar, per_position_dict).
+    """
+    act, seq_len, total_tokens = _capture_residual(
+        model, tokenizer, prompt, target_layer, measurement_hook,
+    )
     per_pos = {}
     total = 0.0
     for pos in positions:
         if abs(pos) > seq_len:
             continue  # out of range for this prompt
         idx = total_tokens + pos  # pos is negative
-        act = out.hidden_states[target_layer + 1][0, idx, :].to(torch.float32)
+        a = act[idx, :]
         r_hat_dev = r_hats[pos].to(model.device)
-        dot = float((act @ r_hat_dev).item())
+        dot = float((a @ r_hat_dev).item())
         per_pos[pos] = dot
         total += dot
-
-    del out
     return total, per_pos
 
 def aggregate_and_plot(decomposition_results: list, verification_summary: dict, out_dir: Path) -> dict:
@@ -266,6 +349,9 @@ def main():
         sys.exit(1)
     raw = load_json(attr_path)
     results_list = raw if isinstance(raw, list) else raw["results"]
+    attr_metadata = raw.get("metadata", {}) if isinstance(raw, dict) else {}
+    measurement_hook = attr_metadata.get("measurement_hook") or "default"
+    print(f"  Stage 02 measurement_hook: {measurement_hook!r}")
 
     # Extract bare prompts and their saved net attributions for the selected graph mode.
     prompts_and_nets = []
@@ -310,6 +396,7 @@ def main():
 
         total_dot, per_pos_dots = _compute_target_scalar(
             model, tokenizer, r_hats, prompt, target_layer, positions,
+            measurement_hook=measurement_hook,
         )
         ratio = attr_net / total_dot if total_dot != 0 else float("nan")
 
@@ -320,7 +407,7 @@ def main():
             "total_dot": total_dot,
             "attr_net": attr_net,
             "difference": total_dot - attr_net,
-            "mlp_ratio": ratio,
+            "attr_to_dot_ratio": ratio,
         })
 
         print(
@@ -335,36 +422,49 @@ def main():
     # Summary statistics
     dots = np.array([r["total_dot"] for r in verification_results])
     attrs = np.array([r["attr_net"] for r in verification_results])
-    ratios = np.array([r["mlp_ratio"] for r in verification_results])
+    ratios = np.array([r["attr_to_dot_ratio"] for r in verification_results])
+    diffs = dots - attrs  # baseline ≈ direct_dot − Σ edges (Lindsey identity)
 
     summary = {
         "n_prompts": len(verification_results),
         "graph_mode": mode,
         "target_layer": target_layer,
         "target_positions": positions,
+        "measurement_hook": measurement_hook,
         "dot_product_mean": float(dots.mean()),
         "dot_product_std": float(dots.std()),
         "attr_net_mean": float(attrs.mean()),
         "attr_net_std": float(attrs.std()),
-        "mlp_ratio_mean": float(ratios.mean()),
-        "mlp_ratio_std": float(ratios.std()),
-        "mlp_pct_mean": float(ratios.mean() * 100),
-        "attention_pct_mean": float((1 - ratios.mean()) * 100),
+        "attr_to_dot_ratio_mean": float(ratios.mean()),
+        "attr_to_dot_ratio_std": float(ratios.std()),
+        # Linearization baseline: direct_dot - Σ edges. For hook_resid_post at
+        # intermediate layers this is non-zero (accumulated transcoder b_dec
+        # propagating through frozen-attention layers); see
+        # MENTEE_NOTE_three_bugs.md. It's a constant offset; relative feature
+        # ranking and cross-class deltas are unaffected.
+        "baseline_offset_mean": float(diffs.mean()),
+        "baseline_offset_std": float(diffs.std()),
         # Legacy key name (kept for downstream tools that read it)
         "measurement_layer": target_layer,
         "measurement_position": positions[0] if len(positions) == 1 else None,
     }
 
     print(f"\n{'='*60}")
-    print(f"SUMMARY: Attribution Gap Analysis ({len(verification_results)} prompts)")
+    print(f"SUMMARY: Attribution-vs-direct-dot ({len(verification_results)} prompts)")
+    print(f"  measurement_hook = {measurement_hook!r}")
     print(f"{'='*60}")
-    print(f"  Full dot product <x, r_hat>:  {summary['dot_product_mean']:>10.2f} ± {summary['dot_product_std']:.2f}")
-    print(f"  MLP attribution sum:          {summary['attr_net_mean']:>10.2f} ± {summary['attr_net_std']:.2f}")
-    print(f"  MLP ratio:                    {summary['mlp_pct_mean']:>10.2f}% ± {summary['mlp_ratio_std']*100:.2f}%")
-    print(f"  Attention + embedding:        {summary['attention_pct_mean']:>10.2f}%")
-    print(f"\n  Interpretation: Transcoders decompose {summary['mlp_pct_mean']:.1f}% of")
-    print(f"  the refusal signal. The remaining {summary['attention_pct_mean']:.1f}% is carried")
-    print(f"  by attention heads and token embeddings.")
+    print(f"  direct_dot  <h, r̂>:                  {summary['dot_product_mean']:>12.2f} ± {summary['dot_product_std']:.2f}")
+    print(f"  attribution Σ edges:                 {summary['attr_net_mean']:>12.2f} ± {summary['attr_net_std']:.2f}")
+    print(f"  baseline   (= direct_dot − Σ edges): {summary['baseline_offset_mean']:>12.2f} ± {summary['baseline_offset_std']:.2f}")
+    print(f"  attr/dot ratio (informational):      {summary['attr_to_dot_ratio_mean']:>12.4f}")
+    if measurement_hook == "hook_resid_post":
+        print(f"\n  At hook_resid_post the baseline is the genuine linearization")
+        print(f"  offset. Σ edges + baseline ≈ direct_dot is the correctness check;")
+        print(f"  per-prompt difference (above) should be ~constant across prompts.")
+    else:
+        print(f"\n  measurement_hook={measurement_hook!r} (legacy / pre-MLP path).")
+        print(f"  attr/dot ratio reflects MLP-only fraction at post-RMSNorm point;")
+        print(f"  comparable across prompts only when ratio is bounded.")
 
     # ----------------------------------------------------------
     # CHECK 2: Per-layer decomposition (subset of prompts)

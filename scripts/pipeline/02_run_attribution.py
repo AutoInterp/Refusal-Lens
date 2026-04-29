@@ -114,6 +114,13 @@ def parse_args():
         "--dtype", choices=["float32", "bfloat16", "float16"], default="float32",
         help="Model dtype. Use bfloat16/float16 on 24 GB cards to avoid OOM.",
     )
+    parser.add_argument(
+        "--measurement-hook", type=str, default=config.MEASUREMENT_HOOK,
+        help="TL hook where the cotangent is injected (default: hook_resid_post). "
+             "Must match where Stage 01 extracted r — see MENTEE_NOTE_three_bugs.md "
+             "(Bug 3). Pass empty string to use circuit-tracer's default "
+             "(pre_feedforward_layernorm.output, post-RMSNorm pre-MLP).",
+    )
     return parser.parse_args()
 
 
@@ -610,7 +617,7 @@ def main():
                 )
 
                 try:
-                    g = attribute(
+                    attribute_kwargs = dict(
                         prompt=formatted,
                         model=model,
                         attribution_targets=targets,
@@ -620,6 +627,9 @@ def main():
                         measurement_position=measurement_positions_arg,
                         verbose=False,
                     )
+                    if args.measurement_hook:
+                        attribute_kwargs["measurement_hook"] = args.measurement_hook
+                    g = attribute(**attribute_kwargs)
                     summary = graph_summary(g)
                     features = extract_all_features(g)
                     summary["n_active"] = len(features)
@@ -698,6 +708,7 @@ def main():
                 ],
                 "metadata": {
                     "measurement_layer": args.target_layer,
+                    "measurement_hook": args.measurement_hook or "default",
                     "modes": {
                         name: cfg["positions"] for name, cfg in modes.items()
                     },
@@ -717,6 +728,7 @@ def main():
             "model": config.MODEL_NAME,
             "transcoder": config.TRANSCODER_PATH,
             "measurement_layer": args.target_layer,
+            "measurement_hook": args.measurement_hook or "default",
             "modes": {name: cfg["positions"] for name, cfg in modes.items()},
             "dataset": "controlled" if not args.legacy_dataset else "legacy",
             "elapsed_minutes": round(elapsed / 60, 1),
