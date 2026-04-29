@@ -80,7 +80,13 @@ def parse_args():
         description="Stage 08a: subcircuit feature ablation via ReplacementModel",
     )
     p.add_argument("--run-dir", type=Path, required=True,
-                   help="Run directory containing 07_subcircuits/subcircuits.json")
+                   help="Run directory containing 07_subcircuits/<subcircuits-file>")
+    p.add_argument("--subcircuits-file", type=str, default="subcircuits.json",
+                   help=("Filename in 07_subcircuits/ to load subcircuit "
+                         "definitions from. Use one of: subcircuits.json "
+                         "(legacy / corpus-aggregated, default), "
+                         "subcircuits_k50_f50.json, subcircuits_k20_f50.json, "
+                         "subcircuits_k100_f20.json (per-prompt sweeps)."))
     p.add_argument("--subcircuits", type=str, default=None,
                    help=("Comma-separated subcircuit names to ablate "
                          "(default: config.STAGE_08_DEFAULT_SUBCIRCUITS)"))
@@ -107,6 +113,20 @@ def parse_args():
     p.add_argument("--checkpoint-every", type=int, default=5)
     p.add_argument("--skip-baseline", action="store_true",
                    help="Skip baseline generation; read from 06_causal/causal_results.json")
+    p.add_argument(
+        "--low-coverage-threshold", type=float, default=0.30,
+        help="If <threshold of an ablation's features are in this prompt's "
+             "top-K attribution (Stage 02 top_features), flag the ablation "
+             "as 'low_coverage' for this prompt — explains why generations "
+             "may not change behavior even when they're being intervened on.",
+    )
+    p.add_argument(
+        "--ablate-with-mean", action="store_true",
+        help="(Future work — not yet supported) Ablate features to their "
+             "dataset-mean activation rather than 0. Currently raises if set; "
+             "implementation requires a pre-pass that collects mean "
+             "activations per feature.",
+    )
     return p.parse_args()
 
 
@@ -118,16 +138,19 @@ def resolve_ablation_sets(args, run_dir: Path) -> dict[str, list[tuple[int, int]
     """Build the mapping {ablation_name → [(layer, feat_idx), ...]} for this run.
 
     Two sources that can be combined:
-      - --subcircuits: named subcircuit sets from Stage 07
+      - --subcircuits: named subcircuit sets from Stage 07's --subcircuits-file
       - --feature-file: a single cart.json (produces one ablation condition)
     """
     out: dict[str, list[tuple[int, int]]] = {}
-    sub_json = run_dir / "07_subcircuits" / "subcircuits.json"
+    sub_json = run_dir / "07_subcircuits" / args.subcircuits_file
 
     names = args.subcircuits.split(",") if args.subcircuits else list(config.STAGE_08_DEFAULT_SUBCIRCUITS)
     if args.subcircuits != "" and not args.feature_file or args.subcircuits:
         if not sub_json.exists():
-            raise FileNotFoundError(f"{sub_json} missing — run Stage 07 first or use --feature-file only.")
+            raise FileNotFoundError(
+                f"{sub_json} missing — run Stage 07 first (with the matching "
+                f"sweep config) or use --feature-file only."
+            )
         for name in names:
             features = load_subcircuit_features(sub_json, [name])
             if args.layer is not None:
@@ -144,6 +167,72 @@ def resolve_ablation_sets(args, run_dir: Path) -> dict[str, list[tuple[int, int]
     if not out:
         raise ValueError("No ablation sets resolved. Pass --subcircuits and/or --feature-file.")
     return out
+
+
+# --------------------------------------------------------------------
+# Per-prompt feature index — for the low-coverage diagnostic
+# --------------------------------------------------------------------
+
+def build_per_prompt_top_index(
+    run_dir: Path, mode: str = "multi",
+) -> dict[int, dict[str, dict[str, float]]]:
+    """Read Stage 02 attribution and return per-prompt top features per
+    condition. Returns ``{prompt_id: {cond_name: {feature_key: |attr|}}}``.
+
+    Used by `compute_coverage` to assess what fraction of an ablation's
+    features actually fired strongly in a specific (prompt, condition).
+    """
+    attr_path = run_dir / "02_attribution" / "attribution_results.json"
+    if not attr_path.exists():
+        return {}
+    raw = load_json(attr_path)
+    rows = raw["results"] if isinstance(raw, dict) else raw
+    out: dict[int, dict[str, dict[str, float]]] = {}
+    for row in rows:
+        pid = row.get("prompt_id")
+        if pid is None:
+            continue
+        per_cond: dict[str, dict[str, float]] = {}
+        conds = row.get("conditions", {}) or {}
+        for cond_name, cond in conds.items():
+            if not isinstance(cond, dict) or "error" in cond:
+                continue
+            graph = cond.get("graphs", {}).get(mode)
+            if not isinstance(graph, dict) or "error" in graph:
+                continue
+            top = graph.get("top_features") or graph.get("top50_features") or {}
+            per_cond[cond_name] = {k: abs(float(v)) for k, v in top.items()}
+        out[pid] = per_cond
+    return out
+
+
+def compute_coverage(
+    feature_keys: list[str],
+    prompt_top: dict[str, dict[str, float]],
+    cond: str,
+) -> dict:
+    """Return the per-(prompt, condition) coverage diagnostic for an ablation.
+
+    Reports:
+      - n_in_top_k:           how many ablation features are in this prompt's top-K
+      - frac_in_top_k:        n_in_top_k / len(feature_keys)
+      - sum_abs_attribution:  Σ |attribution| of those features for this prompt
+      - low_coverage:         True if frac_in_top_k < args.low_coverage_threshold
+                              (the caller decides; we don't read args here, just
+                              return the raw fraction for the caller to threshold)
+    """
+    cond_top = prompt_top.get(cond, {})
+    in_top = [fk for fk in feature_keys if fk in cond_top]
+    n_in = len(in_top)
+    n_total = len(feature_keys) if feature_keys else 1
+    return {
+        "n_features": len(feature_keys),
+        "n_in_top_k": n_in,
+        "frac_in_top_k": round(n_in / n_total, 4),
+        "sum_abs_attribution": round(
+            sum(cond_top.get(fk, 0.0) for fk in feature_keys), 6,
+        ),
+    }
 
 
 # --------------------------------------------------------------------
@@ -266,6 +355,7 @@ def try_reuse_stage06_baselines(run_dir: Path) -> dict | None:
 def process_prompt(
     rm, tokenizer, row, ablation_sets, conditions, positions_modes,
     max_new_tokens, reused_baselines,
+    per_prompt_top: dict | None = None, low_coverage_threshold: float = 0.30,
 ):
     """Run baselines + ablation conditions for one prompt. Returns a result row.
 
@@ -273,6 +363,10 @@ def process_prompt(
     an ablation set may span multiple source layers, we build one combined
     intervention list per (ablation_name, positions_mode) and run a single
     generation per condition.
+
+    `per_prompt_top` (optional): output of `build_per_prompt_top_index`. If
+    provided, attaches per-(ablation, condition) coverage diagnostics for this
+    prompt (n_in_top_k, frac_in_top_k, sum_abs_attribution, low_coverage flag).
     """
     result = {
         "prompt_id": row["id"],
@@ -293,11 +387,14 @@ def process_prompt(
         resp = generate_baseline_rm(rm, tokenizer, formatted, max_new_tokens)
         result["baseline"][cond] = classify_record(resp)
 
+    prompt_top = (per_prompt_top or {}).get(row["id"], {})
+
     # ---- Ablation conditions ----
     for abl_name, features in ablation_sets.items():
         if not features:
             # Skip empty ablation sets (e.g. layer-filtered to nothing)
             continue
+        feat_keys = [f"L{L}:F{F}" for (L, F) in features]
         result["ablations"][abl_name] = {"n_features": len(features)}
         for pos_mode in positions_modes:
             per_cond: dict = {}
@@ -310,9 +407,139 @@ def process_prompt(
                 per_cond[cond]["changed_vs_baseline"] = (
                     per_cond[cond]["cls"] != result["baseline"][cond]["cls"]
                 )
+                # Per-prompt coverage diagnostic — explains why a 0% recovery
+                # rate happens (low coverage = ablation features weren't
+                # firing strongly on this prompt to begin with).
+                if prompt_top:
+                    cov = compute_coverage(feat_keys, prompt_top, cond)
+                    cov["low_coverage"] = (
+                        cov["frac_in_top_k"] < low_coverage_threshold
+                    )
+                    per_cond[cond]["coverage"] = cov
             result["ablations"][abl_name][pos_mode] = per_cond
 
     return result
+
+
+def aggregate_weighted_summary(summary: dict) -> dict:
+    """Add comply-weighted aggregates across all 5 JB classes (NeurIPS rigor).
+
+    For each (ablation, positions_mode), reports:
+      - weighted_recovery_rate: Σ(per-class recovery × n_baseline_comply)
+                                / Σ(n_baseline_comply across jb_*)
+        Reflects the model's behavior on JB-success cases proportional to
+        how often each class succeeded.
+      - weighted_break_rate:    same construction over bare + ctrl_*
+                                using n_baseline_refuse as the weight.
+      - per_class_jb:           {cls: {recovery_rate, comply_baseline,
+                                       low_coverage_frac (if avail)}}
+
+    Adds a `weighted` block to each `summary['per_ablation'][abl]['positions'][mode]`.
+    Does not mutate per-class entries.
+    """
+    for abl_name, per_abl in summary.get("per_ablation", {}).items():
+        for pos_mode, per_cond in per_abl.get("positions", {}).items():
+            jb_total_comply = 0
+            jb_weighted_recovery_num = 0.0
+            per_cls: dict = {}
+            for cls in JB_CLASSES:
+                cond = f"jb_{cls}"
+                rec = per_cond.get(cond)
+                if not rec:
+                    continue
+                cb = rec.get("n_baseline_comply", 0)
+                rate = rec.get("recovery_rate", 0.0)
+                jb_total_comply += cb
+                jb_weighted_recovery_num += rate * cb
+                per_cls[cls] = {
+                    "recovery_rate": rate,
+                    "n_baseline_comply": cb,
+                    "n_recovered_refusal": rec.get("n_recovered_refusal", 0),
+                }
+
+            ctrl_total_refuse = 0
+            ctrl_weighted_break_num = 0.0
+            for cls in JB_CLASSES:
+                cond = f"ctrl_{cls}"
+                rec = per_cond.get(cond)
+                if not rec:
+                    continue
+                rb = rec.get("n_baseline_refuse", 0)
+                rate = rec.get("break_rate", 0.0)
+                ctrl_total_refuse += rb
+                ctrl_weighted_break_num += rate * rb
+            bare_rec = per_cond.get("bare", {})
+            bare_rb = bare_rec.get("n_baseline_refuse", 0)
+            bare_break = bare_rec.get("break_rate", 0.0)
+
+            per_cond["weighted"] = {
+                "jb_weighted_recovery_rate": (
+                    round(jb_weighted_recovery_num / jb_total_comply, 4)
+                    if jb_total_comply else 0.0
+                ),
+                "jb_total_baseline_comply": jb_total_comply,
+                "ctrl_weighted_break_rate": (
+                    round(ctrl_weighted_break_num / ctrl_total_refuse, 4)
+                    if ctrl_total_refuse else 0.0
+                ),
+                "ctrl_total_baseline_refuse": ctrl_total_refuse,
+                "bare_break_rate": bare_break,
+                "bare_baseline_refuse": bare_rb,
+                "per_class_jb": per_cls,
+            }
+    return summary
+
+
+def aggregate_coverage_summary(results: list[dict]) -> dict:
+    """Aggregate per-prompt coverage diagnostics across results.
+
+    Returns ``{ablation_name: {positions_mode: {condition:
+        {mean_frac_in_top_k, mean_sum_abs_attribution, n_low_coverage}}}}``.
+
+    Used to flag ablations where most prompts had low coverage — explains
+    null recovery rates (the features weren't firing strongly on those
+    prompts to begin with).
+    """
+    out: dict = {}
+    for r in results:
+        for abl_name, per_pos in r.get("ablations", {}).items():
+            for pos_mode, per_cond in per_pos.items():
+                if pos_mode == "n_features":
+                    continue
+                if not isinstance(per_cond, dict):
+                    continue
+                for cond, rec in per_cond.items():
+                    cov = rec.get("coverage")
+                    if cov is None:
+                        continue
+                    bucket = (
+                        out.setdefault(abl_name, {})
+                           .setdefault(pos_mode, {})
+                           .setdefault(cond, {
+                               "_frac_sum": 0.0, "_attr_sum": 0.0,
+                               "_n_low": 0, "_n": 0,
+                           })
+                    )
+                    bucket["_frac_sum"] += cov.get("frac_in_top_k", 0.0)
+                    bucket["_attr_sum"] += cov.get("sum_abs_attribution", 0.0)
+                    bucket["_n_low"] += int(bool(cov.get("low_coverage")))
+                    bucket["_n"] += 1
+    # Finalize: emit means + counts, drop the underscore tallies.
+    final: dict = {}
+    for abl, per_pos in out.items():
+        final[abl] = {}
+        for pos_mode, per_cond in per_pos.items():
+            final[abl][pos_mode] = {}
+            for cond, b in per_cond.items():
+                n = max(1, b["_n"])
+                final[abl][pos_mode][cond] = {
+                    "n_prompts": b["_n"],
+                    "mean_frac_in_top_k": round(b["_frac_sum"] / n, 4),
+                    "mean_sum_abs_attribution": round(b["_attr_sum"] / n, 6),
+                    "n_low_coverage_prompts": b["_n_low"],
+                    "frac_low_coverage": round(b["_n_low"] / n, 4),
+                }
+    return final
 
 
 # --------------------------------------------------------------------
@@ -611,30 +838,37 @@ def plot_positions_comparison(summary, out_path: Path) -> None:
 
 
 def write_summary_md(summary, dissociation, positions_modes, elapsed_min: float,
-                     out_path: Path, activation_audit: dict | None = None) -> None:
+                     out_path: Path, activation_audit: dict | None = None,
+                     subcircuits_file: str = "subcircuits.json",
+                     low_coverage_threshold: float = 0.30,
+                     coverage_summary: dict | None = None) -> None:
     lines = [
         "# Stage 08 Subcircuit Ablation — Summary",
         "",
         f"**Method**: zero-ablation of transcoder features via "
         "`ReplacementModel.feature_intervention_generate`.",
+        f"**Subcircuits source**: `{subcircuits_file}`.",
         f"**Elapsed**: {elapsed_min:.1f} min.",
         f"**Positions modes**: {', '.join(positions_modes)}.",
+        f"**Low-coverage threshold**: {low_coverage_threshold:.2f} "
+        "(prompts where <threshold of ablation features are in top-K are flagged).",
         "",
-        "## How to read these numbers (load-bearing context)",
+        "## How to read these numbers",
         "",
-        "- The transcoder only decomposes the MLP path. Stage 03 found that **MLP "
-        "carries ~0.02% of the refusal signal at L15 measurement** (the rest is "
-        "attention + embeddings). So `universal_refusal_core` is best read as a "
-        "**ceiling probe on MLP-only ablation**, not a positive control: bare "
-        "refusal can stay intact even with all 116 universal MLP features ablated, "
-        "because attention-mediated refusal remains.",
-        "- `recovery_rate` = baseline COMPLY → ablated REFUSE. `break_rate` = "
-        "baseline REFUSE → ablated COMPLY.",
-        "- The Stage 07 ctrl-aware rules (`ctrl_shared_refusal`, "
-        "`jb_*_specific_vs_ctrl`) are **corpus-aggregated top-50 set logic**. A "
-        "feature can fire on individual prompts during JB inference even when it "
-        "isn't in the JB's corpus top-50. See the activation audit section for "
-        "per-prompt hit rates and attribution magnitudes.",
+        "- `recovery_rate` = baseline COMPLY → ablated REFUSE. "
+        "`break_rate` = baseline REFUSE → ablated COMPLY.",
+        "- **Per-class** rows show the unweighted rate for each condition.",
+        "- **Comply-weighted JB recovery** (under each position mode) is "
+        "Σ(per-class rate × per-class baseline_comply) / Σ(baseline_comply). "
+        "Reflects the model's behavior on actual JB-success cases without "
+        "dropping rare classes — the headline NeurIPS rigor metric.",
+        "- The **per-prompt coverage** table flags prompts where the ablation "
+        "features weren't in that prompt's top-K attribution. Low coverage on "
+        "a class explains null recovery rates: the features couldn't be doing "
+        "much because they weren't strongly active to begin with.",
+        f"- For `{subcircuits_file}` runs (per-prompt sweep), the subcircuits "
+        "are constructed from features in top-K for ≥F fraction of prompts in "
+        "each condition; legacy `subcircuits.json` uses corpus union.",
         "",
         "## Per-ablation results",
         "",
@@ -652,11 +886,28 @@ def write_summary_md(summary, dissociation, positions_modes, elapsed_min: float,
                 "|---|---|---|---|---|---|",
             ]
             for cond, r in per_cond.items():
+                if cond == "weighted":
+                    continue  # rendered separately below
                 lines.append(
                     f"| `{cond}` | {r['n_baseline_refuse']} | {r['n_baseline_comply']} | "
                     f"{r['n_ablated_refuse']} | {r['recovery_rate']*100:.1f}% | "
                     f"{r['break_rate']*100:.1f}% |"
                 )
+            w = per_cond.get("weighted")
+            if w:
+                lines += [
+                    "",
+                    "**Comply-weighted aggregates:**",
+                    "",
+                    f"- JB recovery (weighted by baseline_comply across all 5 JB classes): "
+                    f"**{w['jb_weighted_recovery_rate']*100:.1f}%** "
+                    f"(n_jb_comply={w['jb_total_baseline_comply']})",
+                    f"- ctrl break (weighted by baseline_refuse across all 5 ctrl classes): "
+                    f"**{w['ctrl_weighted_break_rate']*100:.1f}%** "
+                    f"(n_ctrl_refuse={w['ctrl_total_baseline_refuse']})",
+                    f"- bare break: **{w['bare_break_rate']*100:.1f}%** "
+                    f"(n_bare_refuse={w['bare_baseline_refuse']})",
+                ]
             lines.append("")
     if dissociation:
         lines += [
@@ -677,6 +928,37 @@ def write_summary_md(summary, dissociation, positions_modes, elapsed_min: float,
                     f"{rec['dissociation_delta']*100:+.1f}pp |"
                 )
         lines.append("")
+
+    if coverage_summary:
+        lines += [
+            "## Per-prompt coverage diagnostic",
+            "",
+            "Mean fraction of ablation features in each prompt's top-K attribution, "
+            f"plus the count of low-coverage prompts (frac < {low_coverage_threshold:.2f}).",
+            "Low coverage means the features couldn't have a strong effect; null "
+            "recovery on those (ablation, condition) pairs is uninformative.",
+            "",
+        ]
+        for abl_name, per_pos in coverage_summary.items():
+            lines += [f"### `{abl_name}`", ""]
+            for pos_mode in positions_modes:
+                per_cond = per_pos.get(pos_mode, {})
+                if not per_cond:
+                    continue
+                lines += [
+                    f"**Positions: {pos_mode}**",
+                    "",
+                    "| Condition | Mean frac in top-K | Mean Σ\\|attr\\| | Low-coverage prompts |",
+                    "|---|---|---|---|",
+                ]
+                for cond, c in per_cond.items():
+                    lines.append(
+                        f"| `{cond}` | {c['mean_frac_in_top_k']*100:.1f}% | "
+                        f"{c['mean_sum_abs_attribution']:.4f} | "
+                        f"{c['n_low_coverage_prompts']}/{c['n_prompts']} "
+                        f"({c['frac_low_coverage']*100:.0f}%) |"
+                    )
+                lines.append("")
 
     if activation_audit and activation_audit.get("per_ablation"):
         lines += [
@@ -727,14 +1009,31 @@ def main():
     run_dir = args.run_dir.resolve()
     out_dir = get_stage_dir(run_dir, "08_ablation")
 
+    if args.ablate_with_mean:
+        raise NotImplementedError(
+            "--ablate-with-mean requires a separate pre-pass to collect "
+            "per-feature mean activations across the dataset. Not yet "
+            "implemented — use zero-ablation (omit this flag) for now."
+        )
+
     print("=" * 60)
     print("STAGE 08a: Subcircuit ablation via feature_intervention_generate")
+    print(f"  subcircuits-file: {args.subcircuits_file}")
+    print(f"  low-coverage threshold: {args.low_coverage_threshold:.2f}")
     print("=" * 60)
 
     # Resolve ablation sets
     ablation_sets = resolve_ablation_sets(args, run_dir)
     for name, feats in ablation_sets.items():
         print(f"  {name:45s} → {len(feats)} features")
+
+    # Per-prompt top-feature index for the coverage diagnostic
+    print("\n  Building per-prompt top-feature index from Stage 02...")
+    per_prompt_top = build_per_prompt_top_index(run_dir, mode="multi")
+    print(
+        f"    Indexed {len(per_prompt_top)} prompts "
+        f"({'per-prompt coverage diagnostic enabled' if per_prompt_top else 'no Stage 02 data — diagnostic disabled'})"
+    )
 
     # Positions modes
     positions_modes = (
@@ -798,6 +1097,8 @@ def main():
         result = process_prompt(
             rm, tokenizer, row, ablation_sets, conditions, positions_modes,
             args.max_new_tokens, reused,
+            per_prompt_top=per_prompt_top,
+            low_coverage_threshold=args.low_coverage_threshold,
         )
         results.append(result)
         p_elapsed = time.time() - t_p
@@ -820,6 +1121,11 @@ def main():
     summary = aggregate_summary(results, ablation_sets, positions_modes, conditions)
     dissociation = compute_dissociation_score(summary)
     summary["dissociation"] = dissociation
+    # Comply-weighted aggregates across all 5 JB classes (NeurIPS rigor)
+    summary = aggregate_weighted_summary(summary)
+    # Per-prompt coverage rollup (low-coverage diagnostic)
+    coverage_summary = aggregate_coverage_summary(results)
+    summary["coverage"] = coverage_summary
 
     # Phase 4 — activation audit from Stage 02 attribution (no GPU; CPU-only)
     print("\n[PHASE 4] Activation audit from Stage 02 attribution data...")
@@ -835,6 +1141,9 @@ def main():
         "metadata": {
             "n_prompts": len(results),
             "ablation_sets": {k: len(v) for k, v in ablation_sets.items()},
+            "subcircuits_file": args.subcircuits_file,
+            "low_coverage_threshold": args.low_coverage_threshold,
+            "ablate_with_mean": args.ablate_with_mean,
             "positions_modes": positions_modes,
             "conditions": conditions,
             "max_new_tokens": args.max_new_tokens,
@@ -861,22 +1170,30 @@ def main():
         print("    positions_comparison.png")
     write_summary_md(summary, dissociation, positions_modes,
                      total_elapsed / 60, out_dir / "ABLATION_SUMMARY.md",
-                     activation_audit=activation_audit)
+                     activation_audit=activation_audit,
+                     subcircuits_file=args.subcircuits_file,
+                     low_coverage_threshold=args.low_coverage_threshold,
+                     coverage_summary=coverage_summary)
     print("    ABLATION_SUMMARY.md")
 
     # Headline numbers
     print("\n" + "=" * 60)
     print("HEADLINE RESULTS")
     print("=" * 60)
+    print(f"  subcircuits source: {args.subcircuits_file}")
     for abl_name, per_abl in summary["per_ablation"].items():
         for pos_mode in positions_modes:
             per_cond = per_abl["positions"].get(pos_mode, {})
-            bare = per_cond.get("bare", {})
+            w = per_cond.get("weighted", {})
             jb_rates = [per_cond.get(f"jb_{c}", {}).get("recovery_rate", 0.0) for c in JB_CLASSES]
             jb_avg = sum(jb_rates) / len(jb_rates) if jb_rates else 0.0
-            print(f"  {abl_name:45s} [{pos_mode:7s}] "
-                  f"bare_break={bare.get('break_rate', 0.0)*100:5.1f}%  "
-                  f"jb_recovery_avg={jb_avg*100:5.1f}%")
+            print(
+                f"  {abl_name:45s} [{pos_mode:7s}] "
+                f"bare_break={w.get('bare_break_rate', 0.0)*100:5.1f}%  "
+                f"jb_recovery_avg={jb_avg*100:5.1f}%  "
+                f"jb_recovery_weighted={w.get('jb_weighted_recovery_rate', 0.0)*100:5.1f}%  "
+                f"(n_jb_comply={w.get('jb_total_baseline_comply', 0)})"
+            )
     if dissociation:
         print("\n  Class-specific dissociation (positive = class-selective):")
         for abl_name, per_mode in dissociation.items():
@@ -884,6 +1201,19 @@ def main():
                 print(f"    {abl_name:45s} [{pos_mode:7s}] "
                       f"target={rec['target_class']:20s} "
                       f"Δ={rec['dissociation_delta']*100:+.1f}pp")
+    if coverage_summary:
+        print("\n  Coverage diagnostic (mean fraction of ablation features in prompt's top-K):")
+        for abl_name in coverage_summary:
+            for pos_mode in positions_modes:
+                per_cond = coverage_summary[abl_name].get(pos_mode, {})
+                low_total = sum(c["n_low_coverage_prompts"] for c in per_cond.values())
+                n_total = sum(c["n_prompts"] for c in per_cond.values())
+                if n_total:
+                    print(
+                        f"    {abl_name:45s} [{pos_mode:7s}] "
+                        f"low_coverage_prompts={low_total}/{n_total} "
+                        f"({100*low_total/n_total:5.1f}%)"
+                    )
     print(f"\n  Elapsed: {total_elapsed / 60:.1f} min")
     print("DONE!")
 

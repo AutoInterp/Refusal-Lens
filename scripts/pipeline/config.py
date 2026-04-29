@@ -91,6 +91,11 @@ TARGET_POSITIONS_SINGLE = [-2]
 # ============================================================
 MAX_FEATURES = None       # None = all active features (no top-k filtering)
 BATCH_SIZE = 1            # For attribution (GPU memory dependent)
+# Per-(prompt × condition × mode), Stage 02 stores the top-N features by
+# |attribution|. Bumped from 50 → 100 to support per-prompt subcircuit
+# construction sweeps in Stage 07 (top_k ∈ {20, 50, 100}). Stage 04 still
+# reads `top50_features` (first 50 of `top_features`) for backward compat.
+SAVE_TOP_FEATURES = 100
 
 # ============================================================
 # Causal intervention (Arditi method)

@@ -1,11 +1,6 @@
 {
   "metadata": {
     "rule": "set logic over feature_labels.conditions_seen + feature_class_sets buckets + per_condition_top50 (ctrl-aware rules)",
-    "convergent_min_classes": 3,
-    "late_wave_range": [
-      24,
-      32
-    ],
     "jb_classes": [
       "analytical",
       "cognitive_reframe",
@@ -14,7 +9,14 @@
       "roleplay"
     ],
     "n_features_input": 1353,
-    "ctrl_available": true
+    "convergent_min_classes": 3,
+    "late_wave_range": [
+      24,
+      32
+    ],
+    "ctrl_available": true,
+    "config_name": "subcircuits",
+    "is_legacy": true
   },
   "subcircuits": {
     "universal_refusal_core": {
@@ -2997,30 +2999,12 @@
     }
   },
   "jb_vs_ctrl_contrast": {
-    "completion": {
-      "jb_top50": 174,
-      "ctrl_top50": 183,
-      "intersection": 142,
-      "jb_specific": 32,
-      "ctrl_specific": 41,
-      "jb_specific_frac": 0.184,
-      "overlap_frac": 0.816
-    },
     "analytical": {
       "jb_top50": 202,
       "ctrl_top50": 188,
       "intersection": 133,
       "jb_specific": 69,
       "ctrl_specific": 55,
-      "jb_specific_frac": 0.342,
-      "overlap_frac": 0.658
-    },
-    "fiction": {
-      "jb_top50": 152,
-      "ctrl_top50": 172,
-      "intersection": 100,
-      "jb_specific": 52,
-      "ctrl_specific": 72,
       "jb_specific_frac": 0.342,
       "overlap_frac": 0.658
     },
@@ -3041,6 +3025,24 @@
       "ctrl_specific": 50,
       "jb_specific_frac": 0.386,
       "overlap_frac": 0.614
+    },
+    "fiction": {
+      "jb_top50": 152,
+      "ctrl_top50": 172,
+      "intersection": 100,
+      "jb_specific": 52,
+      "ctrl_specific": 72,
+      "jb_specific_frac": 0.342,
+      "overlap_frac": 0.658
+    },
+    "completion": {
+      "jb_top50": 174,
+      "ctrl_top50": 183,
+      "intersection": 142,
+      "jb_specific": 32,
+      "ctrl_specific": 41,
+      "jb_specific_frac": 0.184,
+      "overlap_frac": 0.816
     }
   }
 }

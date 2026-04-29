@@ -648,9 +648,14 @@ def main():
                         features.items(),
                         key=lambda x: abs(x[1]["attribution"]),
                         reverse=True,
-                    )[:50]
-                    summary["top50_features"] = {
+                    )[: config.SAVE_TOP_FEATURES]
+                    summary["top_features"] = {
                         k: v["attribution"] for k, v in sorted_feats
+                    }
+                    # Backward-compat: keep top50_features (first 50 of top_features)
+                    # so Stage 04's existing readers don't break.
+                    summary["top50_features"] = {
+                        k: v["attribution"] for k, v in sorted_feats[:50]
                     }
 
                     cond_entry["graphs"][mode_name] = summary

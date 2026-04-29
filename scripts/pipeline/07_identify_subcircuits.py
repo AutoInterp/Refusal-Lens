@@ -55,13 +55,193 @@ CONVERGENT_MIN_CLASSES = 3
 LATE_WAVE_LO, LATE_WAVE_HI = 24, 32
 
 
+def _parse_sweep_specs(raw: str) -> list[tuple[int, float]]:
+    """Parse comma-separated K:F pairs (e.g. '50:0.5,20:0.5,100:0.2') into
+    [(K, F), ...]. Empty string → empty list (skip per-prompt sweep)."""
+    if not raw:
+        return []
+    out = []
+    for tok in raw.split(","):
+        tok = tok.strip()
+        if not tok:
+            continue
+        if ":" not in tok:
+            raise ValueError(f"Invalid sweep entry {tok!r} — expected 'K:F'")
+        k_s, f_s = tok.split(":", 1)
+        out.append((int(k_s), float(f_s)))
+    return out
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="Rule-based subcircuit identification")
     p.add_argument("--run-dir", type=Path, required=True)
     p.add_argument("--convergent-min", type=int, default=CONVERGENT_MIN_CLASSES)
     p.add_argument("--late-wave-start", type=int, default=LATE_WAVE_LO)
     p.add_argument("--late-wave-end", type=int, default=LATE_WAVE_HI)
+    # Per-prompt subcircuit construction sweep. The legacy corpus-aggregated
+    # path (subcircuits.json) always runs unless --skip-legacy is set; sweep
+    # configs additionally emit subcircuits_k{K}_f{F*100:02.0f}.json files.
+    p.add_argument(
+        "--sweep-configs", type=str,
+        default="50:0.5,20:0.5,100:0.2",
+        help="Comma-separated K:F pairs for per-prompt subcircuit sweeps. "
+             "K = top-K features per prompt; F = fraction of prompts in a "
+             "condition that must include the feature in their top-K to "
+             "include the feature in the per-condition set. "
+             "Default sweeps the three configs spec'd for the NeurIPS rerun.",
+    )
+    p.add_argument(
+        "--graph-mode", choices=["multi", "single"], default="multi",
+        help="Which graph-mode top features to use for per-prompt sweeps "
+             "(default: multi — the canonical headline graph).",
+    )
+    p.add_argument(
+        "--skip-legacy", action="store_true",
+        help="Skip the legacy corpus-aggregated subcircuits.json output.",
+    )
+    p.add_argument(
+        "--skip-sweep", action="store_true",
+        help="Skip per-prompt sweep emission (legacy-only run).",
+    )
     return p.parse_args()
+
+
+# ----------- per-prompt subcircuit construction (Task P4) -------------
+
+def read_per_prompt_top_features(
+    attribution_results: list[dict], mode: str,
+) -> dict[str, dict[int, set[str]]]:
+    """For each (condition, prompt), extract the per-prompt top-feature set
+    from Stage 02's saved attribution. Returns
+    ``{condition_name: {prompt_idx: set(feature_keys)}}``.
+
+    Reads `top_features` (preferred — saved at config.SAVE_TOP_FEATURES, e.g.
+    100) and falls back to `top50_features` for backward compatibility with
+    runs produced before the SAVE_TOP_FEATURES change.
+    """
+    out: dict[str, dict[int, set[str]]] = {}
+    for row in attribution_results:
+        prompt_idx = row.get("prompt_idx")
+        conds = row.get("conditions", row)
+        if not isinstance(conds, dict):
+            continue
+        for cond_name, cond in conds.items():
+            if not isinstance(cond, dict) or "error" in cond:
+                continue
+            graph = cond.get("graphs", {}).get(mode)
+            if not isinstance(graph, dict) or "error" in graph:
+                continue
+            top = graph.get("top_features") or graph.get("top50_features") or {}
+            out.setdefault(cond_name, {})[prompt_idx] = set(top.keys())
+    return out
+
+
+def aggregate_by_frequency(
+    per_prompt_sets: dict[str, dict[int, set[str]]],
+    top_k: int,
+    freq: float,
+) -> tuple[dict[str, set[str]], dict[str, dict[str, int]]]:
+    """Build per-condition feature sets by per-prompt frequency.
+
+    For each condition:
+      - Trim each prompt's feature set to its top_k by appearance order
+        (the dict iteration order from Stage 02 is sorted by |attribution|).
+      - Count how many prompts have each feature in their top-K.
+      - Include the feature in the per-condition set iff
+        count(feature) / n_prompts ≥ freq.
+
+    Returns (per_cond_sets, per_cond_counts). per_cond_counts maps
+    condition → {feature: prompt_count} for diagnostic / audit use.
+    """
+    per_cond_sets: dict[str, set[str]] = {}
+    per_cond_counts: dict[str, dict[str, int]] = {}
+    for cond, prompt_to_feats in per_prompt_sets.items():
+        n_prompts = len(prompt_to_feats)
+        if n_prompts == 0:
+            per_cond_sets[cond] = set()
+            per_cond_counts[cond] = {}
+            continue
+        threshold = max(1, int(round(freq * n_prompts)))
+        counter: dict[str, int] = {}
+        for _pid, feats in prompt_to_feats.items():
+            # Trim to top_k. Stage 02's top_features dict was already sorted
+            # by |attribution| descending; converting through `set` lost the
+            # order, so we rebuild from the original list of keys via the
+            # dict-recovery hack below. (Caller can pass already-trimmed
+            # sets if they want — top_k=0 disables trimming.)
+            keys = list(feats)
+            if top_k and len(keys) > top_k:
+                keys = keys[:top_k]
+            for k in keys:
+                counter[k] = counter.get(k, 0) + 1
+        per_cond_sets[cond] = {k for k, n in counter.items() if n >= threshold}
+        per_cond_counts[cond] = {k: n for k, n in counter.items() if n >= threshold}
+    return per_cond_sets, per_cond_counts
+
+
+def read_per_prompt_top_features_ordered(
+    attribution_results: list[dict], mode: str,
+) -> dict[str, dict[int, list[str]]]:
+    """Same as `read_per_prompt_top_features` but preserves per-prompt feature
+    *order* (sorted by |attribution| from Stage 02), so caller can trim to
+    top_k correctly. Returns ``{cond: {prompt_idx: [keys, ordered]}}``.
+    """
+    out: dict[str, dict[int, list[str]]] = {}
+    for row in attribution_results:
+        prompt_idx = row.get("prompt_idx")
+        conds = row.get("conditions", row)
+        if not isinstance(conds, dict):
+            continue
+        for cond_name, cond in conds.items():
+            if not isinstance(cond, dict) or "error" in cond:
+                continue
+            graph = cond.get("graphs", {}).get(mode)
+            if not isinstance(graph, dict) or "error" in graph:
+                continue
+            top = graph.get("top_features") or graph.get("top50_features") or {}
+            out.setdefault(cond_name, {})[prompt_idx] = list(top.keys())
+    return out
+
+
+def aggregate_ordered_by_frequency(
+    per_prompt_lists: dict[str, dict[int, list[str]]],
+    top_k: int,
+    freq: float,
+) -> tuple[dict[str, set[str]], dict[str, dict[str, int]]]:
+    """Like `aggregate_by_frequency` but takes ordered per-prompt lists so
+    the top-K trim is correct (drops weaker-attribution features past K).
+    """
+    per_cond_sets: dict[str, set[str]] = {}
+    per_cond_counts: dict[str, dict[str, int]] = {}
+    for cond, prompt_to_keys in per_prompt_lists.items():
+        n_prompts = len(prompt_to_keys)
+        if n_prompts == 0:
+            per_cond_sets[cond] = set()
+            per_cond_counts[cond] = {}
+            continue
+        threshold = max(1, int(round(freq * n_prompts)))
+        counter: dict[str, int] = {}
+        for _pid, keys in prompt_to_keys.items():
+            trimmed = keys[:top_k] if top_k else keys
+            for k in trimmed:
+                counter[k] = counter.get(k, 0) + 1
+        per_cond_sets[cond] = {k for k, n in counter.items() if n >= threshold}
+        per_cond_counts[cond] = {k: n for k, n in counter.items() if n >= threshold}
+    return per_cond_sets, per_cond_counts
+
+
+def class_sets_with_per_cond(
+    base_class_sets: dict, per_cond_sets: dict[str, set[str]],
+) -> dict:
+    """Return a shallow copy of base_class_sets with `per_condition_top50`
+    overridden by the supplied per-condition sets. Used to feed the existing
+    `build_*` rules with per-prompt-aggregated data without rewriting them.
+    """
+    new = dict(base_class_sets)
+    new["per_condition_top50"] = {
+        cond: sorted(keys) for cond, keys in per_cond_sets.items()
+    }
+    return new
 
 
 # ------------------------------- rules ----------------------------------
@@ -688,6 +868,125 @@ def write_report(summary: dict, overlap: dict, out_path: Path,
 
 # ------------------------------ main ------------------------------------
 
+def synthesize_feature_labels(
+    base_labels: dict, per_cond_sets: dict[str, set[str]],
+) -> dict:
+    """Return a copy of base_labels with `conditions_seen` and
+    `top50_conditions` rebuilt from per-prompt frequency-thresholded sets.
+
+    Layer / attribution / max_abs_attribution come from base_labels; only
+    the per-condition membership tags get replaced. Features absent from
+    every per_cond set are dropped (no-op in any rule).
+    """
+    out: dict[str, dict] = {}
+    membership: dict[str, set[str]] = {}
+    for cond, keys in per_cond_sets.items():
+        for k in keys:
+            membership.setdefault(k, set()).add(cond)
+    for k, conds in membership.items():
+        if k in base_labels:
+            row = dict(base_labels[k])
+        else:
+            # Feature not seen by Stage 04 — preserve key but with placeholders.
+            row = {"layer": -1, "attribution": 0.0, "max_abs_attribution": 0.0}
+        row["conditions_seen"] = sorted(conds)
+        row["top50_conditions"] = sorted(conds)  # legacy alias
+        out[k] = row
+    return out
+
+
+def build_all_subcircuits(
+    feature_labels: dict, class_sets: dict, args,
+    feature_class_sets_for_buckets: dict | None = None,
+) -> tuple[dict[str, list[str]], dict, dict]:
+    """Build the full subcircuit dict (legacy + ctrl-aware), the per-bucket
+    feature_class_sets used for convergent rules, and class_exclusive map.
+
+    `feature_class_sets_for_buckets` defaults to `class_sets`; it's separate
+    so callers in sweep mode can keep convergent buckets corpus-aggregated
+    (those come from Stage 04's `feature_comparison` analysis which we don't
+    rebuild per-prompt) while overriding per_condition_top50.
+    """
+    fcs = feature_class_sets_for_buckets or class_sets
+    subcircuits: dict[str, list[str]] = {}
+    subcircuits["universal_refusal_core"] = build_universal_core(feature_labels)
+    subcircuits["canonical_pro_refusal"] = build_canonical_pro_refusal(feature_labels)
+    subcircuits["sign_flip_convergent"] = build_convergent_bucket(
+        fcs, "sign_flipped", args.convergent_min,
+    )
+    subcircuits["dampening_specialists"] = build_convergent_bucket(
+        fcs, "dampened", args.convergent_min,
+    )
+    subcircuits["anti_refusal_amplifiers"] = build_convergent_bucket(
+        fcs, "amplified_anti", args.convergent_min,
+    )
+    subcircuits["late_wave_layer24_32"] = build_late_wave(
+        feature_labels, args.late_wave_start, args.late_wave_end,
+    )
+    class_exclusive = build_class_exclusive(feature_labels)
+    for cls in sorted(JB_CLASSES):
+        subcircuits[f"{cls}_exclusive"] = class_exclusive[cls]
+    subcircuits["ctrl_shared_refusal"] = build_ctrl_shared_refusal(class_sets)
+    subcircuits["ctrl_only"] = build_ctrl_only(class_sets)
+    jb_specific = build_jb_specific_vs_ctrl(class_sets)
+    for cls in sorted(JB_CLASSES):
+        subcircuits[f"jb_{cls}_specific_vs_ctrl"] = jb_specific[cls]
+    return subcircuits, jb_specific, class_exclusive
+
+
+def emit_subcircuit_outputs(
+    subcircuits: dict[str, list[str]],
+    feature_labels: dict,
+    class_sets: dict,
+    contrast: dict,
+    jb_specific: dict,
+    out_dir: Path,
+    output_basename: str,
+    metadata_extras: dict,
+) -> None:
+    """Write the standard JSON + plot + report bundle for one configuration.
+    `output_basename` controls the filenames, e.g. 'subcircuits' produces
+    subcircuits.json; 'subcircuits_k50_f50' produces subcircuits_k50_f50.json.
+    """
+    summary = {
+        name: summarize_subcircuit(name, feats, feature_labels)
+        for name, feats in subcircuits.items()
+    }
+    overlap = build_overlap_matrix(subcircuits)
+    out = {
+        "metadata": {
+            "rule": "set logic over feature_labels.conditions_seen + "
+                    "feature_class_sets buckets + per_condition_top50 "
+                    "(ctrl-aware rules)",
+            "jb_classes": sorted(JB_CLASSES),
+            "n_features_input": len(feature_labels),
+            **metadata_extras,
+        },
+        "subcircuits": summary,
+        "jb_vs_ctrl_contrast": contrast,
+    }
+    save_json(out, out_dir / f"{output_basename}.json")
+    save_json(
+        {
+            "sizes": {n: v["size"] for n, v in summary.items()},
+            "overlap_matrix": overlap,
+            "jb_vs_ctrl_contrast": contrast,
+        },
+        out_dir / f"{output_basename}_summary.json",
+    )
+    # Plots: we keep one canonical set under the legacy name; sweep configs
+    # only emit JSON to avoid spamming PNGs (they're regenerable from JSON).
+    if output_basename == "subcircuits":
+        plot_treemap(summary, out_dir / "subcircuits_treemap.png")
+        plot_by_layer(summary, out_dir / "subcircuits_by_layer.png")
+        plot_overlap(overlap, out_dir / "subcircuits_overlap.png")
+        if contrast:
+            plot_jb_vs_ctrl_contrast(contrast, out_dir / "jb_vs_ctrl_contrast.png")
+            plot_jb_specific_by_layer(
+                jb_specific, feature_labels, out_dir / "jb_specific_by_layer.png",
+            )
+
+
 def main():
     args = parse_args()
     run_dir = args.run_dir
@@ -699,6 +998,7 @@ def main():
 
     labels_path = run_dir / "04_labels" / "feature_labels.json"
     sets_path = run_dir / "04_labels" / "feature_class_sets.json"
+    attr_path = run_dir / "02_attribution" / "attribution_results.json"
     for p in (labels_path, sets_path):
         if not p.exists():
             print(f"  ERROR: missing {p}")
@@ -712,168 +1012,210 @@ def main():
         f"  Ctrl-aware data: {'AVAILABLE' if ctrl_available else 'missing (legacy schema — ctrl rules will emit empty)'}"
     )
 
-    # Build subcircuits
-    print("\n  Building subcircuits...")
-    subcircuits: dict[str, list[str]] = {}
-    subcircuits["universal_refusal_core"] = build_universal_core(feature_labels)
-    subcircuits["canonical_pro_refusal"] = build_canonical_pro_refusal(feature_labels)
-    subcircuits["sign_flip_convergent"] = build_convergent_bucket(
-        class_sets, "sign_flipped", args.convergent_min,
-    )
-    subcircuits["dampening_specialists"] = build_convergent_bucket(
-        class_sets, "dampened", args.convergent_min,
-    )
-    subcircuits["anti_refusal_amplifiers"] = build_convergent_bucket(
-        class_sets, "amplified_anti", args.convergent_min,
-    )
-    subcircuits["late_wave_layer24_32"] = build_late_wave(
-        feature_labels, args.late_wave_start, args.late_wave_end,
-    )
-    class_exclusive = build_class_exclusive(feature_labels)
-    for cls in sorted(JB_CLASSES):
-        subcircuits[f"{cls}_exclusive"] = class_exclusive[cls]
-
-    # Ctrl-aware subcircuits (Task 10 — require per_condition_top50 from Task 7)
-    subcircuits["ctrl_shared_refusal"] = build_ctrl_shared_refusal(class_sets)
-    subcircuits["ctrl_only"] = build_ctrl_only(class_sets)
-    jb_specific = build_jb_specific_vs_ctrl(class_sets)
-    for cls in sorted(JB_CLASSES):
-        subcircuits[f"jb_{cls}_specific_vs_ctrl"] = jb_specific[cls]
-
-    for name, feats in subcircuits.items():
-        print(f"    {name}: {len(feats)}")
-
-    # Headline novel metric — JB vs ctrl contrast per class
-    contrast = compute_jb_vs_ctrl_contrast(class_sets) if ctrl_available else {}
-    if contrast:
-        print("\n  JB-vs-ctrl contrast (fraction of JB machinery that's JB-semantic):")
-        for cls in sorted(contrast.keys()):
-            c = contrast[cls]
+    sweep_specs = _parse_sweep_specs(args.sweep_configs) if not args.skip_sweep else []
+    if sweep_specs:
+        if not attr_path.exists():
             print(
-                f"    {cls:>22}: jb={c['jb_top50']:3d}  ctrl={c['ctrl_top50']:3d}  "
-                f"jb_specific={c['jb_specific']:3d} ({c['jb_specific_frac']*100:4.1f}%)  "
-                f"overlap={c['intersection']:3d} ({c['overlap_frac']*100:4.1f}%)"
+                f"  WARN: --sweep-configs requested but {attr_path} is missing; "
+                f"skipping sweep emission."
+            )
+            sweep_specs = []
+        else:
+            print(
+                f"  Per-prompt sweep configs: "
+                f"{', '.join(f'k={k}/f={f:.2f}' for k, f in sweep_specs)}"
             )
 
-    # Invariants
-    print("\n  Checking invariants...")
-    excl_sets = {c: set(class_exclusive[c]) for c in JB_CLASSES}
-    cls_list = sorted(JB_CLASSES)
-    for i in range(len(cls_list)):
-        for j in range(i + 1, len(cls_list)):
-            a, b = cls_list[i], cls_list[j]
-            assert excl_sets[a].isdisjoint(excl_sets[b]), (
-                f"{a}_exclusive ∩ {b}_exclusive ≠ ∅"
-            )
-    uni_set = set(subcircuits["universal_refusal_core"])
-    can_set = set(subcircuits["canonical_pro_refusal"])
-    assert uni_set.isdisjoint(can_set), "universal_refusal_core ∩ canonical_pro_refusal ≠ ∅"
-    for c in JB_CLASSES:
-        assert not (excl_sets[c] & can_set), f"{c}_exclusive ∩ canonical_pro_refusal ≠ ∅"
-    late_set = set(subcircuits["late_wave_layer24_32"])
-    for k in late_set:
-        layer = feature_labels.get(k, {}).get("layer", -1)
-        assert args.late_wave_start <= layer <= args.late_wave_end, (
-            f"{k} in late_wave but layer={layer}"
+    def _run_one_config(
+        config_name: str,
+        labels: dict, csets: dict,
+        is_legacy: bool, sweep_meta: dict | None = None,
+    ) -> dict[str, list[str]]:
+        """Run the full subcircuit pipeline for one (labels, class_sets) pair
+        and emit outputs under `<config_name>.json`. Returns the subcircuits
+        dict for downstream printing.
+        """
+        print(f"\n  [{config_name}] Building subcircuits...")
+        subcircuits, jb_specific, class_exclusive = build_all_subcircuits(
+            labels, csets, args, feature_class_sets_for_buckets=class_sets,
         )
-    # Ctrl-aware invariants
-    if ctrl_available:
-        per = _per_cond_sets(class_sets)
-        # jb_{cls}_specific_vs_ctrl must be disjoint from ctrl_{cls} top-50
-        for cls in JB_CLASSES:
-            jb_spec = set(subcircuits[f"jb_{cls}_specific_vs_ctrl"])
-            ctrl_top = per.get(f"ctrl_{cls}", set())
-            assert jb_spec.isdisjoint(ctrl_top), (
-                f"jb_{cls}_specific_vs_ctrl intersects ctrl_{cls}_top50"
+        for name, feats in subcircuits.items():
+            print(f"    {name}: {len(feats)}")
+
+        ctrl_avail_local = has_ctrl_data(csets)
+        contrast = compute_jb_vs_ctrl_contrast(csets) if ctrl_avail_local else {}
+        if contrast:
+            print(f"\n  [{config_name}] JB-vs-ctrl contrast:")
+            for cls in sorted(contrast.keys()):
+                c = contrast[cls]
+                print(
+                    f"    {cls:>22}: jb={c['jb_top50']:3d}  ctrl={c['ctrl_top50']:3d}  "
+                    f"jb_specific={c['jb_specific']:3d} ({c['jb_specific_frac']*100:4.1f}%)  "
+                    f"overlap={c['intersection']:3d} ({c['overlap_frac']*100:4.1f}%)"
+                )
+
+        # Invariants — only enforce on the legacy path. Per-prompt sweep configs
+        # can produce slightly different memberships; they're audited via the
+        # JSON output, not asserted.
+        if is_legacy:
+            print(f"\n  [{config_name}] Checking invariants...")
+            excl_sets = {c: set(class_exclusive[c]) for c in JB_CLASSES}
+            cls_list = sorted(JB_CLASSES)
+            for i in range(len(cls_list)):
+                for j in range(i + 1, len(cls_list)):
+                    a, b = cls_list[i], cls_list[j]
+                    assert excl_sets[a].isdisjoint(excl_sets[b]), (
+                        f"{a}_exclusive ∩ {b}_exclusive ≠ ∅"
+                    )
+            uni_set = set(subcircuits["universal_refusal_core"])
+            can_set = set(subcircuits["canonical_pro_refusal"])
+            assert uni_set.isdisjoint(can_set), (
+                "universal_refusal_core ∩ canonical_pro_refusal ≠ ∅"
             )
-        # ctrl_only must be disjoint from bare and any jb_*
-        ctrl_only_set = set(subcircuits["ctrl_only"])
-        assert ctrl_only_set.isdisjoint(per["bare"]), "ctrl_only intersects bare top-50"
-        any_jb = set.union(*(per[f"jb_{c}"] for c in JB_CLASSES))
-        assert ctrl_only_set.isdisjoint(any_jb), "ctrl_only intersects some jb_*"
-        # ctrl_shared_refusal ⊆ bare
-        ctrl_shared_set = set(subcircuits["ctrl_shared_refusal"])
-        assert ctrl_shared_set <= per["bare"], "ctrl_shared_refusal not ⊆ bare top-50"
-    print("    All invariants pass ✓")
+            for c in JB_CLASSES:
+                assert not (excl_sets[c] & can_set), (
+                    f"{c}_exclusive ∩ canonical_pro_refusal ≠ ∅"
+                )
+            late_set = set(subcircuits["late_wave_layer24_32"])
+            for k in late_set:
+                layer = labels.get(k, {}).get("layer", -1)
+                assert args.late_wave_start <= layer <= args.late_wave_end, (
+                    f"{k} in late_wave but layer={layer}"
+                )
+            if ctrl_avail_local:
+                per = _per_cond_sets(csets)
+                for cls in JB_CLASSES:
+                    jb_spec = set(subcircuits[f"jb_{cls}_specific_vs_ctrl"])
+                    ctrl_top = per.get(f"ctrl_{cls}", set())
+                    assert jb_spec.isdisjoint(ctrl_top), (
+                        f"jb_{cls}_specific_vs_ctrl intersects ctrl_{cls}_top50"
+                    )
+                ctrl_only_set = set(subcircuits["ctrl_only"])
+                assert ctrl_only_set.isdisjoint(per["bare"]), (
+                    "ctrl_only intersects bare top-50"
+                )
+                any_jb = set.union(*(per[f"jb_{c}"] for c in JB_CLASSES))
+                assert ctrl_only_set.isdisjoint(any_jb), (
+                    "ctrl_only intersects some jb_*"
+                )
+                ctrl_shared_set = set(subcircuits["ctrl_shared_refusal"])
+                assert ctrl_shared_set <= per["bare"], (
+                    "ctrl_shared_refusal not ⊆ bare top-50"
+                )
+            print(f"    [{config_name}] All invariants pass ✓")
 
-    # Summarize
-    print("\n  Summarizing subcircuits...")
-    summary = {
-        name: summarize_subcircuit(name, feats, feature_labels)
-        for name, feats in subcircuits.items()
-    }
-    overlap = build_overlap_matrix(subcircuits)
-
-    # Save JSON outputs
-    out = {
-        "metadata": {
-            "rule": "set logic over feature_labels.conditions_seen + feature_class_sets "
-                    "buckets + per_condition_top50 (ctrl-aware rules)",
+        meta_extras = {
             "convergent_min_classes": args.convergent_min,
             "late_wave_range": [args.late_wave_start, args.late_wave_end],
-            "jb_classes": sorted(JB_CLASSES),
-            "n_features_input": len(feature_labels),
-            "ctrl_available": ctrl_available,
-        },
-        "subcircuits": summary,
-        "jb_vs_ctrl_contrast": contrast,
-    }
-    save_json(out, out_dir / "subcircuits.json")
-    save_json(
-        {
-            "sizes": {n: v["size"] for n, v in summary.items()},
-            "overlap_matrix": overlap,
-            "jb_vs_ctrl_contrast": contrast,
-        },
-        out_dir / "subcircuits_summary.json",
-    )
-    print("    Saved subcircuits.json + subcircuits_summary.json")
+            "ctrl_available": ctrl_avail_local,
+            "config_name": config_name,
+            "is_legacy": is_legacy,
+        }
+        if sweep_meta:
+            meta_extras.update(sweep_meta)
+        emit_subcircuit_outputs(
+            subcircuits=subcircuits, feature_labels=labels, class_sets=csets,
+            contrast=contrast, jb_specific=jb_specific, out_dir=out_dir,
+            output_basename=config_name, metadata_extras=meta_extras,
+        )
 
-    # Plots
-    print("\n  Generating plots...")
-    plot_treemap(summary, out_dir / "subcircuits_treemap.png")
-    print("    subcircuits_treemap.png")
-    plot_by_layer(summary, out_dir / "subcircuits_by_layer.png")
-    print("    subcircuits_by_layer.png")
-    plot_overlap(overlap, out_dir / "subcircuits_overlap.png")
-    print("    subcircuits_overlap.png")
-    if contrast:
-        plot_jb_vs_ctrl_contrast(contrast, out_dir / "jb_vs_ctrl_contrast.png")
-        print("    jb_vs_ctrl_contrast.png")
-        plot_jb_specific_by_layer(jb_specific, feature_labels,
-                                  out_dir / "jb_specific_by_layer.png")
-        print("    jb_specific_by_layer.png")
+        # Legacy path also writes the full markdown report.
+        if is_legacy:
+            summary = {
+                name: summarize_subcircuit(name, feats, labels)
+                for name, feats in subcircuits.items()
+            }
+            overlap = build_overlap_matrix(subcircuits)
+            write_report(
+                summary, overlap, out_dir / "SUBCIRCUITS_REPORT.md",
+                args.convergent_min, args.late_wave_start, args.late_wave_end,
+                contrast=contrast,
+            )
+            print(f"    [{config_name}] SUBCIRCUITS_REPORT.md")
 
-    # Report
-    write_report(
-        summary, overlap, out_dir / "SUBCIRCUITS_REPORT.md",
-        args.convergent_min, args.late_wave_start, args.late_wave_end,
-        contrast=contrast,
-    )
-    print("    SUBCIRCUITS_REPORT.md")
+        print(f"    [{config_name}] outputs: {config_name}.json + {config_name}_summary.json")
+        return subcircuits
 
-    total_unique = len({k for feats in subcircuits.values() for k in feats})
+    # ------ Run legacy (corpus-aggregated) path -----------------------------
+    legacy_subcircuits: dict[str, list[str]] | None = None
+    if not args.skip_legacy:
+        legacy_subcircuits = _run_one_config(
+            config_name="subcircuits",
+            labels=feature_labels, csets=class_sets,
+            is_legacy=True,
+        )
+
+    # ------ Per-prompt sweep -----------------------------------------------
+    sweep_subcircuit_sizes: dict[str, dict[str, int]] = {}
+    if sweep_specs:
+        attr_raw = load_json(attr_path)
+        attr_results = attr_raw["results"] if isinstance(attr_raw, dict) else attr_raw
+        per_prompt_lists = read_per_prompt_top_features_ordered(
+            attr_results, mode=args.graph_mode,
+        )
+        n_prompts_per_cond = {c: len(d) for c, d in per_prompt_lists.items()}
+        max_k_available = max(
+            (max((len(ks) for ks in d.values()), default=0)
+             for d in per_prompt_lists.values()),
+            default=0,
+        )
+        print(
+            f"\n  Per-prompt sweep input: graph_mode={args.graph_mode}, "
+            f"max_k_available={max_k_available}, "
+            f"n_prompts_per_cond={n_prompts_per_cond}"
+        )
+        for k, freq in sweep_specs:
+            if k > max_k_available:
+                print(
+                    f"  WARN: sweep config k={k} > max saved features "
+                    f"({max_k_available}). Capping to k={max_k_available} "
+                    f"— rerun Stage 02 with config.SAVE_TOP_FEATURES={k} "
+                    f"to use full K."
+                )
+                effective_k = max_k_available
+            else:
+                effective_k = k
+            per_cond, per_cond_counts = aggregate_ordered_by_frequency(
+                per_prompt_lists, top_k=effective_k, freq=freq,
+            )
+            synth_labels = synthesize_feature_labels(feature_labels, per_cond)
+            synth_class_sets = class_sets_with_per_cond(class_sets, per_cond)
+            cfg_name = f"subcircuits_k{k}_f{int(round(freq * 100)):02d}"
+            sweep_meta = {
+                "sweep_top_k": k,
+                "sweep_effective_top_k": effective_k,
+                "sweep_freq_threshold": freq,
+                "sweep_graph_mode": args.graph_mode,
+                "n_prompts_per_condition": n_prompts_per_cond,
+            }
+            subc = _run_one_config(
+                config_name=cfg_name,
+                labels=synth_labels, csets=synth_class_sets,
+                is_legacy=False, sweep_meta=sweep_meta,
+            )
+            sweep_subcircuit_sizes[cfg_name] = {n: len(f) for n, f in subc.items()}
+
+    # ------ Final SUMMARY block --------------------------------------------
     print("\n" + "=" * 60)
-    print("SUMMARY")
+    print("STAGE 07 SUMMARY")
     print("=" * 60)
-    print(f"  Subcircuits identified:  {len(subcircuits)}")
-    print(f"  Unique features tagged:  {total_unique}")
-    print(f"  Universal core:          {summary['universal_refusal_core']['size']}")
-    print(f"  Canonical pro-refusal:   {summary['canonical_pro_refusal']['size']}")
-    print(f"  Sign-flip convergent:    {summary['sign_flip_convergent']['size']}")
-    print(f"  Dampening specialists:   {summary['dampening_specialists']['size']}")
-    print(f"  Anti-refusal amplifiers: {summary['anti_refusal_amplifiers']['size']}")
-    print(f"  Late-wave (L24–L32):     {summary['late_wave_layer24_32']['size']}")
-    print("  Class-exclusive:")
-    for c in sorted(JB_CLASSES):
-        print(f"    {c}: {summary[f'{c}_exclusive']['size']}")
-    if ctrl_available:
-        print("  Ctrl-aware:")
-        print(f"    ctrl_shared_refusal:    {summary['ctrl_shared_refusal']['size']}")
-        print(f"    ctrl_only:              {summary['ctrl_only']['size']}")
-        for c in sorted(JB_CLASSES):
-            print(f"    jb_{c}_specific_vs_ctrl: {summary[f'jb_{c}_specific_vs_ctrl']['size']}")
-    print(f"  Outputs: {out_dir}/")
+    if legacy_subcircuits is not None:
+        print(f"  Legacy (corpus-aggregated): {len(legacy_subcircuits)} subcircuits")
+        for n, feats in legacy_subcircuits.items():
+            print(f"    {n}: {len(feats)}")
+    if sweep_subcircuit_sizes:
+        print(f"\n  Per-prompt sweep configs: {len(sweep_subcircuit_sizes)}")
+        # Print sizes side-by-side for the ctrl-aware rules (the headline ones).
+        ctrl_aware_rows = (
+            ["ctrl_shared_refusal", "ctrl_only"]
+            + [f"jb_{c}_specific_vs_ctrl" for c in sorted(JB_CLASSES)]
+        )
+        cfg_names = list(sweep_subcircuit_sizes.keys())
+        print(f"    {'subcircuit':32s}  " + "  ".join(f"{n:>20s}" for n in cfg_names))
+        for row in ctrl_aware_rows:
+            sizes = [sweep_subcircuit_sizes[c].get(row, 0) for c in cfg_names]
+            print(f"    {row:32s}  " + "  ".join(f"{s:>20d}" for s in sizes))
+    print(f"\n  Outputs: {out_dir}/")
     print("DONE!")
 
 
