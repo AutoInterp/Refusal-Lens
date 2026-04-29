@@ -179,9 +179,9 @@ trap '
         fi
         echo
         echo "Resume hints:"
-        echo "  1. Inspect tmux scrollback: tmux attach -t $TMUX_SESSION  (Ctrl-b [ to scroll)"
-        echo "  2. Re-run from scratch:     bash scripts/pipeline/run_p7.sh"
-        echo "  3. Skip Stage 01 next time: --reuse-direction-for-full <previous-run-dir>"
+        echo "  1. Inspect tmux scrollback:  tmux attach -t $TMUX_SESSION  (Ctrl-b [ to scroll)"
+        echo "  2. Re-run from scratch:      bash scripts/pipeline/run_p7.sh --mode <smoke|full|both>"
+        echo "  3. Per-stage logs:           ls $RUN_DIR_ACTIVE/_*.log"
     fi
 ' EXIT
 
@@ -285,7 +285,8 @@ if [[ "$MODE" == "smoke" || "$MODE" == "both" ]]; then
         --run-dir "$SMOKE"
 
     run_stage "02_smoke" python3 scripts/pipeline/02_run_attribution.py \
-        --run-dir "$SMOKE" --n-prompts $SMOKE_PROMPTS --batch-size $BATCH_SIZE
+        --run-dir "$SMOKE" --n-prompts $SMOKE_PROMPTS --batch-size $BATCH_SIZE \
+        --save-graphs
 
     run_stage "03_smoke_multi" python3 scripts/pipeline/03_verify_attribution.py \
         --run-dir "$SMOKE" --graph-mode multi
@@ -379,7 +380,8 @@ echo "============================================================"
 run_stage "01" python3 scripts/pipeline/01_compute_direction.py --run-dir "$RUN"
 
 run_stage "02" python3 scripts/pipeline/02_run_attribution.py \
-    --run-dir "$RUN" --n-prompts $FULL_PROMPTS --batch-size $BATCH_SIZE
+    --run-dir "$RUN" --n-prompts $FULL_PROMPTS --batch-size $BATCH_SIZE \
+    --save-graphs
 
 run_stage "02b" python3 scripts/pipeline/02b_statistical_analysis.py --run-dir "$RUN"
 run_stage "03_multi"  python3 scripts/pipeline/03_verify_attribution.py --run-dir "$RUN" --graph-mode multi
