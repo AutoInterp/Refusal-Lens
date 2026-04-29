@@ -121,6 +121,15 @@ def parse_args():
              "(Bug 3). Pass empty string to use circuit-tracer's default "
              "(pre_feedforward_layernorm.output, post-RMSNorm pre-MLP).",
     )
+    parser.add_argument(
+        "--backend", type=str, choices=["nnsight", "transformerlens"],
+        default=config.BACKEND,
+        help="Circuit-tracer backend. Default 'transformerlens' is required for "
+             "measurement_hook='hook_resid_post' — the nnsight backend has a "
+             "`.grad`-on-non-module-output limitation that breaks residual-stream "
+             "measurement (mentor's MENTEE_NOTE_three_bugs.md). Use 'nnsight' "
+             "only for legacy runs without --measurement-hook.",
+    )
     return parser.parse_args()
 
 
@@ -505,13 +514,13 @@ def main():
     tokenizer = tokenizer_module.AutoTokenizer.from_pretrained(config.MODEL_NAME)
     tokenizer.padding_side = "left"
 
-    print("  Loading ReplacementModel...")
+    print(f"  Loading ReplacementModel (backend={args.backend})...")
     dtype_map = {"float32": torch.float32, "bfloat16": torch.bfloat16, "float16": torch.float16}
     model = ReplacementModel.from_pretrained(
         config.MODEL_NAME,
         config.TRANSCODER_PATH,
         dtype=dtype_map[args.dtype],
-        backend="nnsight",
+        backend=args.backend,
         lazy_encoder=True,
     )
     print("  Ready.")
@@ -709,6 +718,7 @@ def main():
                 "metadata": {
                     "measurement_layer": args.target_layer,
                     "measurement_hook": args.measurement_hook or "default",
+                    "backend": args.backend,
                     "modes": {
                         name: cfg["positions"] for name, cfg in modes.items()
                     },
@@ -729,6 +739,7 @@ def main():
             "transcoder": config.TRANSCODER_PATH,
             "measurement_layer": args.target_layer,
             "measurement_hook": args.measurement_hook or "default",
+                    "backend": args.backend,
             "modes": {name: cfg["positions"] for name, cfg in modes.items()},
             "dataset": "controlled" if not args.legacy_dataset else "legacy",
             "elapsed_minutes": round(elapsed / 60, 1),

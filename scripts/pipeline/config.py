@@ -28,6 +28,12 @@ MEASUREMENT_POSITION = -2 # "model" token in Gemma-3 chat template
 # (= hidden_states[L+1]), matching where r̂ was extracted. See
 # MENTEE_NOTE_three_bugs.md (Bug 3).
 MEASUREMENT_HOOK = "hook_resid_post"
+# Circuit-tracer backend. The "nnsight" backend has a runtime
+# `.grad-on-non-module-output` limitation that breaks measurement_hook=
+# "hook_resid_post" (per mentor's MENTEE_NOTE_three_bugs.md). The
+# "transformerlens" backend is the verified-bulletproof path: cache match
+# with the same model is bit-exact, and Gemma-3-4b-it is supported.
+BACKEND = "transformerlens"
 CAUSAL_LAYER = 15         # Best causal effectiveness (Tejas Script 16)
 
 # ============================================================
