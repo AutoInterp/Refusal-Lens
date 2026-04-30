@@ -52,7 +52,7 @@ HIDDEN_SIZE = 2560
 # not a `model` token. Re-tune!
 QWEN_BEST_POSITION = -1   # FILL IN after running script 01
 QWEN_BEST_LAYER = 34      # FILL IN after running script 01
-QWEN_CAUSAL_LAYER = None    # FILL IN after running script 15/16/17
+QWEN_CAUSAL_LAYER = 18    # FILL IN after running script 15/16/17
 
 # Positions to sweep when computing the direction (last N tokens of prompt).
 SWEEP_POSITIONS = [-5, -4, -3, -2, -1]
