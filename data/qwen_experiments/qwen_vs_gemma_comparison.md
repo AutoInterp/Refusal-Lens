@@ -19,6 +19,10 @@
 
 **Takeaway:** position and layer assumptions from Gemma do NOT carry over. The best-layer/depth ratio (~0.94) is preserved, but the absolute index and trailing-token semantics differ. Re-tuning is mandatory.
 
+![Qwen layer separation across layers and positions](figures/layer_separation.png)
+
+![Qwen sanity-check projections (harmful / harmless / jailbroken)](figures/sanity_check_projections.png)
+
 ---
 
 ## 2. Mechanism Comparison (script 11)
@@ -33,6 +37,8 @@ Refusal-direction projection at the best layer for bare prompts vs three jailbre
 | FICTION | (Tejas baseline) | varies | — | sign-flip on some prompts |
 
 **Takeaway:** the qualitative pattern (analytical/PHISH bypass strongest, roleplay weakest) reproduces on Qwen. Suggests this is an architectural property of refusal mechanisms, not a Gemma artifact.
+
+![Qwen mechanism comparison: bare vs roleplay vs fiction at L34](figures/mechanism_comparison.png)
 
 ---
 
@@ -70,6 +76,8 @@ Add unnormalized r at all positions, every step. Test layers chosen as L15 (Gemm
 
 **Takeaway:** the existence of a single mid-network causal layer reproduces, but its absolute index shifts (mid-half on Qwen, lower-half on Gemma). The 88% flip rate confirms Q3 (refusal is causally mediated by a single direction) for Qwen.
 
+![Qwen Arditi causal intervention: per-layer flip rate and per-class breakdown at L18](figures/causal_arditi_jailbreak.png)
+
 ---
 
 ## 4. Negative Result — Georg's Exact-Magnitude Method (script 17)
@@ -99,6 +107,8 @@ All scales produced token-loop outputs (`ifiedified...`, `_____...`, `I I I...`)
 **Comparison:** on Gemma, Georg's method works at scale=1.0 with no collapse. On Qwen, every scale tested collapses.
 
 **Takeaway:** displacement-based interventions (Arditi, add r) port across architectures; exact-magnitude interventions (Georg, set proj=target) do not. Worth a paragraph in the paper as evidence that Qwen's residual-stream geometry differs structurally from Gemma's, even though both support the same direction-based refusal mechanism.
+
+![Qwen Georg exact-magnitude scaling sweep at L18 — total mode collapse](figures/georg_scaling_collapse.png)
 
 ---
 
@@ -131,6 +141,8 @@ All pairs in [+0.04, +0.34]. Directions across positions are **near-independent*
 
 A secondary structural observation on Qwen L18: positions -5, -3, -1 form a tightly correlated cluster (cos > 0.66), while position -4 is decoupled from the rest (cos ≤ 0.37 with all others). This aligns with Qwen's chat-template trailing tokens — `<think>` (around position -4) is a special token whose direction diverges from the surrounding newlines. The structure is template-driven, not refusal-driven.
 
+![Qwen per-position cosine heatmap at L18 (causal) and L34 (best) — all non-negative](figures/position_cosine_heatmap.png)
+
 ---
 
 ## 6. Open Questions Coverage
@@ -162,6 +174,9 @@ The five questions from the migration notes:
 
 ## 8. Key Takeaways
 
+![Gemma vs Qwen summary panel: PASS / DIVERGES / BLOCKED status across findings](figures/summary_figure.png)
+
+
 1. **Direction-based findings reproduce.** Qwen has a refusal direction with strong separation (L34, position -1) and a distinct mid-network causal layer (L18). Adding r at L18 flips 88% of jailbroken prompts to refuse, matching Gemma's qualitative result.
 
 2. **Layer indices do not transfer.** Gemma's L15 (causal) and L32 (separation) shift to Qwen's L18 and L34. The causal-layer / depth ratio is roughly preserved (0.44 vs 0.50), but assuming Gemma's indices on Qwen wastes runs.
@@ -178,3 +193,4 @@ The five questions from the migration notes:
 
 *Source scripts: `data/qwen_experiments/scripts/{01,11,15,16,17}*.py`*
 *Results: `data/qwen_experiments/results_v2/`*
+*Figures: `data/qwen_experiments/figures/` — regenerate with `python data/qwen_experiments/scripts/make_figures.py`*
