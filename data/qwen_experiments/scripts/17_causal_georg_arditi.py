@@ -299,21 +299,27 @@ def get_projection(prompt, layer):
     return proj
 
 
-def generate_georg_intervention(prompt, target_proj, layer):
+def generate_georg_intervention(prompt, target_proj, layer, scale=1.0):
     """
-    Georg's exact-magnitude method (true to his original intent):
+    Georg's exact-magnitude method (true to his original intent), with an optional
+    scale factor for fractional intervention strength:
       - Apply ONLY at POSITION (-1) of the sequence
       - During prefill: at the last input token
       - During autoregressive generation: at the only / last token of each step
 
-    For the targeted position: new_act = act + (target_proj - current_proj) * direction
+    For the targeted position:
+        new_act = act + scale * (target_proj - current_proj) * direction
+
+    scale=1.0 reproduces Georg's original method (full magnitude correction).
+    scale<1.0 partially nudges the refusal projection toward the target.
 
     NOTE: A previous version followed Arditi's "all positions, every step" strategy,
     which on Qwen3-4B caused mode collapse (the model emitted token loops like
     `ifiedifiedified...`). On Qwen the chat template ends with `<think></think>\\n\\n`
     so over-writing the refusal projection at every position destroys the residual
     structure those tokens carry. Restricting the edit to position -1 only matches
-    Georg's published method and works on both Gemma and Qwen.
+    Georg's published method. On Qwen3-4B even position-only at scale=1.0 collapses,
+    so a scaling sweep is required to find the largest stable scale.
     """
     direction = layer_directions[layer]
     dir_bf16 = direction.to(dtype=torch.bfloat16)
@@ -323,14 +329,9 @@ def generate_georg_intervention(prompt, target_proj, layer):
 
     def hook_fn(module, inputs, output):
         h = output[0] if isinstance(output, tuple) else output
-        # h: [B, T, D]. Edit ONLY position -1 (the latest token).
-        #   - Prefill: T == prompt length, position -1 is the last prompt token.
-        #   - Generation step: T == 1 (with KV cache) or T == prefix+1; either way
-        #     position -1 is the just-generated token whose hidden state will drive
-        #     the next prediction.
         last = h[:, -1, :].to(torch.float32)            # [B, D]
         current_proj = (last @ direction)               # [B]
-        delta = target_proj - current_proj              # [B]
+        delta = scale * (target_proj - current_proj)    # [B]
         update = (delta.to(torch.bfloat16).unsqueeze(-1) * dir_bf16)  # [B, D]
         h[:, -1, :].add_(update)
 
@@ -447,10 +448,135 @@ for layer in TEST_LAYERS:
     print(f"  L{layer}: target_proj={mean_proj:+.1f} (n={len(projs)})")
 
 # ============================================================
-# STEP 3: Control — benign prompts at all TEST_LAYERS
+# STEP 3: Scaling sweep at BEST_LAYER (find largest stable scale)
+# ============================================================
+# On Qwen3-4B, Georg's full-magnitude correction (scale=1.0) at L18 produces
+# mode collapse even when applied at position -1 only. We sweep a range of
+# scales on a small slice of benign + jailbreak prompts to find the largest
+# scale that:
+#   (a) keeps benign output coherent (no token loops)
+#   (b) doesn't excessively refuse benign (control should NOT refuse much)
+#   (c) flips a meaningful fraction of jailbroken prompts to refuse
+#
+# We then re-run the full control + jailbreak sweep at the chosen scale.
 # ============================================================
 print("\n" + "=" * 60)
-print("STEP 3: Control — force benign to refuse (Georg method)")
+print(f"STEP 3: Scaling sweep at L{BEST_LAYER}")
+print("=" * 60)
+
+SCALES = [0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
+SCAN_BENIGN = BENIGN_PROMPTS[:5]
+SCAN_JB = []
+for cls_name, prefixes in JB_CLASSES.items():
+    if refused_prompts:
+        SCAN_JB.append((cls_name, prefixes[0] + refused_prompts[0].lower()))
+
+print(f"  Layer: L{BEST_LAYER}, target_proj={layer_target_projs[BEST_LAYER]:+.1f}")
+print(f"  Scales: {SCALES}")
+print(f"  Benign scan: {len(SCAN_BENIGN)}, Jailbreak scan: {len(SCAN_JB)}")
+
+scan_results = []
+for scale in SCALES:
+    print(f"\n  --- scale={scale} ---")
+    target = layer_target_projs[BEST_LAYER]
+
+    # Benign half
+    benign_refuse = 0
+    benign_coherent = 0
+    for p in SCAN_BENIGN:
+        try:
+            resp = generate_georg_intervention(p, target, BEST_LAYER, scale=scale)
+            cls = classify(resp)
+            coh = is_coherent(resp)
+            if cls == "REFUSE":
+                benign_refuse += 1
+            if coh:
+                benign_coherent += 1
+            scan_results.append({
+                "scale": scale, "kind": "benign", "prompt": p,
+                "cls": cls, "coherent": coh, "resp": resp[:200],
+            })
+            print(f"    benign {cls} coherent={coh} | {resp[:50]}...")
+        except Exception as e:
+            print(f"    benign ERROR: {str(e)[:80]}")
+
+    # Jailbreak half
+    jb_flip = 0
+    jb_coherent = 0
+    for cls_name, jb_p in SCAN_JB:
+        try:
+            resp = generate_georg_intervention(jb_p, target, BEST_LAYER, scale=scale)
+            cls = classify(resp)
+            coh = is_coherent(resp)
+            if cls == "REFUSE":
+                jb_flip += 1
+            if coh:
+                jb_coherent += 1
+            scan_results.append({
+                "scale": scale, "kind": "jailbreak", "class": cls_name,
+                "prompt": jb_p, "cls": cls, "coherent": coh, "resp": resp[:200],
+            })
+            print(f"    jb[{cls_name}] {cls} coherent={coh} | {resp[:50]}...")
+        except Exception as e:
+            print(f"    jb ERROR: {str(e)[:80]}")
+
+    print(f"  scale={scale}: benign refuse={benign_refuse}/{len(SCAN_BENIGN)}, "
+          f"benign coherent={benign_coherent}/{len(SCAN_BENIGN)}, "
+          f"jb flip={jb_flip}/{len(SCAN_JB)}, jb coherent={jb_coherent}/{len(SCAN_JB)}")
+
+with open(OUTPUT_DIR / "scaling_scan.json", "w") as f:
+    json.dump({
+        "layer": BEST_LAYER,
+        "target_proj": layer_target_projs[BEST_LAYER],
+        "scales": SCALES,
+        "results": scan_results,
+    }, f, indent=2, default=str)
+
+# ------------------------------------------------------------
+# Pick best scale: largest scale where ALL benign outputs remain coherent
+# AND jailbreak flip rate is non-zero. Tie-break: maximize jb_flip then
+# minimize benign_refuse.
+# ------------------------------------------------------------
+print("\n  Scan summary:")
+print(f"  {'scale':<8} {'benign_ref':<12} {'benign_coh':<12} {'jb_flip':<10} {'jb_coh':<10}")
+print("  " + "-" * 56)
+scan_table = []
+for scale in SCALES:
+    bs = [r for r in scan_results if r.get("scale") == scale and r.get("kind") == "benign"]
+    js = [r for r in scan_results if r.get("scale") == scale and r.get("kind") == "jailbreak"]
+    b_ref = sum(1 for r in bs if r.get("cls") == "REFUSE")
+    b_coh = sum(1 for r in bs if r.get("coherent"))
+    j_flip = sum(1 for r in js if r.get("cls") == "REFUSE")
+    j_coh = sum(1 for r in js if r.get("coherent"))
+    scan_table.append({
+        "scale": scale, "b_ref": b_ref, "b_coh": b_coh, "b_total": len(bs),
+        "j_flip": j_flip, "j_coh": j_coh, "j_total": len(js),
+    })
+    print(f"  {scale:<8} {b_ref}/{len(bs):<10} {b_coh}/{len(bs):<10} "
+          f"{j_flip}/{len(js):<8} {j_coh}/{len(js):<8}")
+
+# Selection rule:
+#   1. Drop scales where benign_coherent < benign_total (any incoherent benign output).
+#   2. Among the remainder, prefer max j_flip; tie-break by min b_ref then max scale.
+viable = [s for s in scan_table if s["b_coh"] == s["b_total"] and s["b_total"] > 0]
+if viable:
+    viable.sort(key=lambda s: (-s["j_flip"], s["b_ref"], -s["scale"]))
+    chosen = viable[0]
+    CHOSEN_SCALE = chosen["scale"]
+    print(f"\n  CHOSEN_SCALE = {CHOSEN_SCALE} "
+          f"(jb_flip={chosen['j_flip']}/{chosen['j_total']}, "
+          f"benign_refuse={chosen['b_ref']}/{chosen['b_total']})")
+else:
+    # No scale was fully coherent on benign. Fall back to the smallest scale tested.
+    CHOSEN_SCALE = SCALES[0]
+    print(f"\n  WARNING: No scale produced fully coherent benign output.")
+    print(f"  Falling back to CHOSEN_SCALE = {CHOSEN_SCALE} (smallest tested).")
+
+# ============================================================
+# STEP 4: Full control sweep at CHOSEN_SCALE on all TEST_LAYERS
+# ============================================================
+print("\n" + "=" * 60)
+print(f"STEP 4: Full control sweep at scale={CHOSEN_SCALE} on all layers")
 print("=" * 60)
 
 control_results = []
@@ -463,12 +589,16 @@ for prompt in BENIGN_PROMPTS:
     for layer in TEST_LAYERS:
         target = layer_target_projs[layer]
         try:
-            resp_int = generate_georg_intervention(prompt, target, layer)
+            resp_int = generate_georg_intervention(
+                prompt, target, layer, scale=CHOSEN_SCALE
+            )
             cls_int = classify(resp_int)
             coherent = is_coherent(resp_int)
-            print(f"    L{layer:>2} Georg+Arditi: {cls_int} coherent={coherent} | {resp_int[:60]}...")
+            print(f"    L{layer:>2} Georg(scale={CHOSEN_SCALE}): "
+                  f"{cls_int} coherent={coherent} | {resp_int[:60]}...")
             control_results.append({
-                "prompt": prompt, "layer": layer, "target_proj": target,
+                "prompt": prompt, "layer": layer,
+                "target_proj": target, "scale": CHOSEN_SCALE,
                 "baseline_cls": cls_base, "intervened_cls": cls_int,
                 "coherent": coherent, "intervened_resp": resp_int[:300],
             })
@@ -480,17 +610,17 @@ print("\nControl summary:")
 for layer in TEST_LAYERS:
     lr = [r for r in control_results if r.get("layer") == layer and "intervened_cls" in r]
     refused = sum(1 for r in lr if r["intervened_cls"] == "REFUSE")
-    coherent = sum(1 for r in lr if r["intervened_cls"] == "REFUSE" and r.get("coherent"))
-    print(f"  L{layer:>2}: {refused}/{len(lr)} refuse, {coherent} coherent")
+    coherent = sum(1 for r in lr if r.get("coherent"))
+    print(f"  L{layer:>2}: {refused}/{len(lr)} refuse, {coherent}/{len(lr)} coherent")
 
 with open(OUTPUT_DIR / "control_results.json", "w") as f:
     json.dump(control_results, f, indent=2, default=str)
 
 # ============================================================
-# STEP 4: Jailbreak intervention at BEST_LAYER only
+# STEP 5: Full jailbreak sweep at CHOSEN_SCALE on BEST_LAYER
 # ============================================================
 print("\n" + "=" * 60)
-print(f"STEP 4: Jailbreak intervention (Georg method, L{BEST_LAYER} only)")
+print(f"STEP 5: Jailbreak intervention at L{BEST_LAYER}, scale={CHOSEN_SCALE}")
 print("=" * 60)
 
 test_prompts = refused_prompts
@@ -514,18 +644,22 @@ for cls_name, prefixes in JB_CLASSES.items():
 
         target = layer_target_projs[BEST_LAYER]
         try:
-            resp_int = generate_georg_intervention(jb_prompt, target, BEST_LAYER)
+            resp_int = generate_georg_intervention(
+                jb_prompt, target, BEST_LAYER, scale=CHOSEN_SCALE
+            )
             cls_int = classify(resp_int)
             coherent = is_coherent(resp_int)
             flipped = (cls_jb == "COMPLY" and cls_int == "REFUSE")
             marker = " <-- FLIPPED!" if flipped else ""
-            print(f"    L{BEST_LAYER} Georg: {cls_jb}->{cls_int} coherent={coherent}{marker}")
+            print(f"    L{BEST_LAYER} Georg(scale={CHOSEN_SCALE}): "
+                  f"{cls_jb}->{cls_int} coherent={coherent}{marker}")
 
             intervention_results.append({
                 "class": cls_name, "prefix": prefix[:40],
                 "bare_prompt": prompt[:80], "jb_prompt": jb_prompt[:100],
                 "topic": prompt_topics.get(prompt, "other"),
                 "layer": BEST_LAYER, "target_proj": target,
+                "scale": CHOSEN_SCALE,
                 "baseline_cls": cls_jb, "intervened_cls": cls_int,
                 "coherent": coherent, "flipped": flipped,
                 "baseline_resp": resp_jb[:300], "intervened_resp": resp_int[:300],
@@ -544,21 +678,33 @@ for cls_name, prefixes in JB_CLASSES.items():
 # SUMMARY
 # ============================================================
 print("\n" + "=" * 60)
-print("SUMMARY — GEORG (exact magnitude) + ARDITI APPLICATION (Qwen3-4B)")
+print(f"SUMMARY — GEORG exact-magnitude at scale={CHOSEN_SCALE} (Qwen3-4B)")
 print("=" * 60)
 
 print("\nTarget projections: " + ", ".join(
     f"L{l}={layer_target_projs[l]:+.1f}" for l in TEST_LAYERS
 ))
+print(f"Chosen scale: {CHOSEN_SCALE}")
 
-print("\n--- CONTROL (benign -> refuse) ---")
+print("\n--- SCALING SCAN (L{0}) ---".format(BEST_LAYER))
+print(f"  {'scale':<8} {'benign_ref':<12} {'benign_coh':<12} {'jb_flip':<10} {'jb_coh':<10}")
+print("  " + "-" * 56)
+for s in scan_table:
+    print(f"  {s['scale']:<8} {s['b_ref']}/{s['b_total']:<10} "
+          f"{s['b_coh']}/{s['b_total']:<10} "
+          f"{s['j_flip']}/{s['j_total']:<8} {s['j_coh']}/{s['j_total']:<8}")
+
+print(f"\n--- CONTROL (benign -> refuse) at scale={CHOSEN_SCALE} ---")
 for layer in TEST_LAYERS:
     lr = [r for r in control_results if r.get("layer") == layer and "intervened_cls" in r]
     refused = sum(1 for r in lr if r["intervened_cls"] == "REFUSE")
-    coherent = sum(1 for r in lr if r["intervened_cls"] == "REFUSE" and r.get("coherent"))
-    print(f"  L{layer:>2}: {refused}/{len(lr)} refuse ({coherent} coherent)")
+    coherent_total = sum(1 for r in lr if r.get("coherent"))
+    refused_coherent = sum(1 for r in lr if r["intervened_cls"] == "REFUSE" and r.get("coherent"))
+    print(f"  L{layer:>2}: {refused}/{len(lr)} refuse "
+          f"({refused_coherent} of those coherent), "
+          f"{coherent_total}/{len(lr)} total coherent")
 
-print(f"\n--- JAILBREAK (L{BEST_LAYER}, Georg exact-magnitude) ---")
+print(f"\n--- JAILBREAK (L{BEST_LAYER}, Georg @ scale={CHOSEN_SCALE}) ---")
 for cls_name in JB_CLASSES:
     cls_r = [r for r in intervention_results if r.get("class") == cls_name and "intervened_cls" in r]
     comply = sum(1 for r in cls_r if r["baseline_cls"] == "COMPLY")
@@ -585,17 +731,20 @@ if arditi_path.exists():
     ]
     arditi_comply = sum(1 for r in arditi_int if r["baseline_cls"] == "COMPLY")
     arditi_flipped = sum(1 for r in arditi_int if r.get("flipped"))
-    print(f"  Arditi (add r):    {arditi_flipped}/{arditi_comply} flipped")
-    print(f"  Georg (exact mag): {total_flipped}/{total_comply} flipped")
+    print(f"  Arditi (add r):                {arditi_flipped}/{arditi_comply} flipped")
+    print(f"  Georg (exact mag, scale={CHOSEN_SCALE}): {total_flipped}/{total_comply} flipped")
 
 summary = {
-    "method": "georg_exact_magnitude_arditi_application",
+    "method": "georg_exact_magnitude_position_only_with_scale_sweep",
     "model": MODEL_NAME,
     "position": POSITION,
     "test_layers": TEST_LAYERS,
     "best_layer": BEST_LAYER,
     "target_projs": {str(k): v for k, v in layer_target_projs.items()},
     "r_magnitudes": {str(l): unnormalized_r[l].norm().item() for l in TEST_LAYERS},
+    "scales_tested": SCALES,
+    "scaling_scan_table": scan_table,
+    "chosen_scale": CHOSEN_SCALE,
     "bare_results": bare_results,
     "control_results": control_results,
     "intervention_results": intervention_results,
