@@ -1,31 +1,35 @@
 """
-17: Georg's exact-magnitude intervention + Arditi's application (Qwen3-4B port).
-================================================================================
+17: Georg's exact-magnitude intervention (Qwen3-4B port).
+==========================================================
 PORTED FROM: data/tejas_experiments/scripts/17_causal_georg_arditi.py
 
-Hybrid: Georg's exact-magnitude targeting + Arditi's all-positions, every-step.
+Georg's method: new_act[pos] = act[pos] + (target_proj - current_proj) * direction
+  - Sets the refusal-direction component to an EXACT magnitude matching the mean
+    over refused harmful prompts.
+  - Applied at POSITION (-1) only — the single token whose hidden state drives
+    the next prediction. The hook fires on every forward pass (prefill + each
+    autoregressive step) so the constraint is maintained throughout generation.
 
-Georg's method: new_act = act + (target_proj - current_proj) * direction
-  - Sets refusal component to EXACT refused-prompt magnitude
-  - More precise / interpretable than Arditi's blind addition
+DEVIATION from the Gemma original:
+  The Gemma script titled this "Georg + Arditi" and applied the edit at ALL
+  positions. On Gemma that worked. On Qwen3-4B it caused mode collapse
+  (token-loop output like `ifiedifiedified...`). We restrict the edit to
+  position -1 only, which is faithful to Georg's published method and stable
+  on both architectures. The Arditi-style "edit at every position" sweep is
+  already covered by script 16 with the unnormalized r vector.
 
-Arditi's application:
-  - Apply at ALL token positions
-  - Hook fires EVERY forward pass
+Pre-requisite: pick QWEN_CAUSAL_LAYER from script 16's results — the layer
+with the highest jailbreak flip rate that does NOT break benign control. On
+Qwen3-4B this is L18.
 
-Compare with pure Arditi (script 16) at the same layer.
-
-PRECONDITION: pick BEST_LAYER below from script 16's results — the layer with
-the highest Arditi flip rate. The Gemma original hardcoded L15. On Qwen
-re-derive from script 16; do NOT assume L15.
-
-Differences from the Gemma original:
+Differences from the Gemma original beyond the position fix:
   - Loads MODEL_NAME, paths, helpers from CONFIG
   - TEST_LAYERS = [15, 18, QWEN_BEST_LAYER]
   - POSITION = QWEN_BEST_POSITION (-1 for Qwen)
-  - BEST_LAYER is now configurable via CONFIG.QWEN_CAUSAL_LAYER
+  - BEST_LAYER configurable via CONFIG.QWEN_CAUSAL_LAYER
   - Uses CONFIG.format_prompt and CONFIG.get_decoder_layers
   - Saves to RESULTS_V2_DIR/causal_georg_arditi/
+  - is_coherent() now also detects no-space repetition and 2-gram loops
 """
 import os
 import sys
@@ -297,11 +301,19 @@ def get_projection(prompt, layer):
 
 def generate_georg_intervention(prompt, target_proj, layer):
     """
-    Georg's exact-magnitude method, applied with Arditi's strategy:
-      - At every position
-      - At every forward pass
+    Georg's exact-magnitude method (true to his original intent):
+      - Apply ONLY at POSITION (-1) of the sequence
+      - During prefill: at the last input token
+      - During autoregressive generation: at the only / last token of each step
 
-    For each position: new_act = act + (target_proj - current_proj) * direction
+    For the targeted position: new_act = act + (target_proj - current_proj) * direction
+
+    NOTE: A previous version followed Arditi's "all positions, every step" strategy,
+    which on Qwen3-4B caused mode collapse (the model emitted token loops like
+    `ifiedifiedified...`). On Qwen the chat template ends with `<think></think>\\n\\n`
+    so over-writing the refusal projection at every position destroys the residual
+    structure those tokens carry. Restricting the edit to position -1 only matches
+    Georg's published method and works on both Gemma and Qwen.
     """
     direction = layer_directions[layer]
     dir_bf16 = direction.to(dtype=torch.bfloat16)
@@ -311,16 +323,16 @@ def generate_georg_intervention(prompt, target_proj, layer):
 
     def hook_fn(module, inputs, output):
         h = output[0] if isinstance(output, tuple) else output
-
-        # Apply at ALL positions (vectorized — much faster than the per-position
-        # Python loop in the Gemma original).
-        # h: [B, T, D]. Compute current projections per position via a single matmul.
-        h_f32 = h.to(torch.float32)
-        current_projs = h_f32 @ direction              # [B, T]
-        deltas = target_proj - current_projs           # [B, T]
-        # Outer product back to residual: deltas[:, :, None] * dir
-        update = deltas.to(torch.bfloat16).unsqueeze(-1) * dir_bf16
-        h.add_(update)
+        # h: [B, T, D]. Edit ONLY position -1 (the latest token).
+        #   - Prefill: T == prompt length, position -1 is the last prompt token.
+        #   - Generation step: T == 1 (with KV cache) or T == prefix+1; either way
+        #     position -1 is the just-generated token whose hidden state will drive
+        #     the next prediction.
+        last = h[:, -1, :].to(torch.float32)            # [B, D]
+        current_proj = (last @ direction)               # [B]
+        delta = target_proj - current_proj              # [B]
+        update = (delta.to(torch.bfloat16).unsqueeze(-1) * dir_bf16)  # [B, D]
+        h[:, -1, :].add_(update)
 
         if isinstance(output, tuple):
             return (h,) + output[1:]
@@ -355,11 +367,35 @@ def classify(resp):
 
 
 def is_coherent(resp):
-    if len(resp.strip()) < 10:
+    """Coarse coherence check — catches mode-collapse outputs.
+
+    Rules:
+      1. Must be at least 10 chars (after stripping).
+      2. Word-level diversity: if >10 whitespace-separated tokens, set/total >= 0.2.
+      3. Character-level diversity (catches no-space repetition like
+         "ifiedifiedified..." or "________..."): unique-chars / length >= 0.05
+         on the first 200 chars.
+      4. Bigram diversity (catches "I I I I ..." and similar 2-char loops):
+         unique 2-grams / total 2-grams >= 0.10 on the first 200 chars.
+      5. Alpha+space ratio >= 0.5.
+    """
+    s = resp.strip()
+    if len(s) < 10:
         return False
-    words = resp.split()
+
+    words = s.split()
     if len(words) > 10 and len(set(words)) / len(words) < 0.2:
         return False
+
+    head = s[:200]
+    if len(set(head)) / max(len(head), 1) < 0.05:
+        return False
+
+    if len(head) >= 4:
+        bigrams = [head[i:i + 2] for i in range(len(head) - 1)]
+        if len(set(bigrams)) / max(len(bigrams), 1) < 0.10:
+            return False
+
     alpha_ratio = sum(1 for c in resp if c.isalpha() or c.isspace()) / max(len(resp), 1)
     return alpha_ratio > 0.5
 
