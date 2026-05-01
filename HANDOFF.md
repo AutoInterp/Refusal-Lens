@@ -1,16 +1,24 @@
 # Refusal-Lens — Pipeline State & Remaining Tasks
 
-**Last updated 2026-04-29 (evening)** — P7 launched. Tmux-persistent orchestrator (`scripts/pipeline/run_p7.sh`) added; smoke validated end-to-end on a fresh self-contained run dir; an additional list-typed `measurement_position` bug in mentor's patch was found and fixed (committed to `vendor/circuit-tracer` on `refusal-lens-multi-position-fix`); full pipeline kicked off in tmux session `p7` with `--mode full --positions all` (Option B: drops the `anchors` position-mode comparative analysis to fit ~20-25 h budget). Recovery drilldown post-hoc script (`scripts/pipeline/08_recovery_drilldown.py`) added for per-prompt comply-baseline visibility.
+**Last updated 2026-05-01** — **P7 COMPLETE.** Full pipeline finished on `data/results/pipeline_runs/run_20260430_023247`; HF push complete (raw `.pt`, packed `.json.gz`, run metadata at `moon70/refusal-lens-graphs/runs/run_20260430_023247/`). Comprehensive analysis report at `REPORT_run_20260430_023247.md`. Local 500 GB volume can be deleted; pod torn down. Three new follow-up tracks queued: (a) canonical_pro_refusal ablation, (b) frontend interactive ablation server (~70% pre-built), (c) repo cleanup before public release.
 
 ## TL;DR for new session
 
-1. **Pipeline is mid-execution.** Full run kicked off ~2026-04-29 PM in tmux `p7` on RunPod, expected 17-28 h. When you arrive, first thing: `tmux attach -t p7` (or `tail -f /tmp/p7_pipeline.log`); look for `<run-dir>/.P7_DONE` (success) or `<run-dir>/.P7_FAIL` (which stage). Run dir lives at `data/results/pipeline_runs/run_<TS>/`.
-2. **Two upstream patches landed in this session** (commit them upstream after the run finishes):
-   - **Mentor's measurement_hook patch** (commit `7c6cfa4` of vendor/circuit-tracer) had a follow-up bug: `_run_attribution` hardcoded `torch.full(shape, _mp)` which crashes when `measurement_position` is a list (the multi-position pass `[-5, -3, -2]`). Fixed locally on a new submodule branch `refusal-lens-multi-position-fix` (one commit on top of `7c6cfa4`); both `attribute_transformerlens.py` and `attribute_nnsight.py` patched. Parent repo `.gitmodules` retargeted to this branch and submodule pointer bumped. **Tell Georg** so he can decide whether to merge the fix back into `refusal-lens-residual-stream-hook` upstream.
-   - **All P1-P6 work** from the previous session, untouched.
-3. **The P7 orchestrator does NOT reuse anything** from prior runs — every stage (Stage 01 direction, Stage 06 causal, etc.) runs fresh in each new run dir, so the bug fixes are exercised end-to-end. Old `run_20260422_015552` is no longer symlinked or referenced.
-4. **Smoke validated everything works** at N=3 (`data/results/pipeline_runs/full_smoke_20260429_170345/`): Stage 03 ratio = 1.6988 (single), 1.8170 (multi); baseline_offset = +20,221 ± 532 (matches mentor's reference); Stage 06 = 100/100/100% (5/5, 3/3, 10/10); Stage 08 dissociation diagnostic correctly identifies that `jb_fiction_specific_vs_ctrl` features fire 57% on jb_fiction vs 0% on all controls. **The smoke was unable to measure dissociation Δ for fiction (0 baseline complies at N=3); the full N=50 run will resolve.**
-5. **After the full finishes**: run `scripts/pipeline/08_recovery_drilldown.py --run-dir <new-run-dir>` for the per-prompt comply-baseline view, then write up the headline numbers (see [Headline numbers to record](#step-3-after-completion--push-to-hf--record-headline-numbers)). HF push is automatic at the end of the orchestrator. `--git-push-results` was NOT passed by default — to commit small result JSONs back to git, re-run with that flag or do it manually.
+1. **P7 complete, results pushed.** Headline numbers locked in. Read `REPORT_run_20260430_023247.md` for the full analysis. Five-bullet summary:
+   - Stage 03 linearization identity holds: `Σ edges + baseline = direct_dot`, attr/dot ratio **1.659 ± 0.025** (single), baseline offset **+19,419 ± 574** — matches mentor's 1.73, +21,625 reference.
+   - Stage 06 causal: **100% / 98% / 100%** (pro-refusal flip / anti-refusal sub / benign force-refuse). Up from 96.7% / 100% / 100% on prior run. Fiction now 100% (was 90%).
+   - Stage 08 unblocked: `universal_refusal_core` (26 feat) recovers **26.6%** of weighted JB complies; `jb_fiction_specific_vs_ctrl` passes dissociation (Δ = +16.0 pp); analytical/cog_reframe show **negative dissociation** (causally promiscuous despite correlationally selective).
+   - Layer story: L0–L11 cumulative −20,711 (anti-refusal accumulator), L33 alone +32,125 (pro-refusal flip). The previous "L14 hotspot" was a basis-mismatch artifact.
+   - Direction ≫ subcircuit potency: Stage 06 r-vector flips fiction at 100%, Stage 08 fiction-specific features ablate at 30%. The residual stream integrates a more distributed signal than any sparse feature subset captures.
+
+2. **Highest-leverage follow-up: ablate `canonical_pro_refusal`** (88-feature subcircuit, "all 5 JBs but not bare"). Not in Stage 08 default; was the missing experiment from this run. Plan in `EXPERIMENT_PLAN_canonical_pro_refusal_and_frontend_ablation.md`. Single Stage 08 invocation, ~3–6 h on H100.
+
+3. **Frontend interactive ablation is ~70% pre-built.** `scripts/pipeline/ablation_server.py` (224 lines, FastAPI) + `scripts/pipeline/05_frontend_patches/feature-cart.js` (click-to-cart UI). Needs: end-to-end test, extension to `compare.html`, supernode-grouping UI. Also in the experiment plan above.
+
+4. **Two upstream patches still pending merge into mentor's branch** (vendor/circuit-tracer):
+   - The list-typed `measurement_position` fix lives only on our submodule branch `refusal-lens-multi-position-fix`. Mention to Georg post-deadline.
+
+5. **Repo cleanup before public release** — see [Repo cleanup audit](#repo-cleanup-audit-recommendations) below. Several non-pipeline scripts (`scripts/run_*_experiments.py`, ancillary pipeline shells, `data/results/pipeline_runs/run_20260422_015552` 75 GB) are candidates for removal.
 
 ---
 
@@ -218,18 +226,37 @@ n_feat counts now 10,326-18,111 per condition (vs ~5,000 in buggy regime) — co
 
 ---
 
-## P7 — RunPod execution plan (only remaining task)
+## P7 — Run results (`run_20260430_023247`, completed 2026-05-01)
 
-> **Quick path (one-shot, tmux-persistent, no reuse)**:
-> `bash scripts/pipeline/run_p7.sh` chains a fresh smoke → verdict → fresh full
-> → HF push (raw .pt + packed .json.gz + run meta) inside a detached tmux
-> session named `p7`. Every stage — including Stage 01 (direction) and Stage
-> 06 (causal) — runs fresh in each new run dir; nothing is symlinked from
-> prior runs, so the bug-fix patches are exercised end-to-end. Add
-> `--git-push-results` to also commit the small result JSONs back to
-> `l15-refactor`. See script header for flags. The manual step-by-step below
-> still documents what each stage does and is useful when debugging a failed
-> sub-step.
+**Wall: ~24 h end-to-end on H100 SXM** (Stage 02 = 205 min, Stage 06 = 54 min, Stage 08 = 985 min, push = ~3 h via `upload_large_folder` for the 355 GB raw `.pt` archive). All HF pushes complete; report at `REPORT_run_20260430_023247.md`.
+
+**Headline numbers (full N=50 confirmation)**:
+
+| Stage | Metric | Value | Prior run (`run_20260422_015552`, buggy basis) |
+|---|---|---|---|
+| 03 | attr/dot ratio (single, mean) | **1.6594 ± 0.025** | n/a (different schema) |
+| 03 | baseline_offset (single, mean) | **+19,419 ± 574** | n/a |
+| 06 | pro-refusal flip rate | **100 % (89/89)** | 96.7 % (87/90) |
+| 06 | anti-refusal flip rate | **98 % (49/50)** | 100 % (49/49) |
+| 06 | benign force-refuse rate | **100 % (10/10)** | 100 % |
+| 06 | fiction flip rate (was holdout) | **100 % (19/19)** | 90 % (18/20) |
+| 07 | jb_specific_frac (k50_f50, mean across 5 classes) | **25 % (range 13–33)** | similar but at corpus-level union, much noisier |
+| 08 | universal_refusal_core JB weighted recovery | **26.6 %** | vacuous (12 % coverage) |
+| 08 | jb_fiction_specific_vs_ctrl dissociation Δ | **+16.0 pp** ✓ | vacuous |
+| 08 | jb_analytical_specific_vs_ctrl Δ | **−13.8 pp** ✗ | vacuous |
+| 08 | jb_cognitive_reframe_specific_vs_ctrl Δ | **−11.2 pp** ✗ | vacuous |
+| 08 | mean coverage on target class (per-prompt sweep) | **83–96 %** | 12.1 % |
+| Stage 03 layer story | L0–L11 cumulative | **−20,711** (anti-refusal accumulator) | obscured by basis bug |
+| Stage 03 layer story | L33 alone | **+32,125** (pro-refusal flip) | "L14 hotspot" was a basis artifact |
+
+**Two pivotal new findings (post-fix):**
+
+1. **Negative dissociation on analytical and cognitive_reframe.** Their "class-specific" features are correlationally selective (top-50 hit rate 88 % / 68 % on target) but causally promiscuous (ablation recovers OTHER classes more than target). Only fiction passes the per-class dissociation test. This is publishable as a methodological caution against treating top-K class-specific features as faithful per-class circuits at this K/F regime.
+2. **Direction ≫ subcircuit potency.** Stage 06 r-vector intervention recovers 100 % of fiction; Stage 08 fiction-specific feature ablation recovers 30 %. The residual stream integrates a more distributed signal than any sparse feature subset captures. This argues against framing the JB circuit as "N specific features" and motivates the still-unrun ablation of `canonical_pro_refusal` (88 features, "all 5 JBs but not bare").
+
+See the [report](REPORT_run_20260430_023247.md) for the full breakdown and figures.
+
+> *Historical execution-plan reference (kept for reproduction).* `bash scripts/pipeline/run_p7.sh` chains a fresh smoke → verdict → fresh full → HF push inside a detached tmux session `p7`. Every stage runs fresh in each new run dir; nothing is symlinked from prior runs. Add `--git-push-results` to commit small result JSONs back to `l15-refactor`. Detailed step-by-step is preserved below for debugging a failed sub-step.
 
 ### Step 0: Pull latest code + verify
 
@@ -369,22 +396,23 @@ PYTHONPATH=src python3 scripts/pipeline/push_graph_data.py \
 
 ---
 
-## Stage-by-stage status (2026-04-29 evening, post-launch)
+## Stage-by-stage status (2026-05-01, post-P7)
 
-| # | Stage | Code status | Validated post-fix? | Notes |
+| # | Stage | Code status | Validated at N=50? | Notes |
 |---|---|---|---|---|
-| 01 | `01_compute_direction.py` | ✅ | ✅ (smoke — fresh run dir) | Per-layer @ pos=-2 + per-position at L15. **No longer reused; runs fresh each time.** |
-| 02 | `02_run_attribution.py` | ✅ + `--measurement-hook` + `--backend` + multi-position-fix in vendor | ✅ (3-prompt smoke; both modes work) | TL backend; orchestrator passes `--save-graphs` so 02c + push_raw can consume. |
-| 02b | `02b_statistical_analysis.py` | ✅ no changes | ✅ (smoke — d=-8.62 analytical, d=-4.99 cog_reframe vs_bare; ~2× the buggy basis) | Effect sizes will lock in at N=50. |
-| 02c | `02c_pack_graphs.py` | ✅ no changes | ✅ (smoke; 66 .pt → 66 .json.gz, ×6.9 compression) | Requires Stage 02 `--save-graphs`. |
-| 03 | `03_verify_attribution.py` | ✅ hook-aware | ✅ (smoke ratio = 1.6988 single, 1.8170 multi; baseline +20,221 single matches mentor's +21,625) | Identity check `Σ edges + baseline ≈ direct_dot`. |
-| 04 | `04_label_features.py` | ✅ no changes | ✅ (smoke — 379/379 features labeled, all 100%) | HF feature labels. |
-| 04b | `04b_delphi_labels.py` | ⏳ not started | — | Post-NeurIPS / lower priority. |
-| 05 | `05_visualize_circuits.py` | ✅ no changes | ⏳ pending full | Browser sanity check after rerun. **Not run by `run_p7.sh`** — invoke manually if frontend bundle wanted. |
-| 06 | `06_causal_intervention.py` | ✅ done | ✅ (smoke — 100/100/100% at N=3, matches/improves prior 96.7/100/100) | **Now runs fresh in each P7 run dir** (orchestrator passes `--max-prompts $FULL_PROMPTS`); no longer symlinked from old run. |
-| 07 | `07_identify_subcircuits.py` | ✅ + sweep configs (P4) | ✅ (smoke — all 4 configs produced; k50_f50 sizes: universal=25, jb_*_specific=8-17) | Emits `subcircuits.json` + `subcircuits_k{K}_f{F:02.0f}.json` ×3. |
-| 08 | `08_ablate_subcircuits.py` | ✅ + coverage + weighted (P5) | ✅ (smoke — wiring confirmed; activation audit shows class-specificity 57% / 0%) | Orchestrator passes `--subcircuits-file subcircuits_k50_f50.json --skip-baseline --max-new-tokens 80 --resume --checkpoint-every 5`. |
-| 08b | `08_recovery_drilldown.py` | ✅ NEW (this session) | ✅ (smoke — produces 10 records across 5 baseline complies, rates match aggregate) | Post-hoc; reads `08_ablation/ablation_results.json`, emits `recovery_drilldown.json` + `.csv` with per-prompt comply→ablated outcomes. Run after full completes. |
+| 01 | `01_compute_direction.py` | ✅ | ✅ run_20260430 | Per-layer @ pos=-2 + per-position at L15. ‖r‖ at L15 = 3,101.2; at L32 = 20,873.2. Runs fresh each time, no longer reused via symlink. |
+| 02 | `02_run_attribution.py` | ✅ + `--measurement-hook` + `--backend` + multi-position-fix in vendor | ✅ run_20260430 (1,100 graphs, both modes, 205 min) | TL backend; orchestrator passes `--save-graphs`. n_features per condition ~12,500 — 2× the buggy regime. |
+| 02b | `02b_statistical_analysis.py` | ✅ no changes | ✅ run_20260430 | vs_bare single-mode Cohen's d: analytical −6.33, cog_reframe −5.87, fiction −3.75. **2–3× the buggy basis.** vs_ctrl (the rigorous comparison) shows only cog_reframe (d=−2.03) and analytical (d=−1.20) clear |d|>1. |
+| 02c | `02c_pack_graphs.py` | ✅ no changes | ✅ run_20260430 (1,100 .pt → 1,100 .json.gz, 6.94× compression, 484 MB total) | Requires Stage 02 `--save-graphs`. |
+| 03 | `03_verify_attribution.py` | ✅ hook-aware | ✅ run_20260430 (single ratio 1.6594 ± 0.025; baseline +19,419 ± 574; multi ratio 1.8170) | Linearization identity `Σ edges + baseline ≈ direct_dot` verified to <0.4% per prompt. Mentor reference 1.73 / +21,625. |
+| 04 | `04_label_features.py` | ✅ no changes | ✅ run_20260430 (100 % label coverage on union top-50) | HF feature labels. |
+| 04b | `04b_delphi_labels.py` | ⏳ not started | — | Post-NeurIPS / lower priority. Awaiting Ruqiya. |
+| 05 | `05_visualize_circuits.py` | ✅ no changes | ⏳ pending — not in orchestrator | Frontend regeneration: `PYTHONPATH=src python3 scripts/pipeline/05_visualize_circuits.py --run-dir <run-dir>`. **Companion `feature-cart.js` + `ablation_server.py` are pre-built — see frontend ablation plan.** |
+| 06 | `06_causal_intervention.py` | ✅ done | ✅ run_20260430 (100 % / 98 % / 100 %; fiction now 100 %, was 90 %) | Bidirectional symmetry confirmed at N=50. Runs fresh in each P7 run dir. |
+| 07 | `07_identify_subcircuits.py` | ✅ + sweep configs (P4) | ✅ run_20260430 (all 4 configs produced; k50_f50 sizes: universal=26, ctrl_shared=4, jb_*_specific=8–17) | Emits `subcircuits.json` (legacy) + `subcircuits_k{K}_f{F:02.0f}.json` ×3 (sweep). |
+| 08 | `08_ablate_subcircuits.py` | ✅ + coverage + weighted (P5) | ✅ run_20260430 (5 ablations × 11 conditions × 50 prompts × 1 position-mode in 985 min) | Coverage 83–96 % on target class (vs 12 % on prior buggy run). **`canonical_pro_refusal` not in default — open follow-up.** |
+| 08b | `08_recovery_drilldown.py` | ✅ done | ⏳ pending — run on local copy of run_20260430 | Post-hoc; emits `recovery_drilldown.json` + `.csv`. Run after pulling result JSONs from HF. |
+| 09 | (proposed) attention-head attribution | ⏳ not started | — | circuit-tracer supports it; wiring is the only barrier. ICML stretch / NeurIPS likely. |
 
 ---
 
@@ -623,41 +651,119 @@ PYTHONPATH=src python3 scripts/pipeline/tests/test_pipeline_local.py --stage all
 
 ---
 
-## Remaining tasks (queued for next session)
+## Remaining tasks (queued for next session, post-P7)
 
 In rough priority order:
 
-1. **Babysit the running full pipeline.** `tmux attach -t p7` on RunPod, or `tail -f /tmp/p7_pipeline.log`. Expected wall ~17-28 h from launch. Look for `<run-dir>/.P7_DONE` (success) or `<run-dir>/.P7_FAIL` (which stage). The `--resume --checkpoint-every 5` on Stage 08 protects against pod restarts.
-
-2. **After the full completes — generate the recovery drilldown:**
+1. **Run `08_recovery_drilldown.py` locally** on the result JSONs you've already pulled:
    ```bash
    PYTHONPATH=src python3 scripts/pipeline/08_recovery_drilldown.py \
-       --run-dir data/results/pipeline_runs/run_<TS>
+       --run-dir data/results/pipeline_runs/run_20260430_023247
    ```
-   Produces per-prompt comply→ablated outcome view as JSON + CSV.
+   No GPU. Produces per-prompt baseline-COMPLY → ablated-{REFUSE | COMPLY} table for every (prompt × ablation × pos_mode). Useful for the per-class qualitative writeup on which prompts the fiction-specific ablation works on vs which it misses.
 
-3. **Capture the headline numbers** for the ICML/NeurIPS write-up (see [Step 3](#step-3-after-completion--push-to-hf--record-headline-numbers) for exact paths). Critical fields:
-   - `03_verification/verification_results.json[summary].attr_to_dot_ratio_mean` (multi + single)
-   - `08_ablation/ablation_summary.json[per_ablation][abl][positions][all][weighted]` per ablation
-   - `08_ablation/ablation_summary.json[dissociation]` per JB class
-   - `08_ablation/recovery_drilldown.json[by_class]` for the per-prompt visibility
-   - Stage 03 per-layer table — confirm L33 dominance + L9-L11 anti-refusal hotspot at N=50
+2. **HIGHEST PRIORITY follow-up — ablate `canonical_pro_refusal`** (88-feature subcircuit, "in all 5 JB top-50 but not in bare top-50"). The single most theoretically interesting subcircuit, missing from the Stage 08 default set. Expected wall ~3–6 h on H100. Plan in `EXPERIMENT_PLAN_canonical_pro_refusal_and_frontend_ablation.md` (companion doc).
 
-4. **Coordinate with Georg (mentor)** to merge the multi-position fix back upstream into `refusal-lens-residual-stream-hook` (currently lives only on our `refusal-lens-multi-position-fix` branch on the AutoInterp/circuit-tracer fork).
+3. **Stand up the live ablation server + frontend cart**. Existing infrastructure is ~70 % built:
+   - `scripts/pipeline/ablation_server.py` (224 lines, FastAPI)
+   - `scripts/pipeline/05_frontend_patches/feature-cart.js` (click-to-cart)
+   Needs: end-to-end test on a real run, extension to `compare.html`, supernode-grouping UI. Same companion plan as above.
 
-5. **Optionally re-run with `--positions both`** post-ICML to add the anchors-position-mode comparison to the dissociation matrix figure. Budget another ~15-25 h. Or trim to anchors-only re-run on existing run dir (just re-invoke Stage 08 with `--positions anchors`, ~half the time).
+4. **Repo cleanup before public release** — see [Repo cleanup audit](#repo-cleanup-audit-recommendations) below. ~500 GB of stale run artifacts and several non-pipeline scripts can be safely removed.
 
-6. **Rotate the leaked GHP_TOKEN** on the user's Mac (URL-embedded in `.git/modules/vendor/circuit-tracer/config`). Not pushed publicly but exposed in the conversation transcript. Then `git -C vendor/circuit-tracer remote set-url origin https://github.com/AutoInterp/circuit-tracer.git` to remove the embedded credential.
+5. **Stage 08 (K, F) sweep on alternate sweep configs** to resolve negative dissociation on analytical/cog_reframe. Run Stage 08 on `subcircuits_k20_f50.json` (more selective) and `subcircuits_k100_f20.json` (more permissive). ~9–18 h per config on H100. If Δ stays negative across configs, the negative dissociation is real (general-bypass weight); if it goes positive at K=100, it's a top-K aliasing artifact.
 
-7. **Stage 04b (Delphi labels via Ruqiya)** — still unstarted. Lower priority; post-NeurIPS unless Ruqiya delivers in the meantime.
+6. **Optionally re-run with `--positions anchors`** for the position-mode comparison. Anchors-only on existing run dir is `08_ablate_subcircuits.py --positions anchors` ~half the time of `--positions all` (~5–10 h). Adds the anchors column to the dissociation matrix figure for the methods section.
 
-8. **Stage 05 frontend regeneration** — not run by the orchestrator. Invoke manually on the new run dir if you want the browseable circuit explorer:
+7. **Coordinate with Georg (mentor)** to merge the `refusal-lens-multi-position-fix` submodule branch back upstream into `refusal-lens-residual-stream-hook`.
+
+8. **Stage 04b (Delphi labels via Ruqiya)** — still unstarted. Lower priority; post-NeurIPS unless Ruqiya delivers in the meantime.
+
+9. **Stage 05 frontend regeneration** — not run by the orchestrator. Invoke manually on the new run dir:
    ```bash
-   PYTHONPATH=src python3 scripts/pipeline/05_visualize_circuits.py --run-dir <new-run-dir>
+   PYTHONPATH=src python3 scripts/pipeline/05_visualize_circuits.py --run-dir data/results/pipeline_runs/run_20260430_023247
    ```
+
+10. **Replace `jb_completion`** in the dataset before camera-ready. With 0/50 baseline complies it's a refusal-strengthening style, not a JB. Reframe as a "JBs that don't bypass" anchor or substitute a real bypass-style JB.
+
+11. **Rotate the leaked GHP_TOKEN** on the user's Mac (URL-embedded in `.git/modules/vendor/circuit-tracer/config`). Not pushed publicly but exposed in the conversation transcript. Then `git -C vendor/circuit-tracer remote set-url origin https://github.com/AutoInterp/circuit-tracer.git` to remove the embedded credential.
+
+---
+
+## Repo cleanup audit (recommendations)
+
+Audit performed 2026-05-01 against current `l15-refactor` HEAD. **All recommendations are advisory — confirm with the user before deleting anything.**
+
+### Safe to delete
+
+**Top-level**
+- `run.log` (28 KB, last touched Apr 12) — orphan log file, no references.
+
+**Old pipeline run artifacts** (in `data/results/pipeline_runs/`)
+- `attribution_results_test.json` (112 K) — orphan top-level file, presumably from a failed early Stage 02 run.
+- `run_20260417_010035/` (9.8 MB) — pre-foundation-merge run, no references in HANDOFF or active code.
+- `full_smoke_20260429_170345/` (37 MB) — smoke validation for P7 launch; superseded by `run_20260430_023247`.
+- `run_20260422_015552/` (**75 GB**) — the largest disk hog. Per HANDOFF this was kept for archaeology, but post-P7 the corrected-basis numbers in `run_20260430_023247` strictly supersede everything attribution-derived from this run. Stage 06 (96.7 % flip) is the only result that's even worth comparing against, and that comparison is already inlined in the report. **Recommend deletion** after confirming the small JSONs (06_causal/, 07_subcircuits/, 08_ablation/) have been pulled to a separate archive if needed for historical comparison.
+
+**Ancillary pipeline scripts** (in `scripts/pipeline/`)
+- `auto_fetch_pack_push.sh` (132 lines) — superseded by `run_p7.sh`'s push phase. Not referenced.
+- `run_stage02_parallel.sh` (83 lines) — superseded by orchestrator's serial stage-02 invocation. Not referenced.
+- `run_stage08_overnight.sh` (135 lines) — superseded by orchestrator's `--resume --checkpoint-every 5`. Not referenced.
+- `merge_stage02_shards.py` (149 lines) — for the sharded-Stage-02 mode that's no longer used. Not referenced by `run_p7.sh`.
+
+**Non-pipeline scripts** (in `scripts/`) — these all import from `src/refusal_lens` (the legacy library). **Verify before deleting** if you want to preserve them as historical reproducibility:
+- `run_meeting_experiments.py` — early-meeting experiments, superseded by Stage 06.
+- `run_scaled_experiments.py` — pre-pipeline scaling exploration, superseded by Stage 02.
+- `validate_tejas_replication.py` — pre-pipeline Tejas-causal validation, superseded by Stage 06.
+
+### Verify with user before deleting
+
+- `REFACTORING_GUIDE.md` (repo root) — historical 15-step refactoring plan. Mostly superseded by HANDOFF.md, but contains references to project memory and pre-pipeline state. **Probably safe to archive but worth a re-read.**
+- `data/tejas_experiments/scripts/16_causal_arditi.py` — explicitly documented in HANDOFF as superseded by Tejas's Script 20 (which is the source for our Stage 06). Other files in `data/tejas_experiments/` (KEY_FINDINGS.txt, MECHANISM_FINDING.txt, README.md, figures/) are research-archive material — keep.
+- `scripts/pipeline/diagnose_stage_08.py` (192 lines) — useful for reading old runs without rerun, but redundant with `08_recovery_drilldown.py`. **Decide based on whether you want to keep multiple post-hoc tools.**
+- `scripts/pipeline/rebuild_graph_metadata.py` (68 lines) — utility for regenerating `graph-metadata.json` if it gets corrupted. Probably keep as a small utility.
+- `scripts/demo_attribution.py` — early-meeting demo. Superseded by Stage 02 + `run_p7.sh --mode smoke`. Decide based on whether you want a "hello world" entry point for new contributors.
+- `Dockerfile.local` — useful for reproducibility. **Keep**, but verify it builds successfully against the current `pyproject.toml`.
+
+### Keep (load-bearing)
+
+- `src/refusal_lens/` — imported by 6 active pipeline scripts (01, 02, 06, 08, config, utils). **Do not remove.**
+- `test/` (legacy test suite) — imports from `src/refusal_lens`; verifies the library code that the pipeline depends on. **Keep**, run `PYTHONPATH=src python3 -m pytest test/ -v` to confirm it still passes.
+- All `scripts/pipeline/0X_*.py` (the 9 main stages + 02b, 02c, 04b, 08_recovery_drilldown).
+- `scripts/pipeline/run_p7.sh` (orchestrator).
+- `scripts/pipeline/{utils,utils_viz,config}.py` (shared helpers).
+- `scripts/pipeline/tests/test_pipeline_local.py` (244-test suite).
+- `scripts/pipeline/{push_*,fetch_*,02c_pack_graphs}.py` (HF helpers).
+- `scripts/pipeline/ablation_server.py` (frontend backend, in active use).
+- `scripts/pipeline/05_frontend_patches/` (frontend patches injected by Stage 05 and `feature-cart.js`).
+- `vendor/circuit-tracer/` (patched submodule).
+- `dataset/refusal_lens_controlled_dataset.json`.
+- `data/results/pipeline_runs/run_20260430_023247/` (canonical run, just completed; HF backup exists).
+- `MENTEE_NOTE_three_bugs.md`, `HANDOFF.md`, `REPORT_run_20260430_023247.md`, `Attribution_Circuits_to_Refusal_Direction.pdf`, `images/`, `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md`.
+
+### Estimated disk freed
+
+- ~75 GB from deleting `run_20260422_015552/` (the big one).
+- ~50 MB from smaller cleanups (script files, smoke run, run.log, attribution_results_test.json).
+- Net repo footprint goes from ~75 GB to ~36 MB pre-vendored-package — much more reasonable for a public release.
+
+---
+
+## New gotchas (P7 results session)
+
+1. **Pre-existing frontend ablation infrastructure**. `scripts/pipeline/ablation_server.py` (224-line FastAPI service) and `scripts/pipeline/05_frontend_patches/feature-cart.js` (click-to-cart with `SERVER_URL = http://localhost:8080/ablate`) are already in the repo. Don't re-implement; extend them. Server uses `nnsight` backend for the ablation forward pass (NOT TransformerLens — `feature_intervention_generate` lives on `ReplacementModel.nnsight`). This is a deliberate choice: ablation needs `feature_intervention_generate`, which only exists on the nnsight side; attribution needs `hook_resid_post`, which requires TransformerLens. The two parts of the pipeline use different backends for legitimate reasons.
+
+2. **Stage 08 metadata block is empty in `ablation_summary.json`** — only `per_ablation`, `dissociation`, `coverage` keys exist at the top level. The metadata (subcircuits-source-file, low-coverage threshold, elapsed minutes) lives only in `ABLATION_SUMMARY.md` (the human-readable summary). If the next iteration needs metadata in machine-readable form, add it back to `ablation_summary.json`'s top level.
+
+3. **355 GB of raw `.pt` archive on HF**. Pushed via `huggingface_hub.HfApi.upload_large_folder` (NOT the regular `upload_folder` — that times out on >100 GB single commits). The CLI form `hf upload-large-folder` does NOT support `--path-in-repo`; we used the staging-symlink workaround. If you need to re-upload, use the same pattern. See `EXPERIMENT_PLAN_canonical_pro_refusal_and_frontend_ablation.md` § 4 for the exact incantation.
 
 ## Final note for new session
 
-You're picking up mid-execution: orchestrator is launched, smoke validated end-to-end, full pipeline running in tmux on RunPod with `--mode full --positions all` (Option B). All bug fixes are landed and committed (parent on `l15-refactor`, submodule on `refusal-lens-multi-position-fix`). When the full finishes, run the recovery drilldown, push results, and report the headline numbers — instructions in the [Remaining tasks](#remaining-tasks-queued-for-next-session) block above.
+P7 is complete. Headline science is in: bidirectional refusal-axis symmetry at L15 (100/98/100 %), clean linearization identity (1.66 ratio, +19.4k baseline), and a unblocked Stage 08 with one clean dissociation (fiction +16 pp), one negative-dissociation puzzle (analytical/cog_reframe), and a major direction-vs-subcircuit potency gap. The full report is at `REPORT_run_20260430_023247.md`.
 
-The big science updates from this session are: (1) effect sizes are 2-3× larger in the corrected basis, (2) L33 dominates the late-layer pro-refusal flip (the previous "L14 hotspot" was a basis-mismatch artifact), (3) class-specific subcircuits ARE selective (per the Stage 08 activation audit, jb_fiction features fire 57% on jb_fiction vs 0% on every control). All of these need N=50 confirmation but are robust at N=3.
+Three things to do next, in rough priority order:
+1. **Ablate `canonical_pro_refusal`** — the missing experiment that closes the JB-only refusal recruitment story (companion plan).
+2. **Ship the live ablation server** — pre-built infrastructure ready for last-mile testing + frontend cart UX (companion plan).
+3. **Repo cleanup before public release** — recommendations in this file (audit section above).
+
+Local tests: 244 passed / 0 failed / 1 skipped (Apr 29). Add new tests when you wire up canonical_pro_refusal or extend the ablation server.
