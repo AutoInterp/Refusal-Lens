@@ -121,6 +121,53 @@ Option A executed. Sibling pipeline lives at [scripts/pipeline_qwen/](scripts/pi
 
 ### Known caveats — these block an actual Qwen run
 
-1. **circuit-tracer Qwen-3 hookpoint patch (not done).** `vendor/circuit-tracer` on `refusal-lens-measurement-patch` only knows about Gemma-3's `hook_resid_post` resolution. Until a Qwen-3 entry is added to `tl_nnsight_mapping.py` and `replacement_model::get_measurement_loc()`, attribution at the residual stream won't work. Submodule isn't checked out yet — first action: `git submodule update --init --recursive`.
+1. ~~**circuit-tracer Qwen-3 hookpoint patch (not done).**~~ **Resolved in Phase 2 (below).**
 2. **`tests/` not rewritten.** The local pipeline tests in `pipeline_qwen/tests/` were copied unchanged and assert Gemma-specific values (e.g. L32 separation ~20k, MLP ratio ~0.4%). They will fail on Qwen. Either rewrite or skip until Qwen reference numbers exist.
 3. **Position discovery still owed.** `MEASUREMENT_POSITION = -1` is a guess. Run `qwen_experiments/scripts/01_compute_direction_and_sanity.py` (already ported, sweeps `[-5..-1]`) before Stage 01 here to discover the right position, then update `config.py`.
+
+---
+
+## Phase 2 — circuit-tracer Qwen-3 patch complete (2026-05-01)
+
+The Stage 02 `measurement_hook="hook_resid_post"` path is now wired through for Qwen3-4B. The patch is much smaller than originally scoped — the submodule was already most of the way there.
+
+### What needed patching (and what didn't)
+
+Inspecting the actual `vendor/circuit-tracer` submodule revealed that:
+
+- **`get_measurement_loc()` is already architecture-agnostic.** It dispatches purely through the `feature_hook_mapping` registered for the model's architecture. No per-architecture branches inside the function — it just looks up `hook_resid_pre` for the next layer when asked to resolve `hook_resid_post`.
+- **`qwen_3_mapping` was already registered** in `circuit_tracer/utils/tl_nnsight_mapping.py` with `mlp.hook_in` and `mlp.hook_out` correctly pointing at `post_attention_layernorm.output` / `mlp.output`. But it was missing the residual-stream hookpoints that `get_measurement_loc` needs.
+- **The TransformerLens backend doesn't need a patch at all.** `attribute_transformerlens` attaches hooks at TL-native names (`blocks.{L}.hook_resid_post` etc.) which `HookedTransformer` provides natively for any supported architecture, including Qwen3. The patch is only needed for the nnsight backend, which is what `pipeline_qwen/02_run_attribution.py` uses.
+
+So the work reduced to: add two missing hookpoints to the existing Qwen-3 mapping. **+5 lines, zero code-path changes.**
+
+### The patch
+
+In [vendor/circuit-tracer/circuit_tracer/utils/tl_nnsight_mapping.py](vendor/circuit-tracer/circuit_tracer/utils/tl_nnsight_mapping.py), `qwen_3_mapping.feature_hook_mapping` gained two entries:
+
+```python
+"hook_resid_mid": ("model.layers[{layer}].post_attention_layernorm", "input"),
+"hook_resid_pre": ("model.layers[{layer}].input_layernorm", "input"),
+```
+
+These mirror the Gemma-3 flat-config mapping with the only architectural difference being `pre_feedforward_layernorm` (Gemma-3 quad-LN block) → `post_attention_layernorm` (Qwen3 standard pre-LN block).
+
+### Why `hook_resid_pre` is the load-bearing one
+
+`get_measurement_loc(layer=L, measurement_hook="hook_resid_post")` resolves the post-layer residual point via the identity `hook_resid_post[L] == hook_resid_pre[L+1]` — i.e. the input of the *next* layer's `input_layernorm`. Without `hook_resid_pre` in the mapping, the resolver raises `ValueError: hook_resid_post requires hook_resid_pre to be defined in the mapping for Qwen3ForCausalLM`. Adding that one entry unblocks the entire residual-stream measurement path that Stage 02 relies on.
+
+`hook_resid_mid` was added for symmetry with the Gemma-3 mappings but isn't load-bearing for our pipeline — it's the residual stream point between attention and MLP, useful as an alternative measurement target if needed later.
+
+### Validation
+
+- Import-level check: `qwen_3_mapping.feature_hook_mapping` exposes `hook_resid_pre`, `hook_resid_mid`, `mlp.hook_in`, `mlp.hook_out`. `get_mapping("Qwen3ForCausalLM")` returns the patched entry with the right module paths.
+- Full validation (load `ReplacementModel.from_pretrained("Qwen/Qwen3-4B", "mwhanna/qwen3-4b-transcoders", backend="nnsight")` and run a tiny attribution) requires GPU and is deferred to Phase 3.
+
+### What's still owed before Stage 02 will produce numbers
+
+Caveat #1 from Phase 1 is now resolved. The two remaining blockers:
+
+- **Caveat #2 — `pipeline_qwen/tests/` still asserts Gemma-specific reference values.** Will fail on Qwen until rewritten or skipped.
+- **Caveat #3 — `MEASUREMENT_POSITION` and `MEASUREMENT_LAYER` in `pipeline_qwen/config.py` are unverified placeholders.** Discovery via `qwen_experiments/scripts/01_compute_direction_and_sanity.py` (sweeps positions `[-5..-1]`) is still required before any meaningful run.
+
+Both need GPU access — the natural Phase 3.
