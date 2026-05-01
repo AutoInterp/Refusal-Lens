@@ -171,3 +171,159 @@ Caveat #1 from Phase 1 is now resolved. The two remaining blockers:
 - **Caveat #3 — `MEASUREMENT_POSITION` and `MEASUREMENT_LAYER` in `pipeline_qwen/config.py` are unverified placeholders.** Discovery via `qwen_experiments/scripts/01_compute_direction_and_sanity.py` (sweeps positions `[-5..-1]`) is still required before any meaningful run.
 
 Both need GPU access — the natural Phase 3.
+
+---
+
+## Phase 3 — Running on RunPod
+
+### 1. Pick a pod
+
+| Resource | Recommended | Why |
+|---|---|---|
+| GPU | **1× A100 80 GB** or **1× H100 80 GB** | Qwen3-4B transcoders are ~60 GB total on disk (10× wider than Gemma Scope). 48 GB cards (A6000, A40, RTX 4090) **will OOM** on Stage 02. |
+| Container | `runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04` | PyTorch + CUDA preinstalled. |
+| Container disk | 50 GB | Code + venv + temp. |
+| Volume | **100 GB on `/workspace`** | Persistent across pod restarts; holds the HF cache (~30 GB for Qwen3-4B + ~60 GB transcoders = ~90 GB total) and run outputs. **Do not put these on the container disk** — they vanish on pod stop. |
+
+Cost estimate: A100 80 GB on community cloud is ~$1.20/hr. A typical end-to-end Phase 3 run (position sweep + Stage 01 + Stage 02 on 50 prompts + Stages 02b/03/04/07) takes 12–18 hours.
+
+### 2. One-time setup on the pod
+
+SSH in via the RunPod web terminal or `ssh root@<pod-ip> -p <port>`, then:
+
+```bash
+# Persistent caches on the volume — saves ~30 GB of redownloads on pod restart
+cd /workspace
+export HF_HOME=/workspace/.cache/huggingface
+export TMPDIR=/workspace/tmp
+mkdir -p "$HF_HOME" "$TMPDIR"
+cat >> ~/.bashrc <<'EOF'
+export HF_HOME=/workspace/.cache/huggingface
+export TMPDIR=/workspace/tmp
+EOF
+
+# Clone the Qwen scaffold branch WITH the circuit-tracer submodule.
+# --recurse-submodules picks up vendor/circuit-tracer at the patched SHA
+# (which now includes the Qwen3 hook_resid_pre entry).
+git clone --recurse-submodules -b qwen3-pipeline-scaffold \
+    https://github.com/AutoInterp/Refusal-Lens.git
+cd Refusal-Lens
+
+# Python env
+python -m venv /workspace/venv
+source /workspace/venv/bin/activate
+pip install -e ".[runpod]"
+pip install -e vendor/circuit-tracer            # editable install of patched fork
+
+# HuggingFace login. Qwen/Qwen3-4B is sometimes gated for new accounts;
+# log in with a token from https://huggingface.co/settings/tokens.
+huggingface-cli login
+```
+
+### 3. Discover Qwen3's best position and layer (BEFORE Stage 01)
+
+`pipeline_qwen/config.py` ships with placeholder values (`MEASUREMENT_POSITION = -1`, `BEST_SEPARATION_LAYER = 34`). The `qwen_experiments/scripts/01_compute_direction_and_sanity.py` already exists and sweeps positions `[-5..-1]` × all 36 layers.
+
+```bash
+# This script lives outside Refusal-Lens — clone separately if it's not
+# already on the pod, or sync the qwen_experiments folder over rsync.
+# It reads no state from pipeline_qwen and writes to its own results dir.
+python qwen_experiments/scripts/01_compute_direction_and_sanity.py
+```
+
+Expected runtime: ~30 min on A100. The last printed line tells you exactly what to put in config:
+
+```
+Update CONFIG.py: QWEN_BEST_POSITION=-?, QWEN_BEST_LAYER=??
+```
+
+Then edit `scripts/pipeline_qwen/config.py` and update **all five** placeholders so they're consistent:
+
+```python
+MEASUREMENT_LAYER = <best_layer>
+MEASUREMENT_POSITION = <best_pos>
+DIRECTION_POSITION = <best_pos>          # match MEASUREMENT_POSITION
+BEST_SEPARATION_LAYER = <best_layer>     # same as MEASUREMENT_LAYER
+BEST_CAUSAL_LAYER = <causal_layer>       # tune separately later; 18 is the seed
+```
+
+Commit the config update on the `qwen3-pipeline-scaffold` branch so the chosen values are part of the run record.
+
+### 4. Run the pipeline (in order)
+
+All commands run from the repo root with the venv active. Use `nohup` + a log file so SSH can disconnect during long stages.
+
+```bash
+mkdir -p data/results/pipeline_runs_qwen
+
+# Stage 01 — per-layer refusal directions, ~15 min on A100
+nohup python scripts/pipeline_qwen/01_compute_direction.py \
+    > data/results/pipeline_runs_qwen/01.log 2>&1 &
+tail -f data/results/pipeline_runs_qwen/01.log
+# Note the printed run dir, e.g. data/results/pipeline_runs_qwen/run_20260501_120000
+
+# Stage 02 — SMOKE TEST FIRST: 5 prompts, 5000 features. ~30 min.
+# This is the methodology canary. Do NOT skip.
+RUN=data/results/pipeline_runs_qwen/run_<timestamp>
+nohup python scripts/pipeline_qwen/02_run_attribution.py \
+    --run-dir $RUN --n-prompts 5 --max-features 5000 \
+    > $RUN/02_smoke.log 2>&1 &
+tail -f $RUN/02_smoke.log
+
+# Stage 03 — verify Σ-edges ≈ r̂·h on the 5-prompt smoke run.
+# Failure here means the circuit-tracer Qwen3 patch isn't wired through
+# correctly — fix before going further.
+python scripts/pipeline_qwen/03_verify_attribution.py --run-dir $RUN
+
+# Only AFTER Stage 03 looks sane: full 50-prompt Stage 02 run.
+# Expect 8–12 hours on A100 80 GB at d_feature=160k.
+nohup python scripts/pipeline_qwen/02_run_attribution.py \
+    --run-dir $RUN --n-prompts 50 --max-features 5000 --resume \
+    > $RUN/02_full.log 2>&1 &
+tail -f $RUN/02_full.log
+
+# Downstream stages — minutes each
+python scripts/pipeline_qwen/02b_statistical_analysis.py --run-dir $RUN
+python scripts/pipeline_qwen/04_label_features.py        --run-dir $RUN
+python scripts/pipeline_qwen/07_identify_subcircuits.py  --run-dir $RUN
+```
+
+### 5. Pull results back
+
+Either rsync the run directory to your laptop:
+
+```bash
+# From your laptop, NOT the pod
+rsync -avz --progress \
+    -e "ssh -p <pod-port>" \
+    root@<pod-ip>:/workspace/Refusal-Lens/data/results/pipeline_runs_qwen/run_<ts>/ \
+    ./data/results/pipeline_runs_qwen/run_<ts>/
+```
+
+…or commit and push from the pod (raw `02_attribution/graphs/*.pt` files are gitignored by the parent pipeline's `.gitignore`, so only the JSON + plots get committed):
+
+```bash
+git add data/results/pipeline_runs_qwen/run_<ts>
+git commit -m "Qwen3 pipeline run <timestamp>: stages 01-04 + 07"
+git push origin qwen3-pipeline-scaffold
+```
+
+### 6. Stop the pod
+
+RunPod charges per second the pod is on. After pulling results:
+
+- **Stop** preserves `/workspace` (cheap storage cost) — pick this if you'll re-run within a week. The HF cache and venv survive.
+- **Terminate** deletes everything including the volume — only after results are pulled and you're sure you won't iterate.
+
+### Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `CUDA out of memory` on Stage 02 | 48 GB card | Move to 80 GB. `--max-features 3000` is a stopgap (loses ~0.5% precision). |
+| `ValueError: hook_resid_post requires hook_resid_pre to be defined` | Submodule didn't pick up the Qwen3 patch | `git submodule update --init --recursive` and check `git -C vendor/circuit-tracer log --oneline` shows the `Add Qwen3 hook_resid_pre…` commit. |
+| `Repository ... is gated` on `Qwen/Qwen3-4B` | Not logged in to HF | `huggingface-cli login` with a token that's accepted the Qwen license. |
+| Stage 03 ratio nowhere near 1.0 | `MEASUREMENT_LAYER` / `MEASUREMENT_POSITION` in config doesn't match what Stage 01 found | Re-read `01_direction/direction_metadata.json::best_separation_layer` and update config; rerun Stage 02. |
+| HF cache redownloaded after pod restart | `HF_HOME` not exported in the new shell | `echo $HF_HOME` should print `/workspace/.cache/huggingface`. Add to `~/.bashrc` if missing. |
+| Loss of results after pod stop | Wrote to container disk, not volume | Always `cd /workspace/...`; never write under `/root` or `~/`. |
+
+For the watcher / tmux pattern that auto-commits Gemma runs on completion, see [scripts/pipeline/README.md § Deployment](scripts/pipeline/README.md). The same pattern works here — only the branch name and commit message need adjusting.
