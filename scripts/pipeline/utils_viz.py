@@ -136,6 +136,175 @@ def annotate_bare(bare_json_path: Path, prompt_idx: int) -> dict:
     return bare
 
 
+def inject_feature_labels(graph_data_dir: Path, labels_dir: Path) -> dict:
+    """Bake human-readable labels into each graph's CLT feature nodes.
+
+    Reads per-layer files like `feature_labels_layer_{L}.json` (keyed by
+    per-layer feature index, value `{"explanation": {"label": "...", ...}}`),
+    walks every graph file in `graph_data_dir`, and writes
+    `node["clerp"] = label_text` for each cross-layer-transcoder node whose
+    (layer, feat_idx) has a matching entry. The vendor frontend renders
+    `d.clerp` via `ppClerp` everywhere a feature title appears, so this is
+    sufficient — no JS patch needed.
+
+    Handles both `*.json` and `*.json.gz` in place. Returns a stats dict.
+    """
+    if not labels_dir.exists():
+        return {"labeled": 0, "missed": 0, "files": 0, "skipped": True}
+
+    layer_labels: dict[int, dict] = {}
+    for lp in sorted(labels_dir.glob("feature_labels_layer_*.json")):
+        try:
+            layer_idx = int(lp.stem.rsplit("_", 1)[-1])
+        except ValueError:
+            continue
+        with open(lp) as f:
+            layer_labels[layer_idx] = json.load(f)
+
+    if not layer_labels:
+        return {"labeled": 0, "missed": 0, "files": 0, "skipped": True}
+
+    def label_for(layer: int, feat_idx: int) -> str | None:
+        entry = layer_labels.get(layer, {}).get(str(feat_idx))
+        if not entry:
+            return None
+        explanation = entry.get("explanation") or {}
+        return explanation.get("label") or None
+
+    def annotate_graph(graph: dict) -> tuple[int, int]:
+        labeled = missed = 0
+        for node in graph.get("nodes", []):
+            if node.get("feature_type") != "cross layer transcoder":
+                continue
+            parts = str(node.get("node_id", "")).split("_")
+            if len(parts) < 2:
+                continue
+            try:
+                layer = int(parts[0])
+                feat_idx = int(parts[1])
+            except ValueError:
+                continue
+            text = label_for(layer, feat_idx)
+            if text:
+                node["clerp"] = text
+                labeled += 1
+            else:
+                missed += 1
+        return labeled, missed
+
+    total_labeled = total_missed = n_files = 0
+    for jp in sorted(graph_data_dir.glob("*.json")):
+        if jp.name == "graph-metadata.json":
+            continue
+        with open(jp) as f:
+            graph = json.load(f)
+        l, m = annotate_graph(graph)
+        with open(jp, "w") as f:
+            json.dump(graph, f)
+        total_labeled += l
+        total_missed += m
+        n_files += 1
+    for gz in sorted(graph_data_dir.glob("*.json.gz")):
+        with gzip.open(gz, "rt") as f:
+            graph = json.load(f)
+        l, m = annotate_graph(graph)
+        with gzip.open(gz, "wt", compresslevel=6) as f:
+            json.dump(graph, f)
+        total_labeled += l
+        total_missed += m
+        n_files += 1
+
+    return {"labeled": total_labeled, "missed": total_missed, "files": n_files, "skipped": False}
+
+
+def _load_feature_evidence_cache(repo_root: Path) -> dict:
+    """Aggregate every available `feature_labels_cache.json` into one lookup.
+
+    Cache key is `L{layer}:F{feat_idx}`; value has `top_logits`, `examples`,
+    `bottom_logits`, etc. Multiple runs may have caches; we merge with later
+    runs overriding earlier ones for the same key.
+    """
+    out: dict[str, dict] = {}
+    pattern = "data/results/pipeline_runs/*/04_labels/feature_labels_cache.json"
+    for cp in sorted(repo_root.glob(pattern)):
+        try:
+            with open(cp) as f:
+                cache = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        for key, info in cache.items():
+            if info:
+                out[key] = info
+    return out
+
+
+def inject_feature_evidence(graph_data_dir: Path, repo_root: Path) -> dict:
+    """Bake top logits + activation examples onto each CLT node.
+
+    Reads aggregated `feature_labels_cache.json` (top_logits, examples) and
+    writes per-node `preview_top_logits` (5 strings) and `preview_examples`
+    (≤3 dicts trimmed to the fields the frontend tooltip uses). Lets the
+    user verify a feature's actual behaviour without an HF roundtrip — and
+    catches misleading labels at a glance.
+    """
+    evidence = _load_feature_evidence_cache(repo_root)
+    if not evidence:
+        return {"enriched": 0, "missed": 0, "files": 0, "skipped": True}
+
+    def trim_example(ex: dict) -> dict:
+        return {
+            "context": ex.get("context", ""),
+            "trigger_token": ex.get("trigger_token", ""),
+            "trigger_activation": ex.get("trigger_activation"),
+        }
+
+    def annotate_graph(graph: dict) -> tuple[int, int]:
+        enriched = missed = 0
+        for node in graph.get("nodes", []):
+            if node.get("feature_type") != "cross layer transcoder":
+                continue
+            parts = str(node.get("node_id", "")).split("_")
+            if len(parts) < 2:
+                continue
+            try:
+                layer = int(parts[0])
+                feat_idx = int(parts[1])
+            except ValueError:
+                continue
+            info = evidence.get(f"L{layer}:F{feat_idx}")
+            if not info:
+                missed += 1
+                continue
+            node["preview_top_logits"] = (info.get("top_logits") or [])[:5]
+            node["preview_examples"] = [trim_example(e) for e in (info.get("examples") or [])[:3]]
+            enriched += 1
+        return enriched, missed
+
+    total_enriched = total_missed = n_files = 0
+    for jp in sorted(graph_data_dir.glob("*.json")):
+        if jp.name == "graph-metadata.json":
+            continue
+        with open(jp) as f:
+            graph = json.load(f)
+        e, m = annotate_graph(graph)
+        with open(jp, "w") as f:
+            json.dump(graph, f)
+        total_enriched += e
+        total_missed += m
+        n_files += 1
+    for gz in sorted(graph_data_dir.glob("*.json.gz")):
+        with gzip.open(gz, "rt") as f:
+            graph = json.load(f)
+        e, m = annotate_graph(graph)
+        with gzip.open(gz, "wt", compresslevel=6) as f:
+            json.dump(graph, f)
+        total_enriched += e
+        total_missed += m
+        n_files += 1
+
+    return {"enriched": total_enriched, "missed": total_missed, "files": n_files, "skipped": False}
+
+
 def gzip_json_files(graph_data_dir: Path, keep_plain: bool = False) -> dict:
     """Compress every per-graph *.json in graph_data_dir to *.json.gz.
 
@@ -224,6 +393,7 @@ def stage_frontend(
             '<script src="./gzip-fetch.js" defer></script>\n'
             '<script src="./overlap-annotate.js" defer></script>\n'
             '<script src="./subcircuit-panel.js" defer></script>\n'
+            '<script src="./feature-evidence.js" defer></script>\n'
         )
         marker = "<script src='./util.js'></script>"
         if marker in html and injection not in html:
