@@ -1,0 +1,2095 @@
+{
+  "n_classes": 5,
+  "classes": [
+    "analytical",
+    "cognitive_reframe",
+    "completion",
+    "fiction",
+    "roleplay"
+  ],
+  "by_bucket": {
+    "sign_flipped": {
+      "total": 167,
+      "features": {
+        "L27:F139980": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L18:F148614": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L29:F6866": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "roleplay"
+        ],
+        "L13:F65439": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L27:F6642": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "roleplay"
+        ],
+        "L6:F30108": [
+          "analytical",
+          "completion",
+          "roleplay"
+        ],
+        "L27:F27345": [
+          "analytical",
+          "cognitive_reframe",
+          "completion"
+        ],
+        "L12:F160449": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction"
+        ],
+        "L4:F61314": [
+          "analytical",
+          "cognitive_reframe",
+          "roleplay"
+        ],
+        "L12:F157768": [
+          "cognitive_reframe",
+          "completion",
+          "roleplay"
+        ],
+        "L25:F23176": [
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L19:F6087": [
+          "completion",
+          "roleplay"
+        ],
+        "L31:F86700": [
+          "analytical",
+          "completion",
+          "roleplay"
+        ],
+        "L13:F110090": [
+          "analytical",
+          "fiction",
+          "roleplay"
+        ],
+        "L18:F51630": [
+          "cognitive_reframe",
+          "completion",
+          "roleplay"
+        ],
+        "L20:F110580": [
+          "cognitive_reframe",
+          "completion",
+          "fiction"
+        ],
+        "L10:F85321": [
+          "cognitive_reframe"
+        ],
+        "L20:F159202": [
+          "analytical",
+          "cognitive_reframe",
+          "fiction"
+        ],
+        "L31:F111734": [
+          "analytical",
+          "cognitive_reframe",
+          "completion"
+        ],
+        "L9:F21660": [
+          "cognitive_reframe",
+          "fiction"
+        ],
+        "L14:F31901": [
+          "analytical",
+          "fiction",
+          "roleplay"
+        ],
+        "L33:F80077": [
+          "analytical",
+          "completion",
+          "fiction"
+        ],
+        "L18:F15247": [
+          "fiction",
+          "roleplay"
+        ],
+        "L10:F111766": [
+          "completion",
+          "roleplay"
+        ],
+        "L11:F37469": [
+          "completion",
+          "roleplay"
+        ],
+        "L20:F6136": [
+          "fiction"
+        ],
+        "L19:F140158": [
+          "analytical",
+          "fiction"
+        ],
+        "L22:F162720": [
+          "analytical",
+          "completion"
+        ],
+        "L18:F152973": [
+          "analytical",
+          "cognitive_reframe"
+        ],
+        "L8:F143658": [
+          "analytical",
+          "cognitive_reframe"
+        ],
+        "L33:F105455": [
+          "analytical",
+          "roleplay"
+        ],
+        "L12:F55006": [
+          "completion",
+          "roleplay"
+        ],
+        "L31:F41323": [
+          "analytical",
+          "fiction"
+        ],
+        "L23:F130083": [
+          "cognitive_reframe",
+          "completion"
+        ],
+        "L3:F76093": [
+          "analytical",
+          "roleplay"
+        ],
+        "L14:F141739": [
+          "cognitive_reframe",
+          "fiction"
+        ],
+        "L14:F454": [
+          "cognitive_reframe",
+          "fiction"
+        ],
+        "L29:F160038": [
+          "analytical",
+          "completion"
+        ],
+        "L6:F27011": [
+          "fiction",
+          "roleplay"
+        ],
+        "L14:F32925": [
+          "roleplay"
+        ],
+        "L6:F64132": [
+          "completion",
+          "roleplay"
+        ],
+        "L32:F11124": [
+          "fiction"
+        ],
+        "L0:F6192": [
+          "analytical",
+          "cognitive_reframe"
+        ],
+        "L19:F19643": [
+          "analytical",
+          "cognitive_reframe"
+        ],
+        "L5:F50459": [
+          "analytical",
+          "cognitive_reframe"
+        ],
+        "L16:F161830": [
+          "analytical",
+          "cognitive_reframe"
+        ],
+        "L20:F49324": [
+          "cognitive_reframe",
+          "completion"
+        ],
+        "L5:F18411": [
+          "completion",
+          "roleplay"
+        ],
+        "L10:F150093": [
+          "analytical",
+          "completion"
+        ],
+        "L1:F86764": [
+          "roleplay"
+        ],
+        "L11:F84939": [
+          "roleplay"
+        ],
+        "L7:F14236": [
+          "roleplay"
+        ],
+        "L8:F153474": [
+          "fiction"
+        ],
+        "L6:F65884": [
+          "fiction"
+        ],
+        "L0:F66034": [
+          "fiction"
+        ],
+        "L0:F125044": [
+          "fiction"
+        ],
+        "L5:F57225": [
+          "fiction"
+        ],
+        "L28:F66981": [
+          "analytical"
+        ],
+        "L6:F11938": [
+          "analytical"
+        ],
+        "L21:F8514": [
+          "analytical"
+        ],
+        "L7:F44127": [
+          "completion"
+        ],
+        "L6:F52091": [
+          "completion"
+        ],
+        "L6:F26134": [
+          "completion"
+        ],
+        "L5:F48198": [
+          "completion"
+        ],
+        "L14:F71098": [
+          "cognitive_reframe"
+        ],
+        "L0:F86986": [
+          "cognitive_reframe"
+        ],
+        "L11:F147273": [
+          "cognitive_reframe"
+        ],
+        "L9:F85119": [
+          "cognitive_reframe"
+        ],
+        "L0:F1173": [
+          "roleplay"
+        ],
+        "L3:F94480": [
+          "roleplay"
+        ],
+        "L8:F43247": [
+          "roleplay"
+        ],
+        "L4:F26082": [
+          "fiction"
+        ],
+        "L13:F64254": [
+          "fiction"
+        ],
+        "L8:F116890": [
+          "fiction"
+        ],
+        "L7:F141818": [
+          "fiction"
+        ],
+        "L4:F45137": [
+          "fiction"
+        ],
+        "L11:F154718": [
+          "fiction"
+        ],
+        "L5:F689": [
+          "fiction"
+        ],
+        "L9:F48582": [
+          "fiction"
+        ],
+        "L28:F134198": [
+          "analytical"
+        ],
+        "L12:F791": [
+          "analytical"
+        ],
+        "L20:F113067": [
+          "analytical"
+        ],
+        "L19:F14438": [
+          "analytical"
+        ],
+        "L10:F70047": [
+          "analytical"
+        ],
+        "L22:F150775": [
+          "analytical"
+        ],
+        "L8:F77054": [
+          "completion"
+        ],
+        "L10:F100920": [
+          "completion"
+        ],
+        "L5:F36720": [
+          "completion"
+        ],
+        "L5:F61062": [
+          "cognitive_reframe"
+        ],
+        "L5:F161597": [
+          "cognitive_reframe"
+        ],
+        "L4:F48370": [
+          "cognitive_reframe"
+        ],
+        "L5:F20346": [
+          "cognitive_reframe"
+        ],
+        "L12:F1143": [
+          "cognitive_reframe"
+        ],
+        "L6:F54678": [
+          "cognitive_reframe"
+        ],
+        "L16:F87306": [
+          "roleplay"
+        ],
+        "L4:F74492": [
+          "roleplay"
+        ],
+        "L11:F16160": [
+          "roleplay"
+        ],
+        "L1:F131010": [
+          "roleplay"
+        ],
+        "L5:F90960": [
+          "roleplay"
+        ],
+        "L24:F132390": [
+          "roleplay"
+        ],
+        "L14:F115576": [
+          "roleplay"
+        ],
+        "L15:F86436": [
+          "fiction"
+        ],
+        "L9:F70191": [
+          "fiction"
+        ],
+        "L5:F129765": [
+          "fiction"
+        ],
+        "L27:F160866": [
+          "fiction"
+        ],
+        "L15:F152361": [
+          "fiction"
+        ],
+        "L11:F151752": [
+          "fiction"
+        ],
+        "L13:F8038": [
+          "analytical"
+        ],
+        "L27:F70735": [
+          "analytical"
+        ],
+        "L13:F41114": [
+          "analytical"
+        ],
+        "L16:F141834": [
+          "analytical"
+        ],
+        "L32:F41388": [
+          "completion"
+        ],
+        "L23:F35443": [
+          "completion"
+        ],
+        "L15:F24829": [
+          "completion"
+        ],
+        "L20:F33958": [
+          "completion"
+        ],
+        "L15:F141286": [
+          "completion"
+        ],
+        "L21:F44150": [
+          "cognitive_reframe"
+        ],
+        "L14:F23319": [
+          "cognitive_reframe"
+        ],
+        "L13:F17874": [
+          "cognitive_reframe"
+        ],
+        "L21:F133475": [
+          "roleplay"
+        ],
+        "L5:F157421": [
+          "roleplay"
+        ],
+        "L7:F144961": [
+          "roleplay"
+        ],
+        "L8:F98322": [
+          "roleplay"
+        ],
+        "L2:F58661": [
+          "roleplay"
+        ],
+        "L13:F77194": [
+          "roleplay"
+        ],
+        "L11:F29077": [
+          "fiction"
+        ],
+        "L8:F54449": [
+          "fiction"
+        ],
+        "L5:F25657": [
+          "fiction"
+        ],
+        "L7:F146930": [
+          "fiction"
+        ],
+        "L7:F82889": [
+          "fiction"
+        ],
+        "L7:F49281": [
+          "analytical"
+        ],
+        "L15:F890": [
+          "analytical"
+        ],
+        "L2:F30165": [
+          "analytical"
+        ],
+        "L5:F69310": [
+          "analytical"
+        ],
+        "L2:F89495": [
+          "completion"
+        ],
+        "L8:F41635": [
+          "completion"
+        ],
+        "L6:F21232": [
+          "completion"
+        ],
+        "L10:F11651": [
+          "completion"
+        ],
+        "L8:F79342": [
+          "completion"
+        ],
+        "L18:F130134": [
+          "completion"
+        ],
+        "L23:F84437": [
+          "completion"
+        ],
+        "L19:F77881": [
+          "cognitive_reframe"
+        ],
+        "L9:F19614": [
+          "cognitive_reframe"
+        ],
+        "L16:F33974": [
+          "cognitive_reframe"
+        ],
+        "L32:F32417": [
+          "cognitive_reframe"
+        ],
+        "L23:F91721": [
+          "cognitive_reframe"
+        ],
+        "L14:F100664": [
+          "roleplay"
+        ],
+        "L11:F115626": [
+          "roleplay"
+        ],
+        "L8:F116484": [
+          "roleplay"
+        ],
+        "L10:F143615": [
+          "roleplay"
+        ],
+        "L9:F60590": [
+          "roleplay"
+        ],
+        "L0:F118884": [
+          "fiction"
+        ],
+        "L0:F95405": [
+          "fiction"
+        ],
+        "L3:F12337": [
+          "fiction"
+        ],
+        "L6:F8620": [
+          "fiction"
+        ],
+        "L27:F84227": [
+          "fiction"
+        ],
+        "L19:F104910": [
+          "analytical"
+        ],
+        "L4:F108307": [
+          "analytical"
+        ],
+        "L9:F55156": [
+          "analytical"
+        ],
+        "L3:F2851": [
+          "analytical"
+        ],
+        "L0:F46724": [
+          "analytical"
+        ],
+        "L9:F97817": [
+          "completion"
+        ],
+        "L19:F105531": [
+          "completion"
+        ],
+        "L32:F9590": [
+          "cognitive_reframe"
+        ],
+        "L25:F48701": [
+          "cognitive_reframe"
+        ],
+        "L12:F13868": [
+          "cognitive_reframe"
+        ],
+        "L0:F97035": [
+          "cognitive_reframe"
+        ]
+      }
+    },
+    "dampened": {
+      "total": 66,
+      "features": {
+        "L32:F132684": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L29:F18221": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L31:F109901": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction"
+        ],
+        "L31:F49541": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L31:F116260": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L33:F67079": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "roleplay"
+        ],
+        "L28:F160311": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L28:F87125": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L29:F64904": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L33:F78685": [
+          "analytical",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L32:F71061": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L32:F158432": [
+          "analytical",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L26:F82435": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction"
+        ],
+        "L29:F152160": [
+          "analytical",
+          "cognitive_reframe",
+          "fiction"
+        ],
+        "L28:F101616": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L30:F9168": [
+          "analytical",
+          "cognitive_reframe",
+          "roleplay"
+        ],
+        "L30:F146991": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L28:F23690": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "roleplay"
+        ],
+        "L29:F42622": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "roleplay"
+        ],
+        "L32:F50401": [
+          "analytical",
+          "cognitive_reframe",
+          "completion"
+        ],
+        "L33:F111741": [
+          "cognitive_reframe",
+          "roleplay"
+        ],
+        "L33:F124170": [
+          "analytical",
+          "fiction",
+          "roleplay"
+        ],
+        "L25:F23826": [
+          "completion",
+          "fiction"
+        ],
+        "L29:F81789": [
+          "analytical",
+          "cognitive_reframe",
+          "roleplay"
+        ],
+        "L28:F15059": [
+          "analytical",
+          "fiction"
+        ],
+        "L29:F27963": [
+          "analytical",
+          "fiction",
+          "roleplay"
+        ],
+        "L30:F93888": [
+          "cognitive_reframe",
+          "roleplay"
+        ],
+        "L25:F124198": [
+          "analytical",
+          "fiction",
+          "roleplay"
+        ],
+        "L32:F37122": [
+          "fiction",
+          "roleplay"
+        ],
+        "L23:F158577": [
+          "cognitive_reframe"
+        ],
+        "L27:F57383": [
+          "analytical",
+          "cognitive_reframe",
+          "fiction"
+        ],
+        "L31:F44320": [
+          "cognitive_reframe",
+          "fiction",
+          "roleplay"
+        ],
+        "L30:F82635": [
+          "completion",
+          "fiction"
+        ],
+        "L24:F91636": [
+          "fiction",
+          "roleplay"
+        ],
+        "L31:F134767": [
+          "analytical",
+          "roleplay"
+        ],
+        "L27:F140854": [
+          "fiction",
+          "roleplay"
+        ],
+        "L30:F108927": [
+          "analytical",
+          "cognitive_reframe"
+        ],
+        "L33:F28288": [
+          "completion",
+          "roleplay"
+        ],
+        "L30:F133610": [
+          "completion",
+          "roleplay"
+        ],
+        "L32:F129364": [
+          "completion",
+          "roleplay"
+        ],
+        "L19:F92377": [
+          "fiction"
+        ],
+        "L28:F40194": [
+          "analytical",
+          "cognitive_reframe"
+        ],
+        "L28:F17778": [
+          "roleplay"
+        ],
+        "L33:F126711": [
+          "cognitive_reframe"
+        ],
+        "L29:F130823": [
+          "fiction"
+        ],
+        "L28:F134198": [
+          "fiction"
+        ],
+        "L33:F74980": [
+          "analytical"
+        ],
+        "L29:F138958": [
+          "cognitive_reframe"
+        ],
+        "L22:F68775": [
+          "roleplay"
+        ],
+        "L29:F5988": [
+          "roleplay"
+        ],
+        "L24:F60982": [
+          "fiction"
+        ],
+        "L33:F3491": [
+          "completion"
+        ],
+        "L31:F50864": [
+          "completion"
+        ],
+        "L33:F12304": [
+          "completion"
+        ],
+        "L28:F25213": [
+          "completion"
+        ],
+        "L10:F126979": [
+          "fiction"
+        ],
+        "L23:F11218": [
+          "fiction"
+        ],
+        "L26:F17461": [
+          "fiction"
+        ],
+        "L30:F87427": [
+          "completion"
+        ],
+        "L31:F95994": [
+          "roleplay"
+        ],
+        "L30:F128838": [
+          "fiction"
+        ],
+        "L20:F104315": [
+          "fiction"
+        ],
+        "L25:F42708": [
+          "fiction"
+        ],
+        "L30:F81884": [
+          "fiction"
+        ],
+        "L33:F129307": [
+          "cognitive_reframe"
+        ],
+        "L32:F19113": [
+          "cognitive_reframe"
+        ]
+      }
+    },
+    "amplified_anti": {
+      "total": 44,
+      "features": {
+        "L32:F36682": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L17:F82119": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L24:F81123": [
+          "analytical",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L16:F35905": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L18:F161543": [
+          "analytical",
+          "cognitive_reframe",
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L32:F79442": [
+          "analytical",
+          "fiction"
+        ],
+        "L31:F85768": [
+          "analytical",
+          "cognitive_reframe",
+          "roleplay"
+        ],
+        "L16:F132756": [
+          "analytical",
+          "cognitive_reframe",
+          "completion"
+        ],
+        "L33:F97879": [
+          "analytical",
+          "completion",
+          "roleplay"
+        ],
+        "L27:F84764": [
+          "analytical",
+          "fiction"
+        ],
+        "L22:F153605": [
+          "cognitive_reframe",
+          "completion",
+          "fiction"
+        ],
+        "L19:F88090": [
+          "completion",
+          "fiction",
+          "roleplay"
+        ],
+        "L29:F114615": [
+          "analytical",
+          "fiction",
+          "roleplay"
+        ],
+        "L27:F857": [
+          "cognitive_reframe"
+        ],
+        "L31:F65687": [
+          "completion",
+          "roleplay"
+        ],
+        "L21:F44305": [
+          "analytical"
+        ],
+        "L28:F5908": [
+          "fiction",
+          "roleplay"
+        ],
+        "L22:F3547": [
+          "completion"
+        ],
+        "L13:F67413": [
+          "cognitive_reframe",
+          "roleplay"
+        ],
+        "L18:F17980": [
+          "cognitive_reframe",
+          "completion"
+        ],
+        "L19:F31630": [
+          "roleplay"
+        ],
+        "L18:F117243": [
+          "roleplay"
+        ],
+        "L33:F34236": [
+          "analytical"
+        ],
+        "L22:F129207": [
+          "completion"
+        ],
+        "L32:F10962": [
+          "completion"
+        ],
+        "L28:F120297": [
+          "completion"
+        ],
+        "L25:F134119": [
+          "fiction"
+        ],
+        "L16:F70434": [
+          "analytical"
+        ],
+        "L25:F104686": [
+          "completion"
+        ],
+        "L20:F49324": [
+          "cognitive_reframe"
+        ],
+        "L30:F55565": [
+          "cognitive_reframe"
+        ],
+        "L24:F132125": [
+          "roleplay"
+        ],
+        "L24:F158598": [
+          "analytical"
+        ],
+        "L30:F116391": [
+          "analytical"
+        ],
+        "L12:F140946": [
+          "analytical"
+        ],
+        "L16:F108849": [
+          "completion"
+        ],
+        "L16:F118400": [
+          "analytical"
+        ],
+        "L15:F110973": [
+          "analytical"
+        ],
+        "L15:F115827": [
+          "analytical"
+        ],
+        "L29:F119340": [
+          "completion"
+        ],
+        "L22:F8581": [
+          "completion"
+        ],
+        "L23:F10964": [
+          "completion"
+        ],
+        "L21:F130177": [
+          "analytical"
+        ],
+        "L13:F24152": [
+          "cognitive_reframe"
+        ]
+      }
+    }
+  },
+  "combined": {
+    "total": 275,
+    "features": {
+      "L27:F139980": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L18:F148614": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L29:F6866": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "roleplay"
+      ],
+      "L13:F65439": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L27:F6642": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "roleplay"
+      ],
+      "L6:F30108": [
+        "analytical",
+        "completion",
+        "roleplay"
+      ],
+      "L27:F27345": [
+        "analytical",
+        "cognitive_reframe",
+        "completion"
+      ],
+      "L12:F160449": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction"
+      ],
+      "L4:F61314": [
+        "analytical",
+        "cognitive_reframe",
+        "roleplay"
+      ],
+      "L12:F157768": [
+        "cognitive_reframe",
+        "completion",
+        "roleplay"
+      ],
+      "L25:F23176": [
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L19:F6087": [
+        "completion",
+        "roleplay"
+      ],
+      "L31:F86700": [
+        "analytical",
+        "completion",
+        "roleplay"
+      ],
+      "L13:F110090": [
+        "analytical",
+        "fiction",
+        "roleplay"
+      ],
+      "L18:F51630": [
+        "cognitive_reframe",
+        "completion",
+        "roleplay"
+      ],
+      "L20:F110580": [
+        "cognitive_reframe",
+        "completion",
+        "fiction"
+      ],
+      "L10:F85321": [
+        "cognitive_reframe"
+      ],
+      "L20:F159202": [
+        "analytical",
+        "cognitive_reframe",
+        "fiction"
+      ],
+      "L31:F111734": [
+        "analytical",
+        "cognitive_reframe",
+        "completion"
+      ],
+      "L9:F21660": [
+        "cognitive_reframe",
+        "fiction"
+      ],
+      "L14:F31901": [
+        "analytical",
+        "fiction",
+        "roleplay"
+      ],
+      "L33:F80077": [
+        "analytical",
+        "completion",
+        "fiction"
+      ],
+      "L18:F15247": [
+        "fiction",
+        "roleplay"
+      ],
+      "L10:F111766": [
+        "completion",
+        "roleplay"
+      ],
+      "L11:F37469": [
+        "completion",
+        "roleplay"
+      ],
+      "L20:F6136": [
+        "fiction"
+      ],
+      "L19:F140158": [
+        "analytical",
+        "fiction"
+      ],
+      "L22:F162720": [
+        "analytical",
+        "completion"
+      ],
+      "L18:F152973": [
+        "analytical",
+        "cognitive_reframe"
+      ],
+      "L8:F143658": [
+        "analytical",
+        "cognitive_reframe"
+      ],
+      "L33:F105455": [
+        "analytical",
+        "roleplay"
+      ],
+      "L12:F55006": [
+        "completion",
+        "roleplay"
+      ],
+      "L31:F41323": [
+        "analytical",
+        "fiction"
+      ],
+      "L23:F130083": [
+        "cognitive_reframe",
+        "completion"
+      ],
+      "L3:F76093": [
+        "analytical",
+        "roleplay"
+      ],
+      "L14:F141739": [
+        "cognitive_reframe",
+        "fiction"
+      ],
+      "L14:F454": [
+        "cognitive_reframe",
+        "fiction"
+      ],
+      "L29:F160038": [
+        "analytical",
+        "completion"
+      ],
+      "L6:F27011": [
+        "fiction",
+        "roleplay"
+      ],
+      "L14:F32925": [
+        "roleplay"
+      ],
+      "L6:F64132": [
+        "completion",
+        "roleplay"
+      ],
+      "L32:F11124": [
+        "fiction"
+      ],
+      "L0:F6192": [
+        "analytical",
+        "cognitive_reframe"
+      ],
+      "L19:F19643": [
+        "analytical",
+        "cognitive_reframe"
+      ],
+      "L5:F50459": [
+        "analytical",
+        "cognitive_reframe"
+      ],
+      "L16:F161830": [
+        "analytical",
+        "cognitive_reframe"
+      ],
+      "L20:F49324": [
+        "cognitive_reframe",
+        "completion"
+      ],
+      "L5:F18411": [
+        "completion",
+        "roleplay"
+      ],
+      "L10:F150093": [
+        "analytical",
+        "completion"
+      ],
+      "L1:F86764": [
+        "roleplay"
+      ],
+      "L11:F84939": [
+        "roleplay"
+      ],
+      "L7:F14236": [
+        "roleplay"
+      ],
+      "L8:F153474": [
+        "fiction"
+      ],
+      "L6:F65884": [
+        "fiction"
+      ],
+      "L0:F66034": [
+        "fiction"
+      ],
+      "L0:F125044": [
+        "fiction"
+      ],
+      "L5:F57225": [
+        "fiction"
+      ],
+      "L28:F66981": [
+        "analytical"
+      ],
+      "L6:F11938": [
+        "analytical"
+      ],
+      "L21:F8514": [
+        "analytical"
+      ],
+      "L7:F44127": [
+        "completion"
+      ],
+      "L6:F52091": [
+        "completion"
+      ],
+      "L6:F26134": [
+        "completion"
+      ],
+      "L5:F48198": [
+        "completion"
+      ],
+      "L14:F71098": [
+        "cognitive_reframe"
+      ],
+      "L0:F86986": [
+        "cognitive_reframe"
+      ],
+      "L11:F147273": [
+        "cognitive_reframe"
+      ],
+      "L9:F85119": [
+        "cognitive_reframe"
+      ],
+      "L0:F1173": [
+        "roleplay"
+      ],
+      "L3:F94480": [
+        "roleplay"
+      ],
+      "L8:F43247": [
+        "roleplay"
+      ],
+      "L4:F26082": [
+        "fiction"
+      ],
+      "L13:F64254": [
+        "fiction"
+      ],
+      "L8:F116890": [
+        "fiction"
+      ],
+      "L7:F141818": [
+        "fiction"
+      ],
+      "L4:F45137": [
+        "fiction"
+      ],
+      "L11:F154718": [
+        "fiction"
+      ],
+      "L5:F689": [
+        "fiction"
+      ],
+      "L9:F48582": [
+        "fiction"
+      ],
+      "L28:F134198": [
+        "analytical",
+        "fiction"
+      ],
+      "L12:F791": [
+        "analytical"
+      ],
+      "L20:F113067": [
+        "analytical"
+      ],
+      "L19:F14438": [
+        "analytical"
+      ],
+      "L10:F70047": [
+        "analytical"
+      ],
+      "L22:F150775": [
+        "analytical"
+      ],
+      "L8:F77054": [
+        "completion"
+      ],
+      "L10:F100920": [
+        "completion"
+      ],
+      "L5:F36720": [
+        "completion"
+      ],
+      "L5:F61062": [
+        "cognitive_reframe"
+      ],
+      "L5:F161597": [
+        "cognitive_reframe"
+      ],
+      "L4:F48370": [
+        "cognitive_reframe"
+      ],
+      "L5:F20346": [
+        "cognitive_reframe"
+      ],
+      "L12:F1143": [
+        "cognitive_reframe"
+      ],
+      "L6:F54678": [
+        "cognitive_reframe"
+      ],
+      "L16:F87306": [
+        "roleplay"
+      ],
+      "L4:F74492": [
+        "roleplay"
+      ],
+      "L11:F16160": [
+        "roleplay"
+      ],
+      "L1:F131010": [
+        "roleplay"
+      ],
+      "L5:F90960": [
+        "roleplay"
+      ],
+      "L24:F132390": [
+        "roleplay"
+      ],
+      "L14:F115576": [
+        "roleplay"
+      ],
+      "L15:F86436": [
+        "fiction"
+      ],
+      "L9:F70191": [
+        "fiction"
+      ],
+      "L5:F129765": [
+        "fiction"
+      ],
+      "L27:F160866": [
+        "fiction"
+      ],
+      "L15:F152361": [
+        "fiction"
+      ],
+      "L11:F151752": [
+        "fiction"
+      ],
+      "L13:F8038": [
+        "analytical"
+      ],
+      "L27:F70735": [
+        "analytical"
+      ],
+      "L13:F41114": [
+        "analytical"
+      ],
+      "L16:F141834": [
+        "analytical"
+      ],
+      "L32:F41388": [
+        "completion"
+      ],
+      "L23:F35443": [
+        "completion"
+      ],
+      "L15:F24829": [
+        "completion"
+      ],
+      "L20:F33958": [
+        "completion"
+      ],
+      "L15:F141286": [
+        "completion"
+      ],
+      "L21:F44150": [
+        "cognitive_reframe"
+      ],
+      "L14:F23319": [
+        "cognitive_reframe"
+      ],
+      "L13:F17874": [
+        "cognitive_reframe"
+      ],
+      "L21:F133475": [
+        "roleplay"
+      ],
+      "L5:F157421": [
+        "roleplay"
+      ],
+      "L7:F144961": [
+        "roleplay"
+      ],
+      "L8:F98322": [
+        "roleplay"
+      ],
+      "L2:F58661": [
+        "roleplay"
+      ],
+      "L13:F77194": [
+        "roleplay"
+      ],
+      "L11:F29077": [
+        "fiction"
+      ],
+      "L8:F54449": [
+        "fiction"
+      ],
+      "L5:F25657": [
+        "fiction"
+      ],
+      "L7:F146930": [
+        "fiction"
+      ],
+      "L7:F82889": [
+        "fiction"
+      ],
+      "L7:F49281": [
+        "analytical"
+      ],
+      "L15:F890": [
+        "analytical"
+      ],
+      "L2:F30165": [
+        "analytical"
+      ],
+      "L5:F69310": [
+        "analytical"
+      ],
+      "L2:F89495": [
+        "completion"
+      ],
+      "L8:F41635": [
+        "completion"
+      ],
+      "L6:F21232": [
+        "completion"
+      ],
+      "L10:F11651": [
+        "completion"
+      ],
+      "L8:F79342": [
+        "completion"
+      ],
+      "L18:F130134": [
+        "completion"
+      ],
+      "L23:F84437": [
+        "completion"
+      ],
+      "L19:F77881": [
+        "cognitive_reframe"
+      ],
+      "L9:F19614": [
+        "cognitive_reframe"
+      ],
+      "L16:F33974": [
+        "cognitive_reframe"
+      ],
+      "L32:F32417": [
+        "cognitive_reframe"
+      ],
+      "L23:F91721": [
+        "cognitive_reframe"
+      ],
+      "L14:F100664": [
+        "roleplay"
+      ],
+      "L11:F115626": [
+        "roleplay"
+      ],
+      "L8:F116484": [
+        "roleplay"
+      ],
+      "L10:F143615": [
+        "roleplay"
+      ],
+      "L9:F60590": [
+        "roleplay"
+      ],
+      "L0:F118884": [
+        "fiction"
+      ],
+      "L0:F95405": [
+        "fiction"
+      ],
+      "L3:F12337": [
+        "fiction"
+      ],
+      "L6:F8620": [
+        "fiction"
+      ],
+      "L27:F84227": [
+        "fiction"
+      ],
+      "L19:F104910": [
+        "analytical"
+      ],
+      "L4:F108307": [
+        "analytical"
+      ],
+      "L9:F55156": [
+        "analytical"
+      ],
+      "L3:F2851": [
+        "analytical"
+      ],
+      "L0:F46724": [
+        "analytical"
+      ],
+      "L9:F97817": [
+        "completion"
+      ],
+      "L19:F105531": [
+        "completion"
+      ],
+      "L32:F9590": [
+        "cognitive_reframe"
+      ],
+      "L25:F48701": [
+        "cognitive_reframe"
+      ],
+      "L12:F13868": [
+        "cognitive_reframe"
+      ],
+      "L0:F97035": [
+        "cognitive_reframe"
+      ],
+      "L32:F132684": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L29:F18221": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L31:F109901": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction"
+      ],
+      "L31:F49541": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L31:F116260": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L33:F67079": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "roleplay"
+      ],
+      "L28:F160311": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L28:F87125": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L29:F64904": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L33:F78685": [
+        "analytical",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L32:F71061": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L32:F158432": [
+        "analytical",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L26:F82435": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction"
+      ],
+      "L29:F152160": [
+        "analytical",
+        "cognitive_reframe",
+        "fiction"
+      ],
+      "L28:F101616": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L30:F9168": [
+        "analytical",
+        "cognitive_reframe",
+        "roleplay"
+      ],
+      "L30:F146991": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L28:F23690": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "roleplay"
+      ],
+      "L29:F42622": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "roleplay"
+      ],
+      "L32:F50401": [
+        "analytical",
+        "cognitive_reframe",
+        "completion"
+      ],
+      "L33:F111741": [
+        "cognitive_reframe",
+        "roleplay"
+      ],
+      "L33:F124170": [
+        "analytical",
+        "fiction",
+        "roleplay"
+      ],
+      "L25:F23826": [
+        "completion",
+        "fiction"
+      ],
+      "L29:F81789": [
+        "analytical",
+        "cognitive_reframe",
+        "roleplay"
+      ],
+      "L28:F15059": [
+        "analytical",
+        "fiction"
+      ],
+      "L29:F27963": [
+        "analytical",
+        "fiction",
+        "roleplay"
+      ],
+      "L30:F93888": [
+        "cognitive_reframe",
+        "roleplay"
+      ],
+      "L25:F124198": [
+        "analytical",
+        "fiction",
+        "roleplay"
+      ],
+      "L32:F37122": [
+        "fiction",
+        "roleplay"
+      ],
+      "L23:F158577": [
+        "cognitive_reframe"
+      ],
+      "L27:F57383": [
+        "analytical",
+        "cognitive_reframe",
+        "fiction"
+      ],
+      "L31:F44320": [
+        "cognitive_reframe",
+        "fiction",
+        "roleplay"
+      ],
+      "L30:F82635": [
+        "completion",
+        "fiction"
+      ],
+      "L24:F91636": [
+        "fiction",
+        "roleplay"
+      ],
+      "L31:F134767": [
+        "analytical",
+        "roleplay"
+      ],
+      "L27:F140854": [
+        "fiction",
+        "roleplay"
+      ],
+      "L30:F108927": [
+        "analytical",
+        "cognitive_reframe"
+      ],
+      "L33:F28288": [
+        "completion",
+        "roleplay"
+      ],
+      "L30:F133610": [
+        "completion",
+        "roleplay"
+      ],
+      "L32:F129364": [
+        "completion",
+        "roleplay"
+      ],
+      "L19:F92377": [
+        "fiction"
+      ],
+      "L28:F40194": [
+        "analytical",
+        "cognitive_reframe"
+      ],
+      "L28:F17778": [
+        "roleplay"
+      ],
+      "L33:F126711": [
+        "cognitive_reframe"
+      ],
+      "L29:F130823": [
+        "fiction"
+      ],
+      "L33:F74980": [
+        "analytical"
+      ],
+      "L29:F138958": [
+        "cognitive_reframe"
+      ],
+      "L22:F68775": [
+        "roleplay"
+      ],
+      "L29:F5988": [
+        "roleplay"
+      ],
+      "L24:F60982": [
+        "fiction"
+      ],
+      "L33:F3491": [
+        "completion"
+      ],
+      "L31:F50864": [
+        "completion"
+      ],
+      "L33:F12304": [
+        "completion"
+      ],
+      "L28:F25213": [
+        "completion"
+      ],
+      "L10:F126979": [
+        "fiction"
+      ],
+      "L23:F11218": [
+        "fiction"
+      ],
+      "L26:F17461": [
+        "fiction"
+      ],
+      "L30:F87427": [
+        "completion"
+      ],
+      "L31:F95994": [
+        "roleplay"
+      ],
+      "L30:F128838": [
+        "fiction"
+      ],
+      "L20:F104315": [
+        "fiction"
+      ],
+      "L25:F42708": [
+        "fiction"
+      ],
+      "L30:F81884": [
+        "fiction"
+      ],
+      "L33:F129307": [
+        "cognitive_reframe"
+      ],
+      "L32:F19113": [
+        "cognitive_reframe"
+      ],
+      "L32:F36682": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L17:F82119": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L24:F81123": [
+        "analytical",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L16:F35905": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L18:F161543": [
+        "analytical",
+        "cognitive_reframe",
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L32:F79442": [
+        "analytical",
+        "fiction"
+      ],
+      "L31:F85768": [
+        "analytical",
+        "cognitive_reframe",
+        "roleplay"
+      ],
+      "L16:F132756": [
+        "analytical",
+        "cognitive_reframe",
+        "completion"
+      ],
+      "L33:F97879": [
+        "analytical",
+        "completion",
+        "roleplay"
+      ],
+      "L27:F84764": [
+        "analytical",
+        "fiction"
+      ],
+      "L22:F153605": [
+        "cognitive_reframe",
+        "completion",
+        "fiction"
+      ],
+      "L19:F88090": [
+        "completion",
+        "fiction",
+        "roleplay"
+      ],
+      "L29:F114615": [
+        "analytical",
+        "fiction",
+        "roleplay"
+      ],
+      "L27:F857": [
+        "cognitive_reframe"
+      ],
+      "L31:F65687": [
+        "completion",
+        "roleplay"
+      ],
+      "L21:F44305": [
+        "analytical"
+      ],
+      "L28:F5908": [
+        "fiction",
+        "roleplay"
+      ],
+      "L22:F3547": [
+        "completion"
+      ],
+      "L13:F67413": [
+        "cognitive_reframe",
+        "roleplay"
+      ],
+      "L18:F17980": [
+        "cognitive_reframe",
+        "completion"
+      ],
+      "L19:F31630": [
+        "roleplay"
+      ],
+      "L18:F117243": [
+        "roleplay"
+      ],
+      "L33:F34236": [
+        "analytical"
+      ],
+      "L22:F129207": [
+        "completion"
+      ],
+      "L32:F10962": [
+        "completion"
+      ],
+      "L28:F120297": [
+        "completion"
+      ],
+      "L25:F134119": [
+        "fiction"
+      ],
+      "L16:F70434": [
+        "analytical"
+      ],
+      "L25:F104686": [
+        "completion"
+      ],
+      "L30:F55565": [
+        "cognitive_reframe"
+      ],
+      "L24:F132125": [
+        "roleplay"
+      ],
+      "L24:F158598": [
+        "analytical"
+      ],
+      "L30:F116391": [
+        "analytical"
+      ],
+      "L12:F140946": [
+        "analytical"
+      ],
+      "L16:F108849": [
+        "completion"
+      ],
+      "L16:F118400": [
+        "analytical"
+      ],
+      "L15:F110973": [
+        "analytical"
+      ],
+      "L15:F115827": [
+        "analytical"
+      ],
+      "L29:F119340": [
+        "completion"
+      ],
+      "L22:F8581": [
+        "completion"
+      ],
+      "L23:F10964": [
+        "completion"
+      ],
+      "L21:F130177": [
+        "analytical"
+      ],
+      "L13:F24152": [
+        "cognitive_reframe"
+      ]
+    }
+  }
+}

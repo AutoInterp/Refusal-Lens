@@ -1,0 +1,14 @@
+{
+  "total_features": 440,
+  "labeled": 435,
+  "unlabeled": 5,
+  "coverage_pct": 98.9,
+  "source": "HuggingFace: mwhanna/qwen3-4b-transcoders",
+  "priority_features": 275,
+  "priority_labeled": 272,
+  "comparison_counts": {
+    "sign_flipped": 167,
+    "dampened": 66,
+    "amplified_anti": 44
+  }
+}
