@@ -27,7 +27,19 @@ D_MODEL = 2560
 # trailing-token semantics shift. Re-tune via Stage 01 sweep.
 MEASUREMENT_LAYER = 34     # TODO: verify via Stage 01 (Qwen has 36 layers)
 MEASUREMENT_POSITION = -1  # TODO: verify via Stage 01 position sweep
-CAUSAL_LAYER = 18          # TODO: verify via causal-intervention sweep
+CAUSAL_LAYER = 18          # TODO: verify via 01b_layer_sweep.py before Stage 06
+# Where in the block circuit-tracer injects the cotangent. Same TL convention
+# as Gemma — `hook_resid_post` injects at the residual stream (= Stage 01's
+# extraction point). Without this override circuit-tracer would use
+# `post_attention_layernorm.output` (Qwen3's standard pre-LN block, the
+# analog of Gemma's `pre_feedforward_layernorm`), which differs from the
+# residual stream by an RMSNorm scale factor and breaks attribution
+# magnitudes. See MENTEE_NOTE_three_bugs.md (Bug 3).
+MEASUREMENT_HOOK = "hook_resid_post"
+# Circuit-tracer backend. transformerlens is required for measurement_hook=
+# "hook_resid_post" — nnsight has a `.grad-on-non-module-output` limitation
+# that breaks residual-stream measurement. Qwen3-4B is supported by TL.
+BACKEND = "transformerlens"
 
 # ============================================================
 # Transcoders — mwhanna/qwen3-4b-transcoders
@@ -54,7 +66,34 @@ SWEEP_POSITIONS = [-5, -4, -3, -2, -1]  # Last-N tokens of formatted prompt
 # use r computed at layer L.
 DIRECTION_LAYERS = list(range(N_LAYERS))   # All 36 layers
 BEST_SEPARATION_LAYER = 34   # TODO: verify via Stage 01 (used as attribution target)
-BEST_CAUSAL_LAYER = 18       # TODO: verify via causal sweep (used for intervention)
+BEST_CAUSAL_LAYER = 18       # TODO: verify via 01b_layer_sweep.py (used for intervention)
+
+# ============================================================
+# Per-position direction at the causal layer
+# ============================================================
+# Qwen3 chat template (with enable_thinking=False) ends in:
+#   ... <|im_end|> \n <|im_start|> assistant \n
+# The trailing-token semantics differ from Gemma's:
+#   pos=-1: \n (last token before generation)
+#   pos=-2: assistant     <-- Gemma's pos=-2 ("model") analog
+#   pos=-3: \n
+#   pos=-4: <|im_start|>
+#   pos=-5: \n            <-- analog of Gemma's pos=-5 (<end_of_turn>)
+# These positions are stable across prompt length (template-anchored).
+PER_POSITION_LAYER = 18                # = BEST_CAUSAL_LAYER (kept aligned)
+PER_POSITION_POSITIONS = list(range(-15, 0))  # default sweep window
+
+# Stage 02 attribution targets — template anchors. The "single" target is
+# pos=-1 (matches Stage 01's DIRECTION_POSITION); "multi" adds two earlier
+# template anchors for the multi-position graph mode.
+# IMPORTANT: re-tune after the position sweep finishes for Qwen — these are
+# best-guess defaults, not verified anchors yet.
+TARGET_POSITIONS_MULTI = [-5, -3, -1]
+TARGET_POSITIONS_SINGLE = [-1]
+
+# Per-(prompt × condition × mode), Stage 02 stores the top-N features by
+# |attribution|.
+SAVE_TOP_FEATURES = 100
 
 # ============================================================
 # Attribution
@@ -72,12 +111,43 @@ CAUSAL_TEST_LAYERS = [12, 15, 18, 22, 28]   # Sweep candidates; tune for Qwen
 N_HARMFUL_CAUSAL = 20
 N_BENIGN_CAUSAL = 10
 MAX_NEW_TOKENS = 200
+# Stage 06 modes — Arditi add for jb→refuse, anti-add for bare→comply.
+CAUSAL_INTERVENTION_MODES = ("pro_refusal_add", "anti_refusal_sub")
+STAGE_06_DEFAULT_LAYERS = [18]  # = BEST_CAUSAL_LAYER; expand once verified
+
+# ============================================================
+# Stage 08 — subcircuit ablation
+# ============================================================
+# Default subcircuits to ablate; each must exist in 07_subcircuits/subcircuits.json.
+#   universal_refusal_core    — POSITIVE control (ablating breaks bare refuse)
+#   ctrl_shared_refusal       — NEGATIVE control (prefix-invariant)
+#   jb_<class>_specific_vs_ctrl — class-specific dissociation targets
+STAGE_08_DEFAULT_SUBCIRCUITS = (
+    "universal_refusal_core",
+    "ctrl_shared_refusal",
+    "jb_fiction_specific_vs_ctrl",
+    "jb_analytical_specific_vs_ctrl",
+    "jb_cognitive_reframe_specific_vs_ctrl",
+)
+# Template-anchor positions — must match TARGET_POSITIONS_MULTI so ablation
+# at these positions aligns with Stage 02's attribution targets.
+STAGE_08_TEMPLATE_ANCHORS = [-5, -3, -1]
+# First-token mask for transcoder zeroing. Qwen3's chat-template prefix takes
+# 4 tokens (<|im_start|>, user, \n, then content) when used with the standard
+# user-only message — same width as Gemma. Verify by tokenizing a sample
+# prompt before trusting this mask end-to-end.
+STAGE_08_FIRST_TOKEN_MASK = slice(0, 4)
 
 # ============================================================
 # Paths
 # ============================================================
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DATASET_DIR = REPO_ROOT / "dataset" / "refusal_direction_dataset" / "splits"
+# 50 harmful-base prompts × 5 JB classes × 2 prefix variants (JB + ctrl) +
+# bare = 11 conditions. Ported from Gemma side; re-validate refusal/comply
+# rates on Qwen via verify_dataset_qwen.py before relying on it for paper
+# numbers (Qwen tokenization will not preserve length-matching exactly).
+CONTROLLED_DATASET_PATH = REPO_ROOT / "dataset" / "refusal_lens_controlled_dataset.json"
 RESULTS_BASE = REPO_ROOT / "data" / "results" / "pipeline_runs_qwen"
 
 # ============================================================

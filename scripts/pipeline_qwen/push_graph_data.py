@@ -35,7 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config  # noqa: F401
 from utils_viz import gzip_json_files
 
-DEFAULT_DATASET_REPO = "AutoInterp/refusal-lens-graphs"
+DEFAULT_DATASET_REPO = "AutoInterp/refusal-lens-graphs-qwen"
 
 
 def parse_args():

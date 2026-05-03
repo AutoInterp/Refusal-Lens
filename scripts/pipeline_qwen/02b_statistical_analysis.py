@@ -1,551 +1,800 @@
-"""                                                                                                                                                       
-Stage 02b: Statistical Analysis + Plots                                                                                                                   
-========================================                                                                                                                  
-Computes paired statistics and generates publication-quality plots
-from Stage 02 attribution results.                                                                                                                        
-                                                                                                                                                        
-Statistics: Wilcoxon signed-rank, paired t-test, Cohen's d, bootstrap 95% CIs                                                                             
-Dual mechanism: dPos (pro-refusal change), dNeg (anti-refusal change)                                                                                     
-Plots: class comparison, per-prompt deltas, effect sizes, feature comparison                                                                              
-                                                                                                                                                        
-Inputs:  02_attribution/attribution_results.json, feature_comparison_aggregate.json                                                                       
-Outputs: 02b_stats/                                                                                                                                       
-"""                                                                                                                                                       
-from __future__ import annotations                                                                                                                        
-                                                                                                                                                        
-import argparse                                                                                                                                           
-import sys                                                                                                                                                
-from pathlib import Path                                                                                                                                  
+"""
+Stage 02b: Statistical Analysis + Plots
+=======================================
+Computes paired statistics and generates publication-quality plots from the
+Stage 02 attribution results produced by the multi+single two-graph scheme.
 
-import numpy as np                                                                                                                                        
-                                        
-sys.path.insert(0, str(Path(__file__).resolve().parent))                                                                                                  
-import config                                                                                                                                             
-from utils import save_json, load_json, get_stage_dir                                                                                                     
-                                                                                                                                                        
-                                                                                                                                                        
-def parse_args():                      
-    parser = argparse.ArgumentParser(description="Statistical analysis + plots")
-    parser.add_argument("--run-dir", type=Path, required=True)                                                                                            
-    parser.add_argument(                                                                                                                                  
-        "--n-bootstrap", type=int, default=10000,                                                                                                         
-        help="Number of bootstrap resamples for CIs",                                                                                                     
-    )                                                                                                                                                     
-    return parser.parse_args()
-                                                                                                                                                        
-                                        
-def main():
+For each prompt × condition, Stage 02 now emits both a multi-target graph
+(targets = L15 at positions [-5, -3, -2] — the template anchors) and a
+single-target baseline graph (target = L15 @ pos=-2 only). This stage
+computes paired stats for every combination of:
+
+    modes        = {multi, single}                       (graph target set)
+    comparisons  = {vs_bare, vs_ctrl, ctrl_vs_bare}      (what to compare)
+    jb classes   = {roleplay, fiction, analytical,
+                    completion, cognitive_reframe}
+
+    vs_bare      = bare             ↔ jb_<class>   (legacy comparison)
+    vs_ctrl      = ctrl_<class>     ↔ jb_<class>   (token-matched; cleanest)
+    ctrl_vs_bare = bare             ↔ ctrl_<class> (sanity: ctrl ≈ bare?)
+
+Statistics per block: Wilcoxon signed-rank, paired t-test, Cohen's d,
+bootstrap 95% CI on Δnet, dual-mechanism decomposition (dPos/dNeg).
+
+Plots emitted for multi mode (the headline); single mode is captured in the
+JSON + markdown report but only the core distribution plot is rendered for it.
+
+Inputs:  02_attribution/attribution_results.json
+         02_attribution/feature_comparison_aggregate.json
+         01_direction/direction_metadata.json  (for separation + cosine plots)
+Outputs: 02b_stats/statistical_analysis.json
+         02b_stats/EXPERIMENT_SUMMARY.md
+         02b_stats/*.png
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import config  # noqa: F401
+from utils import save_json, load_json, get_stage_dir
+
+
+# Class set under Tejas's controlled dataset. Matches Stage 02.
+CONTROLLED_CLASSES = ("roleplay", "fiction", "analytical", "completion", "cognitive_reframe")
+
+# Graph modes. "multi" is the headline (template-anchored 3-position target);
+# "single" is the causally-verified pos=-2 baseline.
+MODES = ("multi", "single")
+
+# (comparison_key, baseline_cond_template, treatment_cond_template).
+# {cls} is expanded against CONTROLLED_CLASSES per-class.
+COMPARISONS = (
+    ("vs_bare",      "bare",        "jb_{cls}"),
+    ("vs_ctrl",      "ctrl_{cls}",  "jb_{cls}"),
+    ("ctrl_vs_bare", "bare",        "ctrl_{cls}"),
+)
+
+
+# ======================================================================
+# Schema helpers
+# ======================================================================
+
+
+def _get_metrics(row: dict, cond_name: str, mode: str) -> tuple[float, float, float] | None:
+    """Pull (net, pos_sum, neg_sum) for a prompt row's condition/mode.
+
+    Handles three historical shapes:
+      - Post-refactor:  conditions[cond_name].graphs[mode].{net,pos_sum,neg_sum}
+      - Pre-refactor:   conditions[cond_name].{net,pos_sum,neg_sum}  (single-target)
+      - Pre-ctrl:       "jb_<cls>" didn't exist — the JB condition was keyed
+                        as "<cls>" directly. This fallback lets the new
+                        vs_bare comparison still work on pre-ctrl data.
+
+    Returns None when the condition is missing, errored, or not applicable
+    to legacy data (e.g. "ctrl_<cls>" on a pre-ctrl run).
+    """
+    conds = row.get("conditions", row)
+    cond = conds.get(cond_name)
+    # Legacy condition-name fallback: "jb_fiction" → "fiction".
+    # (Pre-ctrl runs used the bare class name as the JB condition key.)
+    if cond is None and cond_name.startswith("jb_"):
+        cond = conds.get(cond_name.removeprefix("jb_"))
+    if not isinstance(cond, dict):
+        return None
+    # New schema: dig into .graphs[mode]
+    if "graphs" in cond:
+        g = cond["graphs"].get(mode)
+        if not isinstance(g, dict) or "error" in g:
+            return None
+        return (
+            float(g.get("net", 0.0)),
+            float(g.get("pos_sum", 0.0)),
+            float(g.get("neg_sum", 0.0)),
+        )
+    # Legacy flat condition. Pre-refactor there was only one graph per
+    # condition (single-target), so these metrics apply only to mode="single".
+    # For mode="multi" on legacy data, return None — the caller detects that
+    # mode isn't present and skips it.
+    if mode != "single":
+        return None
+    if "error" in cond or "net" not in cond:
+        return None
+    return (
+        float(cond.get("net", 0.0)),
+        float(cond.get("pos_sum", 0.0)),
+        float(cond.get("neg_sum", 0.0)),
+    )
+
+
+def _detect_modes(results: list[dict]) -> list[str]:
+    """Return graph modes present in the data. Legacy flat schema (no
+    ``graphs`` key anywhere) is treated as single-target → ["single"]."""
+    seen: set[str] = set()
+    for row in results:
+        for cond in row.get("conditions", row).values():
+            if isinstance(cond, dict) and "graphs" in cond:
+                seen.update(cond["graphs"].keys())
+    if not seen:
+        return ["single"]
+    # Preserve canonical order: multi, single, then any custom names alphabetically.
+    ordered = [m for m in MODES if m in seen]
+    ordered.extend(sorted(seen - set(MODES)))
+    return ordered
+
+
+def _gather_pairs(
+    results: list[dict], a_cond: str, b_cond: str, mode: str,
+) -> dict[str, np.ndarray]:
+    """Collect aligned arrays of (net, pos_sum, neg_sum) for pairs where both
+    conditions are present and error-free. Returns a dict of numpy arrays."""
+    a_nets, b_nets, a_pos, b_pos, a_neg, b_neg = [], [], [], [], [], []
+    for row in results:
+        av = _get_metrics(row, a_cond, mode)
+        bv = _get_metrics(row, b_cond, mode)
+        if av is None or bv is None:
+            continue
+        a_nets.append(av[0]); a_pos.append(av[1]); a_neg.append(av[2])
+        b_nets.append(bv[0]); b_pos.append(bv[1]); b_neg.append(bv[2])
+    return {
+        "a_nets": np.array(a_nets), "b_nets": np.array(b_nets),
+        "a_pos":  np.array(a_pos),  "b_pos":  np.array(b_pos),
+        "a_neg":  np.array(a_neg),  "b_neg":  np.array(b_neg),
+    }
+
+
+# ======================================================================
+# Paired stats
+# ======================================================================
+
+
+def _paired_stats(
+    pairs: dict[str, np.ndarray], n_bootstrap: int, rng: np.random.RandomState,
+) -> dict | None:
+    """Compute paired-sample statistics comparing treatment (b) to baseline (a).
+
+    Returns None if fewer than 3 pairs (insufficient for statistical tests).
+
+    Convention: positive `mean_delta` = treatment has larger net attribution
+    than baseline, i.e. more refusal signal. For `vs_bare` and `vs_ctrl` where
+    the baseline refuses and JB may not, expect negative mean_delta for most
+    classes.
+    """
     from scipy import stats as scipy_stats
 
-    args = parse_args()                                                                                                                                   
-    run_dir = args.run_dir
-    out_dir = get_stage_dir(run_dir, "02b_stats")                                                                                                         
-                                        
-    print("=" * 60)                                                                                                                                       
-    print("STAGE 02b: Statistical Analysis + Plots")
-    print("=" * 60)                                                                                                                                       
-                                        
-    # Load attribution results
-    attr_path = run_dir / "02_attribution" / "attribution_results.json"
-    if not attr_path.exists():
-        # Fallback to existing scaled experiment results                                                                                                  
-        fallback = list(
-            (config.REPO_ROOT / "data" / "results" / "scaled_experiments").glob(                                                                          
-                "run_*/attribution_results.json"                                                                                                          
-            )                                                                                                                                             
-        )                                                                                                                                                 
-        if not fallback:               
-            print("  ERROR: No attribution results found.")
-            sys.exit(1)                                                                                                                                   
-        attr_path = sorted(fallback)[-1]
-        print(f"  Using fallback: {attr_path}")                                                                                                           
-                                                                                                                                                        
-    raw = load_json(attr_path)
-    results = raw if isinstance(raw, list) else raw["results"]                                                                                            
-    print(f"  Loaded {len(results)} prompt results")                                                                                                      
+    a = pairs["a_nets"]; b = pairs["b_nets"]
+    n = len(a)
+    if n < 3:
+        return None
 
-    # Load feature comparison aggregate if available                                                                                                      
-    feat_agg_path = attr_path.parent / "feature_comparison_aggregate.json"
-    feat_agg = load_json(feat_agg_path) if feat_agg_path.exists() else {}
+    deltas = b - a  # treatment minus baseline
 
-    # load direction metadata (for separation-vs-layer plot)
-    direction_meta_path = run_dir / "01_direction" / "direction_metadata.json"
-    direction_meta = load_json(direction_meta_path) if direction_meta_path.exists() else None                                                                                 
-                                                                                                                                                        
-    classes = list(config.JB_CLASSES.keys())                                                                                                              
-                                                                                                                                                        
-    # ============================================================                                                                                        
-    # Paired statistical tests
-    # ============================================================                                                                                        
-    print("\n  Computing paired statistics...")
-    paired_data = {}                                                                                                                                      
+    # Wilcoxon signed-rank — non-parametric
+    try:
+        w_stat, w_pval = scipy_stats.wilcoxon(a, b)
+    except ValueError:
+        w_stat, w_pval = float("nan"), float("nan")
 
-    for cls in classes:                                                                                                                                   
-        bare_nets = []                 
-        cls_nets = []
-        bare_pos = []                                                                                                                                     
-        cls_pos = []
-        bare_neg = []                                                                                                                                     
-        cls_neg = []                   
+    # Paired t-test
+    t_stat, t_pval = scipy_stats.ttest_rel(a, b)
 
-        for row in results:
-            conds = row.get("conditions", row)
-            if "bare" in conds and cls in conds:                                                                                                          
-                b = conds["bare"]
-                c = conds[cls]                                                                                                                            
-                if "error" not in b and "error" not in c:
-                    bare_nets.append(b["net"])                                                                                                            
-                    cls_nets.append(c["net"])
-                    bare_pos.append(b["pos_sum"])                                                                                                         
-                    cls_pos.append(c["pos_sum"])
-                    bare_neg.append(b["neg_sum"])                                                                                                         
-                    cls_neg.append(c["neg_sum"])
-                                                                                                                                                        
-        n = len(bare_nets)             
-        if n < 3:
-            print(f"    {cls}: insufficient data ({n} pairs)")                                                                                            
+    # Cohen's d (paired)
+    d_mean = float(np.mean(deltas))
+    d_std = float(np.std(deltas, ddof=1))
+    cohens_d = d_mean / d_std if d_std > 0 else 0.0
+
+    # Bootstrap 95% CI on mean delta
+    boot_means = np.array([
+        rng.choice(deltas, size=n, replace=True).mean()
+        for _ in range(n_bootstrap)
+    ])
+    ci_low = float(np.percentile(boot_means, 2.5))
+    ci_high = float(np.percentile(boot_means, 97.5))
+
+    # Dual-mechanism decomposition (change in pro-refusal, anti-refusal halves)
+    a_pos_mean = float(np.mean(pairs["a_pos"]))
+    b_pos_mean = float(np.mean(pairs["b_pos"]))
+    a_neg_mean = float(np.mean(pairs["a_neg"]))
+    b_neg_mean = float(np.mean(pairs["b_neg"]))
+    d_pos = b_pos_mean - a_pos_mean
+    d_neg = b_neg_mean - a_neg_mean
+
+    return {
+        "n_pairs": int(n),
+        "a_mean_net": float(np.mean(a)), "a_std_net": float(np.std(a)),
+        "b_mean_net": float(np.mean(b)), "b_std_net": float(np.std(b)),
+        "mean_delta": d_mean,
+        "std_delta": d_std,
+        "pct_change": (d_mean / np.mean(a) * 100) if np.mean(a) != 0 else 0.0,
+        "wilcoxon_stat": float(w_stat), "wilcoxon_pval": float(w_pval),
+        "ttest_stat": float(t_stat), "ttest_pval": float(t_pval),
+        "cohens_d": float(cohens_d),
+        "ci_95_low": ci_low, "ci_95_high": ci_high,
+        "n_treatment_lower": int((b < a).sum()),
+        "a_mean_pos": a_pos_mean, "b_mean_pos": b_pos_mean,
+        "a_mean_neg": a_neg_mean, "b_mean_neg": b_neg_mean,
+        "d_pos": d_pos, "d_neg": d_neg,
+        "d_pos_pct": (d_pos / a_pos_mean * 100) if a_pos_mean != 0 else 0.0,
+        "d_neg_pct": (d_neg / abs(a_neg_mean) * 100) if a_neg_mean != 0 else 0.0,
+    }
+
+
+def _dominance_label(d_pos: float, d_neg: float) -> str:
+    """Classify the dominant mechanism based on relative pro/anti deltas."""
+    if abs(d_pos) > 2 * abs(d_neg):
+        return "Dampening-dominant" if d_pos < 0 else "Pro-refusal recruitment"
+    if abs(d_neg) > 2 * abs(d_pos):
+        return "Amplification-dominant" if d_neg > 0 else "Anti-suppression"
+    return "Balanced"
+
+
+def _sig_marker(pval: float) -> str:
+    if pval < 0.001:
+        return "***"
+    if pval < 0.01:
+        return "**"
+    if pval < 0.05:
+        return "*"
+    return ""
+
+
+# ======================================================================
+# Runner
+# ======================================================================
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Stage 02b statistical analysis + plots")
+    parser.add_argument("--run-dir", type=Path, required=True)
+    parser.add_argument(
+        "--n-bootstrap", type=int, default=10000,
+        help="Bootstrap resamples for 95% CI on mean delta.",
+    )
+    parser.add_argument(
+        "--no-plots", action="store_true",
+        help="Skip plot generation (stats JSON + markdown only).",
+    )
+    return parser.parse_args()
+
+
+def _compute_all_stats(
+    results: list[dict], n_bootstrap: int, modes: list[str],
+) -> dict[str, dict[str, dict[str, dict]]]:
+    """Iterate modes × comparisons × classes and compute paired stats for each.
+    Missing/insufficient combinations are omitted rather than stubbed out.
+    Deterministic bootstrap via a shared seeded RandomState.
+    """
+    rng = np.random.RandomState(42)
+    out: dict = {}
+    for mode in modes:
+        per_mode: dict = {}
+        for comp_name, a_tmpl, b_tmpl in COMPARISONS:
+            per_comp: dict = {}
+            for cls in CONTROLLED_CLASSES:
+                a_cond = a_tmpl.format(cls=cls)
+                b_cond = b_tmpl.format(cls=cls)
+                pairs = _gather_pairs(results, a_cond, b_cond, mode)
+                stats = _paired_stats(pairs, n_bootstrap, rng)
+                if stats is None:
+                    continue
+                stats["baseline_cond"] = a_cond
+                stats["treatment_cond"] = b_cond
+                stats["dominance"] = _dominance_label(stats["d_pos"], stats["d_neg"])
+                per_comp[cls] = stats
+            if per_comp:
+                per_mode[comp_name] = per_comp
+        if per_mode:
+            out[mode] = per_mode
+    return out
+
+
+# ======================================================================
+# Reporting (print tables + markdown)
+# ======================================================================
+
+
+def _print_stats_table(stats_block: dict, title: str) -> None:
+    """Print one comparison × 5-class stats table to stdout."""
+    if not stats_block:
+        return
+    print(f"\n  {title}")
+    print(
+        f"  {'Class':>18} | {'N':>3} | {'Base':>7} | {'Treat':>7} | "
+        f"{'Delta':>7} | {'%Chg':>7} | {'p (W)':>10} | {'d':>7} | {'95% CI':>18}"
+    )
+    print(f"  {'-'*18}-+-{'-'*3}-+-{'-'*7}-+-{'-'*7}-+-{'-'*7}-+-"
+          f"{'-'*7}-+-{'-'*10}-+-{'-'*7}-+-{'-'*18}")
+    for cls in CONTROLLED_CLASSES:
+        if cls not in stats_block:
             continue
-                                                                                                                                                        
-        bare_nets = np.array(bare_nets)
-        cls_nets = np.array(cls_nets)
-        deltas = cls_nets - bare_nets                                                                                                                     
+        s = stats_block[cls]
+        sig = _sig_marker(s["wilcoxon_pval"]) or "ns"
+        print(
+            f"  {cls:>18} | {s['n_pairs']:3d} | "
+            f"{s['a_mean_net']:+7.1f} | {s['b_mean_net']:+7.1f} | "
+            f"{s['mean_delta']:+7.1f} | {s['pct_change']:+6.1f}% | "
+            f"{s['wilcoxon_pval']:10.4g}{sig:>3} | "
+            f"{s['cohens_d']:+7.2f} | "
+            f"[{s['ci_95_low']:+.1f}, {s['ci_95_high']:+.1f}]"
+        )
 
-        # Wilcoxon signed-rank (non-parametric)                                                                                                           
-        try:                           
-            w_stat, w_pval = scipy_stats.wilcoxon(bare_nets, cls_nets)
-        except ValueError:                                                                                                                                
-            w_stat, w_pval = float("nan"), float("nan")
-                                                                                                                                                        
-        # Paired t-test                
-        t_stat, t_pval = scipy_stats.ttest_rel(bare_nets, cls_nets)                                                                                       
-                                        
-        # Cohen's d (paired)
-        d_mean = np.mean(deltas)
-        d_std = np.std(deltas, ddof=1)                                                                                                                    
-        cohens_d = d_mean / d_std if d_std > 0 else 0.0
-                                                                                                                                                        
-        # Bootstrap 95% CI             
-        rng = np.random.RandomState(42)                                                                                                                   
-        boot_means = np.array(         
-            [rng.choice(deltas, size=n, replace=True).mean()                                                                                              
-            for _ in range(args.n_bootstrap)]
-        )                                                                                                                                                 
-        ci_low = float(np.percentile(boot_means, 2.5))                                                                                                    
-        ci_high = float(np.percentile(boot_means, 97.5))
-                                                                                                                                                        
-        # Dual mechanism decomposition                                                                                                                    
-        d_pos = float(np.mean(cls_pos) - np.mean(bare_pos))  # change in pro-refusal
-        d_neg = float(np.mean(cls_neg) - np.mean(bare_neg))  # change in anti-refusal                                                                     
-                                                                                                                                                        
-        paired_data[cls] = {
-            "n_pairs": int(n),                                                                                                                            
-            "bare_mean_net": float(bare_nets.mean()),
-            "bare_std_net": float(bare_nets.std()),                                                                                                       
-            "cls_mean_net": float(cls_nets.mean()),
-            "cls_std_net": float(cls_nets.std()),                                                                                                         
-            "mean_delta": float(d_mean),
-            "std_delta": float(d_std),                                                                                                                    
-            "pct_change": float(d_mean / bare_nets.mean() * 100)
-            if bare_nets.mean() != 0 else 0.0,                                                                                                            
-            "wilcoxon_stat": float(w_stat),                                                                                                               
-            "wilcoxon_pval": float(w_pval),                                                                                                               
-            "ttest_stat": float(t_stat),                                                                                                                  
-            "ttest_pval": float(t_pval),                                                                                                                  
-            "cohens_d": float(cohens_d),
-            "ci_95_low": ci_low,                                                                                                                          
-            "ci_95_high": ci_high,     
-            "n_cls_lower": int((cls_nets < bare_nets).sum()),                                                                                             
-            "bare_mean_pos": float(np.mean(bare_pos)),                                                                                                    
-            "cls_mean_pos": float(np.mean(cls_pos)),                                                                                                      
-            "bare_mean_neg": float(np.mean(bare_neg)),                                                                                                    
-            "cls_mean_neg": float(np.mean(cls_neg)),
-            "d_pos": d_pos,                                                                                                                               
-            "d_neg": d_neg,            
-            "d_pos_pct": float(d_pos / np.mean(bare_pos) * 100)                                                                                           
-            if np.mean(bare_pos) != 0 else 0.0,
-            "d_neg_pct": float(d_neg / abs(np.mean(bare_neg)) * 100)                                                                                      
-            if np.mean(bare_neg) != 0 else 0.0,
-        }                                                                                                                                                 
-                                        
-    # Print results table                                                                                                                                 
-    print(f"\n  {'Class':>15} | {'N':>3} | {'Bare':>8} | {'JB':>8} | {'Delta':>8} | "
-        f"{'%Chg':>7} | {'p(W)':>10} | {'d':>7} | {'95% CI':>18}")                                                                                      
-    print(f"  {'-'*15}-+-{'-'*3}-+-{'-'*8}-+-{'-'*8}-+-{'-'*8}-+-"                                                                                        
-        f"{'-'*7}-+-{'-'*10}-+-{'-'*7}-+-{'-'*18}")                                                                                                     
-                                                                                                                                                        
-    for cls in classes:                                                                                                                                   
-        if cls not in paired_data:     
-            continue                                                                                                                                      
-        d = paired_data[cls]
-        sig = "***" if d["wilcoxon_pval"] < 0.001 else "**" if d["wilcoxon_pval"] < 0.01 else "*" if d["wilcoxon_pval"] < 0.05 else "ns"                                                                                                  
-        print(f"  {cls:>15} | {d['n_pairs']:3d} | {d['bare_mean_net']:+8.1f} | "
-            f"{d['cls_mean_net']:+8.1f} | {d['mean_delta']:+8.1f} | "                                                                                   
-            f"{d['pct_change']:+6.1f}% | {d['wilcoxon_pval']:10.6f}{sig:>3} | "                                                                         
-            f"{d['cohens_d']:+7.2f} | [{d['ci_95_low']:+.1f}, {d['ci_95_high']:+.1f}]")                                                                 
-                                                                                                                                                        
-    # Dual mechanism table                                                                                                                                
-    print(f"\n  Dual Mechanism Decomposition:")                                                                                                           
-    print(f"  {'Class':>15} | {'dPos':>10} | {'dNeg':>10} | {'Net':>8} | Dominant")                                                                       
-    print(f"  {'-'*15}-+-{'-'*10}-+-{'-'*10}-+-{'-'*8}-+-{'-'*25}")                                                                                       
-    for cls in classes:                                                                                                                                   
-        if cls not in paired_data:                                                                                                                        
-            continue                                                                                                                                      
-        d = paired_data[cls]           
-        if abs(d["d_pos"]) > 2 * abs(d["d_neg"]):
-            dominant = "Dampening-dominant"                                                                                                               
-        elif abs(d["d_neg"]) > 2 * abs(d["d_pos"]):                                                                                                       
-            dominant = "Amplification-dominant"                                                                                                           
-        elif d["d_pos"] > 0:                                                                                                                              
-            dominant = "Pro-refusal recruitment"                                                                                                          
-        else:
-            dominant = "Balanced"                                                                                                                         
-        print(f"  {cls:>15} | {d['d_pos']:+10.1f} | {d['d_neg']:+10.1f} | "
-            f"{d['mean_delta']:+8.1f} | {dominant}")                                                                                                    
 
-    save_json(paired_data, out_dir / "statistical_analysis.json")                                                                                         
-    print(f"\n  Saved statistical_analysis.json")
-                                                                                                                                                        
-    # ============================================================
-    # Plots
-    # ============================================================                                                                                        
-    print("\n  Generating plots...")
-    import matplotlib                                                                                                                                     
-    matplotlib.use("Agg")              
+def _print_dual_mechanism_table(stats_block: dict, title: str) -> None:
+    if not stats_block:
+        return
+    print(f"\n  {title} — Dual Mechanism Decomposition")
+    print(
+        f"  {'Class':>18} | {'dPos':>10} | {'dNeg':>10} | {'Net':>8} | Dominant"
+    )
+    print(f"  {'-'*18}-+-{'-'*10}-+-{'-'*10}-+-{'-'*8}-+-{'-'*25}")
+    for cls in CONTROLLED_CLASSES:
+        if cls not in stats_block:
+            continue
+        s = stats_block[cls]
+        print(
+            f"  {cls:>18} | {s['d_pos']:+10.1f} | {s['d_neg']:+10.1f} | "
+            f"{s['mean_delta']:+8.1f} | {s['dominance']}"
+        )
+
+
+def _markdown_stats_table(stats_block: dict, title: str) -> list[str]:
+    if not stats_block:
+        return []
+    lines = [
+        f"",
+        f"### {title}",
+        f"",
+        f"| Class | N | Baseline | Treatment | ΔNet | % Change | p (Wilcoxon) | Cohen's d | 95% CI | Dominant |",
+        f"|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for cls in CONTROLLED_CLASSES:
+        if cls not in stats_block:
+            continue
+        s = stats_block[cls]
+        sig = _sig_marker(s["wilcoxon_pval"])
+        lines.append(
+            f"| **{cls}** | {s['n_pairs']} | "
+            f"{s['a_mean_net']:+.1f} | {s['b_mean_net']:+.1f} | "
+            f"{s['mean_delta']:+.1f} | {s['pct_change']:+.1f}% | "
+            f"{s['wilcoxon_pval']:.4g}{sig} | "
+            f"{s['cohens_d']:+.2f} | "
+            f"[{s['ci_95_low']:+.1f}, {s['ci_95_high']:+.1f}] | "
+            f"{s['dominance']} |"
+        )
+    return lines
+
+
+# ======================================================================
+# Plots — multi mode only (single mode lives in JSON / markdown for now)
+# ======================================================================
+
+
+def _plot_class_comparison(
+    results: list[dict], out_dir: Path, mode: str = "multi",
+    filename_suffix: str = "",
+) -> Path | None:
+    """Grouped bar chart: mean net + pos_sum + neg_sum for each of the 11
+    conditions (bare, 5 ctrl_<cls>, 5 jb_<cls>), under the given graph mode."""
+    import matplotlib
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    # --- Plot 1: Class comparison bar chart ---                                                                                                          
-    fig, ax = plt.subplots(figsize=(12, 7))
-    all_classes = ["bare"] + classes                                                                                                                      
-    means, stds, pos_means, neg_means = [], [], [], []                                                                                                    
+    all_conds = ["bare"]
+    for cls in CONTROLLED_CLASSES:
+        all_conds.append(f"ctrl_{cls}")
+        all_conds.append(f"jb_{cls}")
 
-    for cls in all_classes:                                                                                                                               
-        nets, poss, negs = [], [], []  
-        for row in results:                                                                                                                               
-            conds = row.get("conditions", row)
-            if cls in conds and "error" not in conds[cls]:
-                c = conds[cls]                                                                                                                            
-                nets.append(c["net"])
-                poss.append(c["pos_sum"])                                                                                                                 
-                negs.append(c["neg_sum"])
-        means.append(np.mean(nets) if nets else 0)                                                                                                        
-        stds.append(np.std(nets) if nets else 0)
-        pos_means.append(np.mean(poss) if poss else 0)                                                                                                    
-        neg_means.append(np.mean(negs) if negs else 0)
-                                                                                                                                                        
-    x = np.arange(len(all_classes))    
-    w = 0.25                                                                                                                                              
-    ax.bar(x - w, pos_means, w, label="Positive (pro-refusal)", color="#d9534f", alpha=0.8)
-    ax.bar(x, means, w, label="Net", color="#5cb85c", alpha=0.8, yerr=stds, capsize=4)                                                                    
-    ax.bar(x + w, neg_means, w, label="Negative (anti-refusal)", color="#5bc0de", alpha=0.8)                                                              
-                                                                                                                                                        
-    for i, cls in enumerate(all_classes):                                                                                                                 
-        if cls in paired_data and paired_data[cls]["wilcoxon_pval"] < 0.05:                                                                               
-            sig = "***" if paired_data[cls]["wilcoxon_pval"] < 0.001 else "**" if paired_data[cls]["wilcoxon_pval"] < 0.01 else "*"                                                                               
-            ax.text(i, means[i] + stds[i] + 5, sig,
-                    ha="center", fontsize=12, fontweight="bold")                                                                                          
-                                                                                                                                                        
-    ax.set_xticks(x)                                                                                                                                      
-    ax.set_xticklabels([c.upper() for c in all_classes], fontsize=10)                                                                                     
-    ax.set_ylabel("Attribution Sum")                                                                                                                      
-    ax.set_title(f"Jailbreak Class Comparison: Attribution to Refusal Direction (n={len(results)})")
-    ax.legend()                                                                                                                                           
-    ax.axhline(0, color="black", linewidth=0.5)
-    plt.tight_layout()                                                                                                                                    
-    plt.savefig(out_dir / "class_comparison.png", dpi=150)
-    plt.close()                                                                                                                                           
-    print("    Saved class_comparison.png")
-                                                                                                                                                        
-    # --- Plot 2: Per-prompt delta --- 
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))                                                                                                      
-    axes = axes.flatten()                                                                                                                                 
-
-    for idx, cls in enumerate(classes):                                                                                                                   
-        ax = axes[idx]                 
-        deltas = []
+    means, stds, pos_means, neg_means = [], [], [], []
+    n_per = []
+    for cond in all_conds:
+        nets, poss, negs = [], [], []
         for row in results:
-            conds = row.get("conditions", row)
-            if "bare" in conds and cls in conds:
-                b, c = conds["bare"], conds[cls]                                                                                                          
-                if "error" not in b and "error" not in c:
-                    deltas.append(c["net"] - b["net"])                                                                                                    
-        if deltas:                                                                                                                                        
-            colors = ["#d9534f" if d < 0 else "#5bc0de" for d in deltas]
-            ax.bar(range(len(deltas)), deltas, color=colors, alpha=0.7)                                                                                   
-            ax.axhline(0, color="black", linewidth=0.5)                                                                                                   
-            ax.axhline(np.mean(deltas), color="green", linewidth=2,
-                        linestyle="--", label=f"mean={np.mean(deltas):+.1f}")                                                                              
-            ax.set_title(f"{cls.upper()} (n={len(deltas)})")                                                                                              
-            ax.set_xlabel("Prompt index")                                                                                                                 
-            ax.set_ylabel("Net delta (JB - bare)")                                                                                                        
-            ax.legend(fontsize=8)                                                                                                                         
-                                                                                                                                                        
-    for j in range(len(classes), 6):                                                                                                                      
-        axes[j].set_visible(False)     
-                                                                                                                                                        
-    fig.suptitle("Per-Prompt Attribution Delta by Jailbreak Class", fontsize=14)                                                                          
-    plt.tight_layout()
-    plt.savefig(out_dir / "per_prompt_deltas.png", dpi=150)                                                                                               
-    plt.close()                        
-    print("    Saved per_prompt_deltas.png")                                                                                                              
-
-    # --- Plot 3: Effect sizes ---                                                                                                                        
-    fig, ax = plt.subplots(figsize=(10, 6))
-    cls_names = [c for c in classes if c in paired_data]
-    ds = [paired_data[c]["cohens_d"] for c in cls_names]                                                                                                  
-    colors = ["#d9534f" if d < 0 else "#5bc0de" for d in ds]
-                                                                                                                                                        
-    ax.barh(range(len(cls_names)), ds, color=colors, alpha=0.8)
-    ax.set_yticks(range(len(cls_names)))                                                                                                                  
-    ax.set_yticklabels([c.upper() for c in cls_names])                                                                                                    
-    ax.set_xlabel("Cohen's d (negative = suppresses refusal)")
-    ax.set_title("Effect Size by Jailbreak Class")                                                                                                        
-    ax.axvline(0, color="black", linewidth=0.5)
-    for threshold, style, label in [                                                                                                                      
-        (-0.2, ":", "small"), (-0.5, "--", "medium"), (-0.8, "-", "large")                                                                                
-    ]:                                                                                                                                                    
-        ax.axvline(threshold, color="gray", linewidth=0.5, linestyle=style)                                                                               
-        ax.axvline(-threshold, color="gray", linewidth=0.5, linestyle=style)                                                                              
-    plt.tight_layout()                                                                                                                                    
-    plt.savefig(out_dir / "effect_sizes.png", dpi=150)                                                                                                    
-    plt.close()                                                                                                                                           
-    print("    Saved effect_sizes.png")
-                                                                                                                                                        
-    # --- Plot 4: Feature comparison summary ---
-    if feat_agg:                                                                                                                                          
-        fig, ax = plt.subplots(figsize=(12, 6))
-        cls_names = [c for c in classes if c in feat_agg]
-        metrics = ["n_shared", "n_bare_only", "n_cls_only", "n_sign_flipped",                                                                             
-                    "n_dampened", "n_amplified_anti"]                                                                                                     
-        metric_labels = ["Shared", "Bare-only", "JB-only", "Sign-flipped",                                                                                
-                        "Dampened", "Amplified anti"]                                                                                                    
-        colors_feat = ["#7f7f7f", "#d62728", "#1f77b4", "#ff7f0e", "#2ca02c", "#9467bd"]
-                                                                                                                                                        
-        x = np.arange(len(cls_names))  
-        width = 0.13                                                                                                                                      
-        for j, (metric, label, color) in enumerate(zip(metrics, metric_labels, colors_feat)):
-            vals = [feat_agg[c][metric]["mean"] for c in cls_names]                                                                                       
-            ax.bar(x + j * width, vals, width, label=label, color=color, alpha=0.8)                                                                       
-                                                                                                                                                        
-        ax.set_xticks(x + width * 2.5)                                                                                                                    
-        ax.set_xticklabels([c.upper() for c in cls_names])
-        ax.set_ylabel("Mean Feature Count")                                                                                                               
-        ax.set_title("Feature Comparison by Jailbreak Class")
-        ax.legend(fontsize=8)                                                                                                                             
-        plt.tight_layout()
-        plt.savefig(out_dir / "feature_comparison_summary.png", dpi=150)                                                                                  
-        plt.close()                                                                                                                                       
-        print("    Saved feature_comparison_summary.png")
-
-    # Plot 5: Per Layer Separation
-    if direction_meta and "layers" in direction_meta:
-        fig, ax = plt.subplots(figsize=(12, 6))
-        layers_dict = direction_meta["layers"]
-        layer_ids = sorted(int(k) for k in layers_dict.keys())
-        separations = [layers_dict[str(lid)]["separation"] for lid in layer_ids]
-
-        ax.plot(layer_ids, separations, marker="o", linewidth=2, color="#2c3e50", label="Separation")
-
-        best_sep = direction_meta.get("best_separation_layer")
-        best_causal = direction_meta.get("best_causal_layer")
-        if best_sep is not None:
-            ax.axvline(best_sep, color="#d9534f", linestyle="--", alpha=0.7, label=f"Best separation (L{best_sep})")
-        if best_causal is not None:
-            ax.axvline(best_causal, color="#5cb85c", linestyle="--", alpha=0.7, label=f"Best causal (L{best_causal})")
-        
-        if 33 in layer_ids and layers_dict.get("33", {}).get("separation", 0) < 1000:
-            ax.annotate(
-                "L33: pre-RMSNorm artifact",
-                xy=(33, layers_dict["33"]["separation"]),
-                xytext=(27, max(separations) * 0.35),
-                arrowprops=dict(arrowstyle="->", color="gray"),
-                fontsize=9, color="gray",
-            )
-        
-        ax.set_xlabel("Layer index")
-        ax.set_ylabel("Separation  (|μ(harmful) − μ(harmless)|)")
-        ax.set_title("Refusal Direction Separation by Layer")
-        ax.legend(loc="upper left")
-        ax.grid(alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(out_dir / "separation_by_layer.png", dpi=150)
-        plt.close()
-        print("    Saved separation_by_layer.png")
-
-    # --- Plot 6: Cosine heatmap (A5) ---
-    if direction_meta and "cosine_matrix" in direction_meta:
-        fig, ax = plt.subplots(figsize=(11, 9))
-        matrix = np.array(direction_meta["cosine_matrix"])
-        n = matrix.shape[0]
-
-        vmax = max(abs(matrix.min()), abs(matrix.max()))
-        im = ax.imshow(matrix, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
-
-        key_layers = [15, 25, 32]
-        for kl in key_layers:
-            if 0 <= kl < n:
-                ax.axvline(kl, color="black", linewidth=0.8, alpha=0.4)
-                ax.axhline(kl, color="black", linewidth=0.8, alpha=0.4)
-
-        ax.set_xticks(np.arange(0, n, 2))
-        ax.set_yticks(np.arange(0, n, 2))
-        ax.set_xticklabels([f"L{i}" for i in range(0, n, 2)], fontsize=8)
-        ax.set_yticklabels([f"L{i}" for i in range(0, n, 2)], fontsize=8)
-        ax.set_xlabel("Layer j")
-        ax.set_ylabel("Layer i")
-        ax.set_title("Per-Layer Direction Similarity: cos(r̂_i, r̂_j)")
-
-        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label("Cosine similarity")
-
-        plt.tight_layout()
-        plt.savefig(out_dir / "cosine_heatmap.png", dpi=150)
-        plt.close()
-        print("    Saved cosine_heatmap.png")
-
-    # --- Plot 7: Bare-vs-JB net-attribution distribution (A6) ---                                                              
-    fig, ax = plt.subplots(figsize=(12, 7))                                                                                     
-    data_per_class = []                                                                                                         
-    labels = []                                                                                                                 
-    for cls in ["bare"] + classes:     
-        nets = []                                                                                                               
-        for row in results:
-            conds = row.get("conditions", row)                                                                                  
-            if cls in conds and "error" not in conds[cls]:
-                nets.append(conds[cls]["net"])
-        data_per_class.append(nets)                                                                                             
-        labels.append(cls.upper())
-                                                                                                                                
-    class_colors = ["#7f7f7f", "#1f77b4", "#2ca02c", "#9467bd", "#ff7f0e", "#d62728"]                                           
-    parts = ax.violinplot(
-        data_per_class, showmeans=False, showmedians=False, showextrema=False,                                                  
-    )                                  
-    for i, pc in enumerate(parts["bodies"]):
-        pc.set_facecolor(class_colors[i % len(class_colors)])                                                                   
-        pc.set_alpha(0.45)
-        pc.set_edgecolor("black")                                                                                               
-        pc.set_linewidth(0.6)          
-                                                                                                                                
-    ax.boxplot(                                                                                                                 
-        data_per_class, widths=0.18, patch_artist=True,
-        medianprops=dict(color="black", linewidth=1.5),                                                                         
-        boxprops=dict(facecolor="white", alpha=0.85, edgecolor="black"),
-        whiskerprops=dict(color="black"),                                                                                       
-        capprops=dict(color="black"),
-        flierprops=dict(marker="o", markersize=3, alpha=0.4, markerfacecolor="gray"),                                           
-    )                                                                                                                           
-                                                                                                                                
-    jitter_rng = np.random.RandomState(42)                                                                                      
-    for i, vals in enumerate(data_per_class, start=1):
-        if not vals:                                                                                                            
-            continue
-        jitter = jitter_rng.uniform(-0.07, 0.07, len(vals))                                                                     
-        ax.scatter(                    
-            np.full(len(vals), i) + jitter, vals,                                                                               
-            alpha=0.35, s=12, color="#333333", linewidths=0,
-        )                                                                                                                       
-                                        
-    bare_mean = float(np.mean(data_per_class[0])) if data_per_class[0] else 0.0                                                 
-    ax.axhline(                        
-        bare_mean, color="gray", linestyle="--", alpha=0.6,                                                                     
-        label=f"Bare mean ({bare_mean:+.1f})",
-    )                                                                                                                           
-    ax.axhline(0, color="black", linewidth=0.5)
-                                                                                                                                
-    ax.set_xticks(range(1, len(labels) + 1))
-    ax.set_xticklabels(labels, fontsize=10)
-    ax.set_ylabel("Net attribution to r · h[L=32]")                                                                             
-    ax.set_title(                                                                                                               
-        f"Net-Attribution Distribution by Class (n={len(results)} prompts)"                                                     
-    )                                                                                                                           
-    ax.legend(loc="upper right", fontsize=9)
-    ax.grid(axis="y", alpha=0.3)                                                                                                
-    plt.tight_layout()                 
-    plt.savefig(out_dir / "distribution_by_class.png", dpi=150)                                                                 
-    plt.close()
-    print("    Saved distribution_by_class.png")                                                                                                                                   
-    # ============================================================
-    # Summary report
-    # ============================================================
-    print("\n  Generating summary report...")
-                                                                                                                                                        
-    report_lines = [
-        f"# Attribution Experiment: Statistical Analysis",                                                                                                
-        f"",                                                                                                                                              
-        f"**Prompts**: {len(results)} | **Model**: {config.MODEL_NAME}",
-        f"**Direction**: Layer {config.BEST_SEPARATION_LAYER} (best separation)",                                                                         
-        f"",                           
-        f"## Main Results",                                                                                                                               
-        f"",                           
-        f"| Class | Net Delta | % Change | p (Wilcoxon) | Cohen's d | 95% CI | Consistency |",                                                            
-        f"|-------|----------|----------|-------------|-----------|--------|-------------|",                                                              
-    ]                                                                                                                                                     
-    for cls in classes:                                                                                                                                   
-        if cls not in paired_data:                                                                                                                        
-            continue                   
-        d = paired_data[cls]
-        sig = "***" if d["wilcoxon_pval"] < 0.001 else "**" if d["wilcoxon_pval"] < 0.01 else "*" if d["wilcoxon_pval"] < 0.05 else "ns"
-        consistency = d["n_cls_lower"]                                                                                                                    
-        report_lines.append(           
-            f"| **{cls.capitalize()}** | {d['mean_delta']:+.1f} | "                                                                                       
-            f"{d['pct_change']:+.1f}% | {d['wilcoxon_pval']:.4g}{sig} | "                                                                                 
-            f"{d['cohens_d']:+.2f} | [{d['ci_95_low']:+.1f}, {d['ci_95_high']:+.1f}] | "                                                                  
-            f"{consistency}/{d['n_pairs']} |"                                                                                                             
-        )                                                                                                                                                 
-                                                                                                                                                        
-    report_lines.extend([              
-        f"",
-        f"## Dual Mechanism Decomposition",
-        f"",                                                                                                                                              
-        f"| Class | dPos (pro-refusal) | dNeg (anti-refusal) | Net | Dominant |",
-        f"|-------|--------------------|--------------------|----|----------|",                                                                           
-    ])                                                                                                                                                    
-    for cls in classes:
-        if cls not in paired_data:                                                                                                                        
-            continue                   
-        d = paired_data[cls]
-        if abs(d["d_pos"]) > 2 * abs(d["d_neg"]):
-            dom = "Dampening-dominant"                                                                                                                    
-        elif abs(d["d_neg"]) > 2 * abs(d["d_pos"]):
-            dom = "Amplification-dominant"                                                                                                                
-        elif d["d_pos"] > 0:           
-            dom = "Pro-refusal recruitment"                                                                                                               
-        else:
-            dom = "Balanced"                                                                                                                              
-        report_lines.append(           
-            f"| **{cls.capitalize()}** | {d['d_pos']:+.1f} ({d['d_pos_pct']:+.1f}%) | "
-            f"{d['d_neg']:+.1f} ({d['d_neg_pct']:+.1f}%) | {d['mean_delta']:+.1f} | {dom} |"                                                              
-        )                                                                                                                                                 
-                                                                                                                                                        
-    if feat_agg:                                                                                                                                          
-        report_lines.extend([          
-            f"",
-            f"## Feature Comparison",
-            f"",                                                                                                                                          
-            f"| Class | Bare | JB | Shared % | JB-only % | Sign-flip % |",
-            f"|-------|------|-----|----------|-----------|------------|",                                                                                
-        ])                             
-        for cls in classes:                                                                                                                               
-            if cls not in feat_agg:    
+            m = _get_metrics(row, cond, mode)
+            if m is None:
                 continue
-            a = feat_agg[cls]
-            n_bare = a["n_bare"]["mean"]                                                                                                                  
-            n_cls = a["n_cls"]["mean"]
-            shared_pct = a["n_shared"]["mean"] / n_bare * 100 if n_bare else 0                                                                            
-            cls_only_pct = a["n_cls_only"]["mean"] / n_cls * 100 if n_cls else 0                                                                          
-            flip_pct = a["n_sign_flipped"]["mean"] / a["n_shared"]["mean"] * 100 if a["n_shared"]["mean"] else 0                                                                                                           
-            report_lines.append(                                                                                                                          
-                f"| **{cls.capitalize()}** | {n_bare:.0f} | {n_cls:.0f} | "                                                                               
-                f"{shared_pct:.1f}% | {cls_only_pct:.1f}% | {flip_pct:.1f}% |"                                                                            
-            )
-                                                                                                                                                        
-    report_text = "\n".join(report_lines) + "\n"                                                                                                          
-    with open(out_dir / "EXPERIMENT_SUMMARY.md", "w") as f:
-        f.write(report_text)                                                                                                                              
-    print("    Saved EXPERIMENT_SUMMARY.md")
-                                                                                                                                                        
-    print(f"\n  All outputs saved to {out_dir}/")
-    print("DONE!")                                                                                                                                        
-                                                                                                                                                        
+            nets.append(m[0]); poss.append(m[1]); negs.append(m[2])
+        n_per.append(len(nets))
+        means.append(np.mean(nets) if nets else 0.0)
+        stds.append(np.std(nets) if nets else 0.0)
+        pos_means.append(np.mean(poss) if poss else 0.0)
+        neg_means.append(np.mean(negs) if negs else 0.0)
 
-if __name__ == "__main__":                                                                                                                                
+    if max(n_per) == 0:
+        return None
+
+    fig, ax = plt.subplots(figsize=(16, 7))
+    x = np.arange(len(all_conds))
+    w = 0.26
+    ax.bar(x - w, pos_means, w, label="pos_sum (pro-refusal)", color="#d9534f", alpha=0.85)
+    ax.bar(x,     means,     w, label="net",                   color="#5cb85c",
+           alpha=0.85, yerr=stds, capsize=3)
+    ax.bar(x + w, neg_means, w, label="neg_sum (anti-refusal)", color="#5bc0de", alpha=0.85)
+    # Color-code tick labels: bare=black, ctrl=gray, jb=red
+    ax.set_xticks(x)
+    labels = ["bare"]
+    for cls in CONTROLLED_CLASSES:
+        labels.append(f"ctrl\n{cls}")
+        labels.append(f"jb\n{cls}")
+    ax.set_xticklabels(labels, fontsize=8)
+    for tick, cond in zip(ax.get_xticklabels(), all_conds):
+        if cond.startswith("ctrl_"):
+            tick.set_color("#555")
+        elif cond.startswith("jb_"):
+            tick.set_color("#b32")
+    ax.set_ylabel("Attribution sum")
+    ax.set_title(
+        f"Net + Split Attribution by Condition  —  mode={mode}  "
+        f"(n={max(n_per)} prompts per condition)"
+    )
+    ax.axhline(0, color="black", linewidth=0.5)
+    ax.legend(loc="upper right")
+    plt.tight_layout()
+    path = out_dir / f"class_comparison{filename_suffix}.png"
+    plt.savefig(path, dpi=150)
+    plt.close()
+    return path
+
+
+def _plot_effect_sizes(
+    stats_by_mode: dict, out_dir: Path, mode: str = "multi",
+    filename_suffix: str = "",
+) -> Path | None:
+    """Horizontal bar chart of Cohen's d for each comparison × class."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    if mode not in stats_by_mode:
+        return None
+    per_mode = stats_by_mode[mode]
+    if not per_mode:
+        return None
+
+    comp_order = [c for c, _, _ in COMPARISONS if c in per_mode]
+    fig, axes = plt.subplots(1, len(comp_order), figsize=(5 * len(comp_order), 5),
+                             sharey=True)
+    if len(comp_order) == 1:
+        axes = [axes]
+
+    for ax, comp_name in zip(axes, comp_order):
+        block = per_mode.get(comp_name, {})
+        cls_list = [c for c in CONTROLLED_CLASSES if c in block]
+        ds = [block[c]["cohens_d"] for c in cls_list]
+        colors = ["#d9534f" if d < 0 else "#5bc0de" for d in ds]
+        ax.barh(range(len(cls_list)), ds, color=colors, alpha=0.8)
+        ax.set_yticks(range(len(cls_list)))
+        ax.set_yticklabels(cls_list, fontsize=9)
+        ax.set_xlabel("Cohen's d")
+        ax.set_title(f"{comp_name} ({mode})")
+        ax.axvline(0, color="black", linewidth=0.5)
+        for thresh, style in [(-0.2, ":"), (-0.5, "--"), (-0.8, "-")]:
+            ax.axvline(thresh,  color="gray", linewidth=0.4, linestyle=style)
+            ax.axvline(-thresh, color="gray", linewidth=0.4, linestyle=style)
+
+    fig.suptitle(f"Effect Sizes  —  mode={mode}", fontsize=13)
+    plt.tight_layout()
+    path = out_dir / f"effect_sizes{filename_suffix}.png"
+    plt.savefig(path, dpi=150)
+    plt.close()
+    return path
+
+
+def _plot_distribution_by_class(
+    results: list[dict], out_dir: Path, mode: str = "multi",
+    filename_suffix: str = "",
+) -> Path | None:
+    """Violin+box+scatter of net attribution for each of the 11 conditions."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    all_conds = ["bare"]
+    for cls in CONTROLLED_CLASSES:
+        all_conds.append(f"ctrl_{cls}")
+        all_conds.append(f"jb_{cls}")
+
+    data = []
+    for cond in all_conds:
+        nets = []
+        for row in results:
+            m = _get_metrics(row, cond, mode)
+            if m is not None:
+                nets.append(m[0])
+        data.append(nets)
+    if all(len(d) == 0 for d in data):
+        return None
+
+    fig, ax = plt.subplots(figsize=(16, 7))
+    positions = np.arange(1, len(all_conds) + 1)
+    # Only violinplot non-empty data
+    non_empty_idx = [i for i, d in enumerate(data) if len(d) >= 2]
+    non_empty_data = [data[i] for i in non_empty_idx]
+    non_empty_pos = [positions[i] for i in non_empty_idx]
+    if non_empty_data:
+        parts = ax.violinplot(
+            non_empty_data, positions=non_empty_pos,
+            showmeans=False, showmedians=False, showextrema=False,
+        )
+        for i, pc in enumerate(parts["bodies"]):
+            cond = all_conds[non_empty_idx[i]]
+            if cond == "bare":
+                color = "#7f7f7f"
+            elif cond.startswith("ctrl_"):
+                color = "#5bc0de"
+            else:
+                color = "#d9534f"
+            pc.set_facecolor(color)
+            pc.set_alpha(0.45)
+            pc.set_edgecolor("black")
+            pc.set_linewidth(0.6)
+
+    ax.boxplot(
+        data, positions=positions, widths=0.18, patch_artist=True,
+        medianprops=dict(color="black", linewidth=1.5),
+        boxprops=dict(facecolor="white", alpha=0.85, edgecolor="black"),
+        whiskerprops=dict(color="black"),
+        capprops=dict(color="black"),
+        flierprops=dict(marker="o", markersize=3, alpha=0.4, markerfacecolor="gray"),
+    )
+
+    jitter_rng = np.random.RandomState(42)
+    for pos, vals in zip(positions, data):
+        if not vals:
+            continue
+        jitter = jitter_rng.uniform(-0.08, 0.08, len(vals))
+        ax.scatter(
+            np.full(len(vals), pos) + jitter, vals,
+            alpha=0.35, s=10, color="#333", linewidths=0,
+        )
+
+    bare_mean = float(np.mean(data[0])) if data[0] else 0.0
+    ax.axhline(bare_mean, color="gray", linestyle="--", alpha=0.6,
+               label=f"bare mean ({bare_mean:+.1f})")
+    ax.axhline(0, color="black", linewidth=0.5)
+
+    labels = ["bare"] + [
+        f"{kind}\n{cls}" for cls in CONTROLLED_CLASSES for kind in ("ctrl", "jb")
+    ]
+    ax.set_xticks(positions)
+    ax.set_xticklabels(labels, fontsize=8)
+    for tick, cond in zip(ax.get_xticklabels(), all_conds):
+        if cond.startswith("ctrl_"):
+            tick.set_color("#555")
+        elif cond.startswith("jb_"):
+            tick.set_color("#b32")
+    ax.set_ylabel("Net attribution")
+    ax.set_title(f"Net-Attribution Distribution by Condition  —  mode={mode}")
+    ax.legend(loc="upper right", fontsize=9)
+    ax.grid(axis="y", alpha=0.3)
+    plt.tight_layout()
+    path = out_dir / f"distribution_by_class{filename_suffix}.png"
+    plt.savefig(path, dpi=150)
+    plt.close()
+    return path
+
+
+def _plot_separation_by_layer(direction_meta: dict, out_dir: Path) -> Path | None:
+    if not direction_meta or "layers" not in direction_meta:
+        return None
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    layers_dict = direction_meta["layers"]
+    layer_ids = sorted(int(k) for k in layers_dict.keys())
+    separations = [layers_dict[str(lid)]["separation"] for lid in layer_ids]
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(layer_ids, separations, marker="o", linewidth=2,
+            color="#2c3e50", label="separation")
+
+    best_sep = direction_meta.get("best_separation_layer")
+    best_causal = direction_meta.get("best_causal_layer")
+    if best_sep is not None:
+        ax.axvline(best_sep, color="#d9534f", linestyle="--", alpha=0.7,
+                   label=f"best separation (L{best_sep})")
+    if best_causal is not None:
+        ax.axvline(best_causal, color="#5cb85c", linestyle="--", alpha=0.7,
+                   label=f"best causal (L{best_causal})")
+
+    if 33 in layer_ids and layers_dict.get("33", {}).get("separation", 0) < 1000:
+        ax.annotate(
+            "L33: pre-RMSNorm artifact",
+            xy=(33, layers_dict["33"]["separation"]),
+            xytext=(27, max(separations) * 0.35),
+            arrowprops=dict(arrowstyle="->", color="gray"),
+            fontsize=9, color="gray",
+        )
+    ax.set_xlabel("Layer index")
+    ax.set_ylabel("Separation  (|μ(harmful) − μ(harmless)|)")
+    ax.set_title("Refusal Direction Separation by Layer (pos=-2)")
+    ax.legend(loc="upper left")
+    ax.grid(alpha=0.3)
+    plt.tight_layout()
+    path = out_dir / "separation_by_layer.png"
+    plt.savefig(path, dpi=150)
+    plt.close()
+    return path
+
+
+def _plot_cosine_heatmap(direction_meta: dict, out_dir: Path) -> Path | None:
+    if not direction_meta or "cosine_matrix" not in direction_meta:
+        return None
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    matrix = np.array(direction_meta["cosine_matrix"])
+    n = matrix.shape[0]
+    fig, ax = plt.subplots(figsize=(11, 9))
+    vmax = max(abs(matrix.min()), abs(matrix.max()))
+    im = ax.imshow(matrix, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
+
+    for kl in [15, 25, 32]:
+        if 0 <= kl < n:
+            ax.axvline(kl, color="black", linewidth=0.8, alpha=0.4)
+            ax.axhline(kl, color="black", linewidth=0.8, alpha=0.4)
+
+    ax.set_xticks(np.arange(0, n, 2))
+    ax.set_yticks(np.arange(0, n, 2))
+    ax.set_xticklabels([f"L{i}" for i in range(0, n, 2)], fontsize=8)
+    ax.set_yticklabels([f"L{i}" for i in range(0, n, 2)], fontsize=8)
+    ax.set_xlabel("Layer j")
+    ax.set_ylabel("Layer i")
+    ax.set_title("Per-Layer Direction Similarity: cos(r̂_i, r̂_j)")
+    cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("Cosine similarity")
+    plt.tight_layout()
+    path = out_dir / "cosine_heatmap.png"
+    plt.savefig(path, dpi=150)
+    plt.close()
+    return path
+
+
+# ======================================================================
+# Markdown report
+# ======================================================================
+
+
+def _build_report(
+    results: list[dict], stats_by_mode: dict, direction_meta: dict | None,
+) -> str:
+    lines = [
+        f"# Stage 02b Statistical Analysis",
+        f"",
+        f"- **Prompts**: {len(results)}",
+        f"- **Model**: {config.MODEL_NAME}",
+        f"- **Target**: L{config.MEASUREMENT_LAYER} (causal). Two graph modes:",
+        f"  - **multi** — targets the template anchors [-5, -3, -2] "
+        f"(`<end_of_turn>`, `<start_of_turn>`, `model`)",
+        f"  - **single** — target pos=-2 only (Tejas-verified causal position)",
+        f"",
+        f"Comparisons are run for each mode:",
+        f"- `vs_bare`: bare ↔ jb_<class> — legacy JB-effect delta",
+        f"- `vs_ctrl`: ctrl_<class> ↔ jb_<class> — token-matched, isolates JB semantics",
+        f"- `ctrl_vs_bare`: bare ↔ ctrl_<class> — sanity (ctrl should track bare)",
+        f"",
+    ]
+
+    for mode in MODES:
+        if mode not in stats_by_mode:
+            continue
+        lines.append(f"## Mode: `{mode}`")
+        for comp_name, _, _ in COMPARISONS:
+            block = stats_by_mode[mode].get(comp_name)
+            if not block:
+                continue
+            lines.extend(_markdown_stats_table(block, f"{mode} · {comp_name}"))
+
+    if direction_meta:
+        lines.extend([
+            f"",
+            f"## Direction (Stage 01) Summary",
+            f"",
+            f"- Best separation layer: **L{direction_meta.get('best_separation_layer')}** "
+            f"(magnitude {direction_meta.get('layers', {}).get(str(direction_meta.get('best_separation_layer')), {}).get('separation', 'n/a')})",
+            f"- Best causal layer: **L{direction_meta.get('best_causal_layer')}** "
+            f"(used for attribution)",
+        ])
+
+    return "\n".join(lines) + "\n"
+
+
+# ======================================================================
+# Main
+# ======================================================================
+
+
+def main():
+    args = parse_args()
+    run_dir = args.run_dir
+    out_dir = get_stage_dir(run_dir, "02b_stats")
+
+    print("=" * 60)
+    print("STAGE 02b: Statistical Analysis + Plots")
+    print("=" * 60)
+
+    # Load Stage 02 attribution results
+    attr_path = run_dir / "02_attribution" / "attribution_results.json"
+    if not attr_path.exists():
+        print(f"  ERROR: {attr_path} not found. Run Stage 02 first.")
+        sys.exit(1)
+    raw = load_json(attr_path)
+    results = raw if isinstance(raw, list) else raw["results"]
+    meta = raw.get("metadata", {}) if isinstance(raw, dict) else {}
+    print(f"  Loaded {len(results)} prompt results")
+    if meta.get("modes"):
+        print(f"  Attribution modes: {meta['modes']}")
+
+    direction_meta_path = run_dir / "01_direction" / "direction_metadata.json"
+    direction_meta = load_json(direction_meta_path) if direction_meta_path.exists() else None
+
+    # Detect which graph modes are present in the data. Legacy (single-graph)
+    # runs produce only "single". New two-graph runs produce both.
+    modes = _detect_modes(results)
+    print(f"  Detected modes: {modes}")
+
+    # ---- Stats ----
+    print("\n  Computing paired statistics across (mode × comparison × class)...")
+    stats_by_mode = _compute_all_stats(results, args.n_bootstrap, modes)
+
+    for mode in modes:
+        if mode not in stats_by_mode:
+            continue
+        for comp_name, _, _ in COMPARISONS:
+            block = stats_by_mode[mode].get(comp_name)
+            if block:
+                _print_stats_table(block, f"[{mode}] {comp_name}")
+    for mode in modes:
+        if mode not in stats_by_mode:
+            continue
+        vs_ctrl = stats_by_mode[mode].get("vs_ctrl")
+        if vs_ctrl:
+            _print_dual_mechanism_table(vs_ctrl, f"[{mode}] vs_ctrl")
+
+    save_json(stats_by_mode, out_dir / "statistical_analysis.json")
+    print(f"\n  Saved statistical_analysis.json")
+
+    # ---- Plots ----
+    no_plots = getattr(args, "no_plots", False)
+    if not no_plots:
+        print("\n  Generating plots...")
+        # When only one mode is present (legacy or --skip-*-graph runs),
+        # emit plots without a suffix so downstream consumers and existing
+        # test assertions keep working. When both modes present, suffix
+        # each file with _multi / _single for disambiguation.
+        single_mode_run = len(modes) == 1
+        for mode in modes:
+            suffix = "" if single_mode_run else f"_{mode}"
+            for plot_fn in (
+                _plot_class_comparison,
+                _plot_distribution_by_class,
+            ):
+                p = plot_fn(results, out_dir, mode=mode, filename_suffix=suffix)
+                if p:
+                    print(f"    Saved {p.name}")
+            p = _plot_effect_sizes(stats_by_mode, out_dir, mode=mode, filename_suffix=suffix)
+            if p:
+                print(f"    Saved {p.name}")
+        if direction_meta:
+            for fn in (_plot_separation_by_layer, _plot_cosine_heatmap):
+                p = fn(direction_meta, out_dir)
+                if p:
+                    print(f"    Saved {p.name}")
+
+    # ---- Markdown report ----
+    print("\n  Writing EXPERIMENT_SUMMARY.md...")
+    report = _build_report(results, stats_by_mode, direction_meta)
+    with open(out_dir / "EXPERIMENT_SUMMARY.md", "w") as f:
+        f.write(report)
+
+    print(f"\n  All outputs saved to {out_dir}/")
+    print("DONE!")
+
+
+if __name__ == "__main__":
     main()
