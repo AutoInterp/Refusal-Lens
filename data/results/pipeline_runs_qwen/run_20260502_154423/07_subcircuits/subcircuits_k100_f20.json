@@ -1,0 +1,2263 @@
+{
+  "metadata": {
+    "rule": "set logic over feature_labels.conditions_seen + feature_class_sets buckets + per_condition_top50 (ctrl-aware rules)",
+    "jb_classes": [
+      "analytical",
+      "cognitive_reframe",
+      "completion",
+      "fiction",
+      "roleplay"
+    ],
+    "n_features_input": 274,
+    "convergent_min_classes": 3,
+    "late_wave_range": [
+      24,
+      32
+    ],
+    "ctrl_available": true,
+    "config_name": "subcircuits_k100_f20",
+    "is_legacy": false,
+    "sweep_top_k": 100,
+    "sweep_effective_top_k": 100,
+    "sweep_freq_threshold": 0.2,
+    "sweep_graph_mode": "multi",
+    "n_prompts_per_condition": {
+      "bare": 39,
+      "jb_roleplay": 38,
+      "ctrl_roleplay": 38,
+      "jb_fiction": 38,
+      "ctrl_fiction": 38,
+      "jb_analytical": 38,
+      "ctrl_analytical": 38,
+      "jb_completion": 38,
+      "ctrl_completion": 38,
+      "jb_cognitive_reframe": 38,
+      "ctrl_cognitive_reframe": 38
+    }
+  },
+  "subcircuits": {
+    "universal_refusal_core": {
+      "name": "universal_refusal_core",
+      "size": 50,
+      "features": [
+        "L24:F135426",
+        "L28:F87125",
+        "L34:F119009",
+        "L29:F113568",
+        "L28:F66654",
+        "L33:F80769",
+        "L30:F96026",
+        "L33:F5864",
+        "L34:F143839",
+        "L33:F28437",
+        "L29:F6866",
+        "L33:F124170",
+        "L29:F684",
+        "L29:F152160",
+        "L33:F41021",
+        "L29:F13358",
+        "L32:F36682",
+        "L34:F36643",
+        "L34:F21432",
+        "L28:F138857",
+        "L34:F46441",
+        "L32:F43022",
+        "L28:F88716",
+        "L34:F44323",
+        "L34:F65176",
+        "L29:F130823",
+        "L34:F28807",
+        "L30:F81884",
+        "L29:F81789",
+        "L30:F91361",
+        "L25:F124198",
+        "L34:F4516",
+        "L34:F19786",
+        "L28:F15059",
+        "L34:F134804",
+        "L22:F68775",
+        "L29:F121730",
+        "L34:F121836",
+        "L29:F145452",
+        "L29:F18221",
+        "L30:F101870",
+        "L32:F50401",
+        "L32:F132684",
+        "L32:F40677",
+        "L33:F36154",
+        "L26:F29917",
+        "L33:F10834",
+        "L25:F23826",
+        "L34:F102751",
+        "L31:F45393"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        2,
+        0,
+        0,
+        2,
+        5,
+        2,
+        0,
+        3,
+        1
+      ],
+      "peak_layer": 29,
+      "peak_count": 5,
+      "n_layers_occupied": 7,
+      "mean_activation_frequency": 0.004115,
+      "top_features": [
+        {
+          "key": "L32:F132684",
+          "layer": 32,
+          "max_abs_attribution": 1.1161,
+          "top_logits": [
+            " Sol",
+            " Making",
+            "Navig"
+          ]
+        },
+        {
+          "key": "L32:F50401",
+          "layer": 32,
+          "max_abs_attribution": 0.7579,
+          "top_logits": [
+            "\uff29",
+            "_I",
+            "-I"
+          ]
+        },
+        {
+          "key": "L29:F18221",
+          "layer": 29,
+          "max_abs_attribution": 0.6945,
+          "top_logits": [
+            "Unfortunately",
+            "\u9057\u61be",
+            " Unfortunately"
+          ]
+        },
+        {
+          "key": "L29:F81789",
+          "layer": 29,
+          "max_abs_attribution": 0.4776,
+          "top_logits": [
+            "It",
+            "\u5b83\u662f",
+            "\u5b83\u53ef\u4ee5"
+          ]
+        },
+        {
+          "key": "L29:F152160",
+          "layer": 29,
+          "max_abs_attribution": 0.454,
+          "top_logits": [
+            " eth",
+            " ethics",
+            "\u9053\u5fb7"
+          ]
+        }
+      ]
+    },
+    "canonical_pro_refusal": {
+      "name": "canonical_pro_refusal",
+      "size": 7,
+      "features": [
+        "L30:F61981",
+        "L33:F87566",
+        "L30:F84936",
+        "L29:F143204",
+        "L34:F73705",
+        "L31:F30954",
+        "L34:F84304"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": null,
+      "peak_count": 0,
+      "n_layers_occupied": 0,
+      "mean_activation_frequency": null,
+      "top_features": [
+        {
+          "key": "L30:F61981",
+          "layer": -1,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L33:F87566",
+          "layer": -1,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L30:F84936",
+          "layer": -1,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L29:F143204",
+          "layer": -1,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L34:F73705",
+          "layer": -1,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        }
+      ]
+    },
+    "sign_flip_convergent": {
+      "name": "sign_flip_convergent",
+      "size": 19,
+      "features": [
+        "L27:F139980",
+        "L18:F148614",
+        "L29:F6866",
+        "L13:F65439",
+        "L27:F6642",
+        "L6:F30108",
+        "L27:F27345",
+        "L12:F160449",
+        "L4:F61314",
+        "L12:F157768",
+        "L25:F23176",
+        "L31:F86700",
+        "L13:F110090",
+        "L18:F51630",
+        "L20:F110580",
+        "L20:F159202",
+        "L31:F111734",
+        "L14:F31901",
+        "L33:F80077"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 29,
+      "peak_count": 1,
+      "n_layers_occupied": 1,
+      "mean_activation_frequency": 0.005607,
+      "top_features": [
+        {
+          "key": "L29:F6866",
+          "layer": 29,
+          "max_abs_attribution": 0.0037,
+          "top_logits": [
+            "\u712f",
+            "anness",
+            "-court"
+          ]
+        },
+        {
+          "key": "L27:F139980",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L18:F148614",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L13:F65439",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L27:F6642",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        }
+      ]
+    },
+    "dampening_specialists": {
+      "name": "dampening_specialists",
+      "size": 26,
+      "features": [
+        "L32:F132684",
+        "L29:F18221",
+        "L31:F109901",
+        "L31:F49541",
+        "L31:F116260",
+        "L33:F67079",
+        "L28:F160311",
+        "L28:F87125",
+        "L29:F64904",
+        "L33:F78685",
+        "L32:F71061",
+        "L32:F158432",
+        "L26:F82435",
+        "L29:F152160",
+        "L28:F101616",
+        "L30:F9168",
+        "L30:F146991",
+        "L28:F23690",
+        "L29:F42622",
+        "L32:F50401",
+        "L33:F124170",
+        "L29:F81789",
+        "L29:F27963",
+        "L25:F124198",
+        "L27:F57383",
+        "L31:F44320"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        4,
+        6,
+        2,
+        3,
+        4,
+        3
+      ],
+      "peak_layer": 29,
+      "peak_count": 6,
+      "n_layers_occupied": 9,
+      "mean_activation_frequency": 0.003523,
+      "top_features": [
+        {
+          "key": "L32:F132684",
+          "layer": 32,
+          "max_abs_attribution": 1.1161,
+          "top_logits": [
+            " Sol",
+            " Making",
+            "Navig"
+          ]
+        },
+        {
+          "key": "L30:F9168",
+          "layer": 30,
+          "max_abs_attribution": 0.7987,
+          "top_logits": [
+            " sor",
+            "\u975e\u5e38",
+            " reg"
+          ]
+        },
+        {
+          "key": "L32:F50401",
+          "layer": 32,
+          "max_abs_attribution": 0.7579,
+          "top_logits": [
+            "\uff29",
+            "_I",
+            "-I"
+          ]
+        },
+        {
+          "key": "L29:F18221",
+          "layer": 29,
+          "max_abs_attribution": 0.6945,
+          "top_logits": [
+            "Unfortunately",
+            "\u9057\u61be",
+            " Unfortunately"
+          ]
+        },
+        {
+          "key": "L31:F49541",
+          "layer": 31,
+          "max_abs_attribution": 0.5286,
+          "top_logits": [
+            "\u6211\u4f1a",
+            "\u6211\u4e5f",
+            "I"
+          ]
+        }
+      ]
+    },
+    "anti_refusal_amplifiers": {
+      "name": "anti_refusal_amplifiers",
+      "size": 11,
+      "features": [
+        "L32:F36682",
+        "L17:F82119",
+        "L24:F81123",
+        "L16:F35905",
+        "L18:F161543",
+        "L31:F85768",
+        "L16:F132756",
+        "L33:F97879",
+        "L22:F153605",
+        "L19:F88090",
+        "L29:F114615"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1
+      ],
+      "peak_layer": 24,
+      "peak_count": 1,
+      "n_layers_occupied": 4,
+      "mean_activation_frequency": 0.003311,
+      "top_features": [
+        {
+          "key": "L29:F114615",
+          "layer": 29,
+          "max_abs_attribution": 0.3502,
+          "top_logits": [
+            "\u80af\u5b9a",
+            " absolutely",
+            " Definitely"
+          ]
+        },
+        {
+          "key": "L32:F36682",
+          "layer": 32,
+          "max_abs_attribution": 0.1692,
+          "top_logits": [
+            "onte",
+            "\u00fc",
+            "indrome"
+          ]
+        },
+        {
+          "key": "L33:F97879",
+          "layer": 33,
+          "max_abs_attribution": 0.1632,
+          "top_logits": [
+            "validation",
+            "ccb",
+            " Converted"
+          ]
+        },
+        {
+          "key": "L24:F81123",
+          "layer": 24,
+          "max_abs_attribution": 0.0764,
+          "top_logits": [
+            "\u5f53\u7136",
+            "Sure",
+            "Certainly"
+          ]
+        },
+        {
+          "key": "L17:F82119",
+          "layer": null,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        }
+      ]
+    },
+    "late_wave_layer24_32": {
+      "name": "late_wave_layer24_32",
+      "size": 91,
+      "features": [
+        "L28:F87125",
+        "L25:F45648",
+        "L31:F116260",
+        "L28:F4659",
+        "L30:F96026",
+        "L31:F49541",
+        "L29:F6866",
+        "L28:F160311",
+        "L27:F57383",
+        "L28:F17778",
+        "L29:F152160",
+        "L32:F36682",
+        "L30:F9168",
+        "L30:F31985",
+        "L32:F79442",
+        "L29:F27963",
+        "L31:F98835",
+        "L32:F43098",
+        "L24:F145771",
+        "L29:F37821",
+        "L29:F130823",
+        "L28:F23690",
+        "L28:F133405",
+        "L30:F81884",
+        "L29:F81789",
+        "L31:F138577",
+        "L31:F95994",
+        "L25:F124198",
+        "L28:F15059",
+        "L31:F9407",
+        "L31:F162456",
+        "L29:F18221",
+        "L32:F37122",
+        "L24:F91636",
+        "L32:F50401",
+        "L24:F60982",
+        "L32:F132684",
+        "L26:F13318",
+        "L29:F138958",
+        "L26:F82435",
+        "L29:F64904",
+        "L30:F146991",
+        "L31:F109901",
+        "L31:F23650",
+        "L32:F71061",
+        "L27:F140854",
+        "L32:F129364",
+        "L25:F23826",
+        "L30:F93888",
+        "L25:F34670",
+        "L24:F31674",
+        "L28:F101616",
+        "L30:F108927",
+        "L32:F119701",
+        "L28:F40194",
+        "L30:F10357",
+        "L32:F111505",
+        "L31:F121167",
+        "L32:F149625",
+        "L31:F60970",
+        "L27:F8873",
+        "L27:F50761",
+        "L26:F45712",
+        "L30:F126322",
+        "L24:F109148",
+        "L31:F114183",
+        "L28:F25213",
+        "L29:F126561",
+        "L28:F69904",
+        "L29:F114615",
+        "L31:F133284",
+        "L32:F158432",
+        "L27:F84764",
+        "L27:F49102",
+        "L28:F43420",
+        "L32:F976",
+        "L26:F139999",
+        "L32:F112736",
+        "L26:F126188",
+        "L29:F38514",
+        "L29:F53588",
+        "L30:F128838",
+        "L29:F42622",
+        "L27:F82376",
+        "L32:F43800",
+        "L24:F81123",
+        "L27:F84227",
+        "L28:F5908",
+        "L27:F153314",
+        "L32:F155946",
+        "L30:F85543"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        6,
+        4,
+        5,
+        9,
+        13,
+        14,
+        11,
+        13,
+        16,
+        0
+      ],
+      "peak_layer": 32,
+      "peak_count": 16,
+      "n_layers_occupied": 9,
+      "mean_activation_frequency": 0.003032,
+      "top_features": [
+        {
+          "key": "L32:F132684",
+          "layer": 32,
+          "max_abs_attribution": 1.1161,
+          "top_logits": [
+            " Sol",
+            " Making",
+            "Navig"
+          ]
+        },
+        {
+          "key": "L30:F9168",
+          "layer": 30,
+          "max_abs_attribution": 0.7987,
+          "top_logits": [
+            " sor",
+            "\u975e\u5e38",
+            " reg"
+          ]
+        },
+        {
+          "key": "L32:F50401",
+          "layer": 32,
+          "max_abs_attribution": 0.7579,
+          "top_logits": [
+            "\uff29",
+            "_I",
+            "-I"
+          ]
+        },
+        {
+          "key": "L29:F18221",
+          "layer": 29,
+          "max_abs_attribution": 0.6945,
+          "top_logits": [
+            "Unfortunately",
+            "\u9057\u61be",
+            " Unfortunately"
+          ]
+        },
+        {
+          "key": "L31:F49541",
+          "layer": 31,
+          "max_abs_attribution": 0.5286,
+          "top_logits": [
+            "\u6211\u4f1a",
+            "\u6211\u4e5f",
+            "I"
+          ]
+        }
+      ]
+    },
+    "analytical_exclusive": {
+      "name": "analytical_exclusive",
+      "size": 13,
+      "features": [
+        "L27:F8873",
+        "L27:F50761",
+        "L26:F139999",
+        "L33:F14681",
+        "L24:F12493",
+        "L33:F85986",
+        "L26:F126188",
+        "L29:F38514",
+        "L22:F15435",
+        "L26:F22196",
+        "L24:F79196",
+        "L25:F88401",
+        "L34:F14544"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        2,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 26,
+      "peak_count": 2,
+      "n_layers_occupied": 3,
+      "mean_activation_frequency": 0.001869,
+      "top_features": [
+        {
+          "key": "L26:F139999",
+          "layer": 26,
+          "max_abs_attribution": 0.2365,
+          "top_logits": [
+            "\u5426",
+            " false",
+            "\u201cNo"
+          ]
+        },
+        {
+          "key": "L29:F38514",
+          "layer": 29,
+          "max_abs_attribution": 0.0922,
+          "top_logits": [
+            " disgust",
+            "\u8150",
+            "\u6076\u5fc3"
+          ]
+        },
+        {
+          "key": "L27:F8873",
+          "layer": 27,
+          "max_abs_attribution": 0.091,
+          "top_logits": [
+            "\u4e0d\u5b9c",
+            "\u4e0d\u5f97",
+            "\u4e0d\u5e94\u8be5"
+          ]
+        },
+        {
+          "key": "L26:F126188",
+          "layer": 26,
+          "max_abs_attribution": 0.0866,
+          "top_logits": [
+            "true",
+            " True",
+            ">true"
+          ]
+        },
+        {
+          "key": "L27:F50761",
+          "layer": 27,
+          "max_abs_attribution": 0.0797,
+          "top_logits": [
+            "What",
+            "\u4ec0\u4e48\u662f",
+            " What"
+          ]
+        }
+      ]
+    },
+    "cognitive_reframe_exclusive": {
+      "name": "cognitive_reframe_exclusive",
+      "size": 13,
+      "features": [
+        "L24:F81123",
+        "L34:F140828",
+        "L27:F84227",
+        "L31:F123875",
+        "L28:F5908",
+        "L5:F15544",
+        "L4:F64237",
+        "L27:F153314",
+        "L22:F75199",
+        "L17:F83241",
+        "L32:F155946",
+        "L31:F63383",
+        "L27:F13439"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        2,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "peak_layer": 27,
+      "peak_count": 2,
+      "n_layers_occupied": 5,
+      "mean_activation_frequency": 0.001391,
+      "top_features": [
+        {
+          "key": "L28:F5908",
+          "layer": 28,
+          "max_abs_attribution": 0.1205,
+          "top_logits": [
+            "\u81ea\u7136",
+            "\u5f53\u7136\u662f",
+            " obviously"
+          ]
+        },
+        {
+          "key": "L17:F83241",
+          "layer": 17,
+          "max_abs_attribution": 0.0961,
+          "top_logits": [
+            "WARN",
+            " discreet",
+            "\u4f9d\u6cd5"
+          ]
+        },
+        {
+          "key": "L24:F81123",
+          "layer": 24,
+          "max_abs_attribution": 0.0764,
+          "top_logits": [
+            "\u5f53\u7136",
+            "Sure",
+            "Certainly"
+          ]
+        },
+        {
+          "key": "L32:F155946",
+          "layer": 32,
+          "max_abs_attribution": 0.0598,
+          "top_logits": [
+            "Law",
+            "law",
+            " Law"
+          ]
+        },
+        {
+          "key": "L27:F153314",
+          "layer": 27,
+          "max_abs_attribution": 0.0511,
+          "top_logits": [
+            " offend",
+            " attempting",
+            " attempts"
+          ]
+        }
+      ]
+    },
+    "completion_exclusive": {
+      "name": "completion_exclusive",
+      "size": 8,
+      "features": [
+        "L34:F31427",
+        "L34:F53897",
+        "L34:F49737",
+        "L34:F116118",
+        "L33:F7024",
+        "L8:F43582",
+        "L25:F61777",
+        "L27:F82376"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": 27,
+      "peak_count": 1,
+      "n_layers_occupied": 1,
+      "mean_activation_frequency": 0.000339,
+      "top_features": [
+        {
+          "key": "L27:F82376",
+          "layer": 27,
+          "max_abs_attribution": 0.116,
+          "top_logits": [
+            "\u8981\u52a0\u5f3a",
+            " recommendations",
+            "\u6211\u4eec\u8981"
+          ]
+        },
+        {
+          "key": "L34:F31427",
+          "layer": -1,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L34:F53897",
+          "layer": -1,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L34:F49737",
+          "layer": -1,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        },
+        {
+          "key": "L34:F116118",
+          "layer": -1,
+          "max_abs_attribution": 0.0,
+          "top_logits": []
+        }
+      ]
+    },
+    "fiction_exclusive": {
+      "name": "fiction_exclusive",
+      "size": 31,
+      "features": [
+        "L34:F134566",
+        "L32:F61132",
+        "L29:F59065",
+        "L34:F119376",
+        "L25:F156711",
+        "L30:F126322",
+        "L24:F109148",
+        "L30:F44049",
+        "L22:F114853",
+        "L31:F114183",
+        "L32:F91955",
+        "L28:F25213",
+        "L34:F55794",
+        "L31:F91134",
+        "L34:F117918",
+        "L22:F28413",
+        "L32:F136123",
+        "L31:F22778",
+        "L34:F149911",
+        "L34:F158226",
+        "L28:F69904",
+        "L34:F105301",
+        "L28:F2798",
+        "L31:F133284",
+        "L32:F158432",
+        "L20:F104315",
+        "L34:F16525",
+        "L27:F49102",
+        "L32:F100696",
+        "L32:F976",
+        "L34:F13403"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2,
+        0,
+        1,
+        0,
+        0,
+        1,
+        2,
+        0,
+        1,
+        2,
+        2,
+        0
+      ],
+      "peak_layer": 22,
+      "peak_count": 2,
+      "n_layers_occupied": 8,
+      "mean_activation_frequency": 0.0019,
+      "top_features": [
+        {
+          "key": "L32:F158432",
+          "layer": 32,
+          "max_abs_attribution": 0.4809,
+          "top_logits": [
+            "\u521b\u9020",
+            "create",
+            "\u521b"
+          ]
+        },
+        {
+          "key": "L28:F25213",
+          "layer": 28,
+          "max_abs_attribution": 0.1658,
+          "top_logits": [
+            "\u6211\u8981",
+            "I",
+            "\u6211\u5728"
+          ]
+        },
+        {
+          "key": "L31:F114183",
+          "layer": 31,
+          "max_abs_attribution": 0.1548,
+          "top_logits": [
+            "*M",
+            "*C",
+            " (*"
+          ]
+        },
+        {
+          "key": "L24:F109148",
+          "layer": 24,
+          "max_abs_attribution": 0.1148,
+          "top_logits": [
+            "-note",
+            " Note",
+            " caveat"
+          ]
+        },
+        {
+          "key": "L28:F69904",
+          "layer": 28,
+          "max_abs_attribution": 0.1126,
+          "top_logits": [
+            " complying",
+            " compliance",
+            "\u9075\u5b88"
+          ]
+        }
+      ]
+    },
+    "roleplay_exclusive": {
+      "name": "roleplay_exclusive",
+      "size": 8,
+      "features": [
+        "L32:F119701",
+        "L33:F51034",
+        "L32:F111505",
+        "L31:F121167",
+        "L32:F149625",
+        "L33:F83512",
+        "L31:F60970",
+        "L33:F12304"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        3,
+        3
+      ],
+      "peak_layer": 32,
+      "peak_count": 3,
+      "n_layers_occupied": 3,
+      "mean_activation_frequency": 0.002003,
+      "top_features": [
+        {
+          "key": "L32:F119701",
+          "layer": 32,
+          "max_abs_attribution": 0.1159,
+          "top_logits": [
+            " PUR",
+            "-p",
+            "pur"
+          ]
+        },
+        {
+          "key": "L31:F121167",
+          "layer": 31,
+          "max_abs_attribution": 0.1114,
+          "top_logits": [
+            "\u9006",
+            "Reverse",
+            "reverse"
+          ]
+        },
+        {
+          "key": "L33:F12304",
+          "layer": 33,
+          "max_abs_attribution": 0.107,
+          "top_logits": [
+            " Ending",
+            "\u8d8a\u6765\u8d8a\u5c11",
+            ":;\u23ce"
+          ]
+        },
+        {
+          "key": "L33:F51034",
+          "layer": 33,
+          "max_abs_attribution": 0.0786,
+          "top_logits": [
+            "As",
+            "as",
+            " As"
+          ]
+        },
+        {
+          "key": "L33:F83512",
+          "layer": 33,
+          "max_abs_attribution": 0.0749,
+          "top_logits": [
+            "Priv",
+            " Priv",
+            "\u56fd\u6c11"
+          ]
+        }
+      ]
+    },
+    "ctrl_shared_refusal": {
+      "name": "ctrl_shared_refusal",
+      "size": 38,
+      "features": [
+        "L23:F138432",
+        "L23:F158577",
+        "L24:F60982",
+        "L24:F91636",
+        "L25:F45648",
+        "L26:F82435",
+        "L27:F140854",
+        "L27:F57383",
+        "L28:F101616",
+        "L28:F133405",
+        "L28:F151531",
+        "L28:F160311",
+        "L28:F23690",
+        "L28:F4659",
+        "L29:F64904",
+        "L30:F9168",
+        "L30:F93888",
+        "L31:F109901",
+        "L31:F116260",
+        "L31:F138577",
+        "L31:F23650",
+        "L31:F49541",
+        "L31:F95994",
+        "L32:F129364",
+        "L32:F33741",
+        "L32:F66237",
+        "L32:F98420",
+        "L33:F111741",
+        "L33:F28288",
+        "L33:F32391",
+        "L33:F3491",
+        "L33:F67079",
+        "L33:F7003",
+        "L33:F78685",
+        "L33:F92275",
+        "L34:F162293",
+        "L34:F57612",
+        "L34:F62168"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        1,
+        1,
+        2,
+        5,
+        1,
+        2,
+        6,
+        1,
+        5
+      ],
+      "peak_layer": 31,
+      "peak_count": 6,
+      "n_layers_occupied": 11,
+      "mean_activation_frequency": 0.002401,
+      "top_features": [
+        {
+          "key": "L30:F9168",
+          "layer": 30,
+          "max_abs_attribution": 0.7987,
+          "top_logits": [
+            " sor",
+            "\u975e\u5e38",
+            " reg"
+          ]
+        },
+        {
+          "key": "L31:F49541",
+          "layer": 31,
+          "max_abs_attribution": 0.5286,
+          "top_logits": [
+            "\u6211\u4f1a",
+            "\u6211\u4e5f",
+            "I"
+          ]
+        },
+        {
+          "key": "L29:F64904",
+          "layer": 29,
+          "max_abs_attribution": 0.4784,
+          "top_logits": [
+            "\u9738",
+            " bully",
+            " Bul"
+          ]
+        },
+        {
+          "key": "L33:F78685",
+          "layer": 33,
+          "max_abs_attribution": 0.4521,
+          "top_logits": [
+            " numbering",
+            " recogn",
+            "\u5f00\u82b1"
+          ]
+        },
+        {
+          "key": "L31:F109901",
+          "layer": 31,
+          "max_abs_attribution": 0.3954,
+          "top_logits": [
+            " engages",
+            " engaging",
+            " engagement"
+          ]
+        }
+      ]
+    },
+    "ctrl_only": {
+      "name": "ctrl_only",
+      "size": 0,
+      "features": [],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "peak_layer": null,
+      "peak_count": 0,
+      "n_layers_occupied": 0,
+      "mean_activation_frequency": null,
+      "top_features": []
+    },
+    "jb_analytical_specific_vs_ctrl": {
+      "name": "jb_analytical_specific_vs_ctrl",
+      "size": 47,
+      "features": [
+        "L18:F102314",
+        "L19:F129147",
+        "L22:F15435",
+        "L23:F131018",
+        "L23:F69690",
+        "L23:F71104",
+        "L24:F12493",
+        "L24:F79196",
+        "L25:F151985",
+        "L25:F88401",
+        "L26:F126188",
+        "L26:F139999",
+        "L26:F22196",
+        "L26:F43100",
+        "L26:F45712",
+        "L27:F50761",
+        "L27:F84764",
+        "L28:F40194",
+        "L28:F43420",
+        "L29:F143204",
+        "L29:F145452",
+        "L29:F38514",
+        "L30:F61981",
+        "L30:F65933",
+        "L31:F126299",
+        "L31:F30954",
+        "L31:F41670",
+        "L31:F77487",
+        "L32:F101380",
+        "L32:F112736",
+        "L32:F43098",
+        "L32:F58598",
+        "L32:F79442",
+        "L32:F82905",
+        "L33:F102746",
+        "L33:F106444",
+        "L33:F14681",
+        "L33:F41021",
+        "L33:F44227",
+        "L33:F85986",
+        "L33:F87566",
+        "L33:F97879",
+        "L34:F14544",
+        "L34:F19786",
+        "L34:F31180",
+        "L34:F73705",
+        "L34:F84304"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        3,
+        2,
+        2,
+        1,
+        0,
+        0,
+        3,
+        1
+      ],
+      "peak_layer": 26,
+      "peak_count": 3,
+      "n_layers_occupied": 7,
+      "mean_activation_frequency": 0.004218,
+      "top_features": [
+        {
+          "key": "L26:F139999",
+          "layer": 26,
+          "max_abs_attribution": 0.2365,
+          "top_logits": [
+            "\u5426",
+            " false",
+            "\u201cNo"
+          ]
+        },
+        {
+          "key": "L28:F40194",
+          "layer": 28,
+          "max_abs_attribution": 0.2342,
+          "top_logits": [
+            "_red",
+            "red",
+            "\u8131"
+          ]
+        },
+        {
+          "key": "L32:F43098",
+          "layer": 32,
+          "max_abs_attribution": 0.191,
+          "top_logits": [
+            "you",
+            "This",
+            "You"
+          ]
+        },
+        {
+          "key": "L33:F97879",
+          "layer": 33,
+          "max_abs_attribution": 0.1632,
+          "top_logits": [
+            "validation",
+            "ccb",
+            " Converted"
+          ]
+        },
+        {
+          "key": "L28:F43420",
+          "layer": 28,
+          "max_abs_attribution": 0.1542,
+          "top_logits": [
+            "no",
+            "_no",
+            "-no"
+          ]
+        }
+      ]
+    },
+    "jb_cognitive_reframe_specific_vs_ctrl": {
+      "name": "jb_cognitive_reframe_specific_vs_ctrl",
+      "size": 42,
+      "features": [
+        "L17:F83241",
+        "L20:F121345",
+        "L22:F75199",
+        "L23:F131018",
+        "L23:F71104",
+        "L24:F81123",
+        "L25:F151985",
+        "L25:F34670",
+        "L26:F45712",
+        "L27:F13439",
+        "L27:F153314",
+        "L27:F84227",
+        "L27:F84764",
+        "L28:F5908",
+        "L29:F114615",
+        "L30:F145400",
+        "L30:F61981",
+        "L30:F65933",
+        "L30:F84936",
+        "L31:F123875",
+        "L31:F30954",
+        "L31:F63383",
+        "L32:F101380",
+        "L32:F155946",
+        "L32:F71061",
+        "L32:F82905",
+        "L32:F91251",
+        "L33:F107626",
+        "L33:F124974",
+        "L33:F32481",
+        "L33:F36705",
+        "L33:F36808",
+        "L33:F87566",
+        "L33:F96794",
+        "L34:F120439",
+        "L34:F140828",
+        "L34:F156269",
+        "L34:F6136",
+        "L34:F73705",
+        "L34:F84304",
+        "L4:F64237",
+        "L5:F15544"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        3,
+        1,
+        1,
+        0,
+        0,
+        2,
+        4
+      ],
+      "peak_layer": 33,
+      "peak_count": 4,
+      "n_layers_occupied": 10,
+      "mean_activation_frequency": 0.002136,
+      "top_features": [
+        {
+          "key": "L29:F114615",
+          "layer": 29,
+          "max_abs_attribution": 0.3502,
+          "top_logits": [
+            "\u80af\u5b9a",
+            " absolutely",
+            " Definitely"
+          ]
+        },
+        {
+          "key": "L32:F71061",
+          "layer": 32,
+          "max_abs_attribution": 0.348,
+          "top_logits": [
+            " supporting",
+            " enabling",
+            " helping"
+          ]
+        },
+        {
+          "key": "L33:F107626",
+          "layer": 33,
+          "max_abs_attribution": 0.1831,
+          "top_logits": [
+            " Com",
+            " Gr",
+            " Bl"
+          ]
+        },
+        {
+          "key": "L33:F96794",
+          "layer": 33,
+          "max_abs_attribution": 0.1666,
+          "top_logits": [
+            "An",
+            "F",
+            "M"
+          ]
+        },
+        {
+          "key": "L25:F34670",
+          "layer": 25,
+          "max_abs_attribution": 0.1482,
+          "top_logits": [
+            "\u6f14\u793a",
+            " acquaint",
+            " metabol"
+          ]
+        }
+      ]
+    },
+    "jb_completion_specific_vs_ctrl": {
+      "name": "jb_completion_specific_vs_ctrl",
+      "size": 33,
+      "features": [
+        "L18:F102314",
+        "L22:F115025",
+        "L25:F109321",
+        "L25:F151985",
+        "L25:F61777",
+        "L27:F82376",
+        "L29:F126561",
+        "L29:F143204",
+        "L30:F10357",
+        "L30:F108927",
+        "L30:F61981",
+        "L30:F65933",
+        "L31:F30954",
+        "L31:F41670",
+        "L31:F49445",
+        "L31:F62867",
+        "L31:F77487",
+        "L32:F43098",
+        "L33:F106444",
+        "L33:F28216",
+        "L33:F36705",
+        "L33:F41021",
+        "L33:F7024",
+        "L33:F90809",
+        "L33:F92820",
+        "L33:F97879",
+        "L34:F116118",
+        "L34:F12548",
+        "L34:F19786",
+        "L34:F49737",
+        "L34:F53897",
+        "L34:F73705",
+        "L8:F43582"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        2,
+        0,
+        1,
+        2
+      ],
+      "peak_layer": 30,
+      "peak_count": 2,
+      "n_layers_occupied": 6,
+      "mean_activation_frequency": 0.006336,
+      "top_features": [
+        {
+          "key": "L33:F90809",
+          "layer": 33,
+          "max_abs_attribution": 0.3518,
+          "top_logits": [
+            "carry",
+            " carries",
+            " carried"
+          ]
+        },
+        {
+          "key": "L30:F10357",
+          "layer": 30,
+          "max_abs_attribution": 0.3284,
+          "top_logits": [
+            "\u4f5c\u4e3a\u4e00\u79cd",
+            "\u4f5c\u4e3a\u4e00\u4e2a",
+            "\u4f5c\u70ba"
+          ]
+        },
+        {
+          "key": "L32:F43098",
+          "layer": 32,
+          "max_abs_attribution": 0.191,
+          "top_logits": [
+            "you",
+            "This",
+            "You"
+          ]
+        },
+        {
+          "key": "L29:F126561",
+          "layer": 29,
+          "max_abs_attribution": 0.1709,
+          "top_logits": [
+            " sensitive",
+            " opened",
+            " reopened"
+          ]
+        },
+        {
+          "key": "L33:F97879",
+          "layer": 33,
+          "max_abs_attribution": 0.1632,
+          "top_logits": [
+            "validation",
+            "ccb",
+            " Converted"
+          ]
+        }
+      ]
+    },
+    "jb_fiction_specific_vs_ctrl": {
+      "name": "jb_fiction_specific_vs_ctrl",
+      "size": 52,
+      "features": [
+        "L19:F92377",
+        "L20:F104315",
+        "L22:F114853",
+        "L22:F28413",
+        "L23:F69690",
+        "L24:F109148",
+        "L25:F156711",
+        "L27:F49102",
+        "L27:F72976",
+        "L27:F84764",
+        "L28:F2798",
+        "L28:F43420",
+        "L28:F69904",
+        "L29:F114615",
+        "L29:F145452",
+        "L29:F59065",
+        "L30:F126322",
+        "L30:F28971",
+        "L30:F44049",
+        "L31:F114183",
+        "L31:F133284",
+        "L31:F22778",
+        "L31:F30954",
+        "L31:F55353",
+        "L31:F62867",
+        "L31:F91134",
+        "L32:F100696",
+        "L32:F136123",
+        "L32:F158432",
+        "L32:F61132",
+        "L32:F91955",
+        "L32:F976",
+        "L33:F106444",
+        "L33:F124974",
+        "L33:F22921",
+        "L33:F73660",
+        "L33:F92820",
+        "L34:F105301",
+        "L34:F117918",
+        "L34:F119376",
+        "L34:F128641",
+        "L34:F13403",
+        "L34:F134566",
+        "L34:F134804",
+        "L34:F149911",
+        "L34:F156269",
+        "L34:F158226",
+        "L34:F16525",
+        "L34:F38869",
+        "L34:F55794",
+        "L34:F6136",
+        "L34:F73705"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        2,
+        1,
+        1,
+        0,
+        0,
+        2,
+        2,
+        1,
+        1,
+        2,
+        2,
+        0
+      ],
+      "peak_layer": 22,
+      "peak_count": 2,
+      "n_layers_occupied": 11,
+      "mean_activation_frequency": 0.00182,
+      "top_features": [
+        {
+          "key": "L32:F158432",
+          "layer": 32,
+          "max_abs_attribution": 0.4809,
+          "top_logits": [
+            "\u521b\u9020",
+            "create",
+            "\u521b"
+          ]
+        },
+        {
+          "key": "L29:F114615",
+          "layer": 29,
+          "max_abs_attribution": 0.3502,
+          "top_logits": [
+            "\u80af\u5b9a",
+            " absolutely",
+            " Definitely"
+          ]
+        },
+        {
+          "key": "L31:F114183",
+          "layer": 31,
+          "max_abs_attribution": 0.1548,
+          "top_logits": [
+            "*M",
+            "*C",
+            " (*"
+          ]
+        },
+        {
+          "key": "L28:F43420",
+          "layer": 28,
+          "max_abs_attribution": 0.1542,
+          "top_logits": [
+            "no",
+            "_no",
+            "-no"
+          ]
+        },
+        {
+          "key": "L23:F69690",
+          "layer": 23,
+          "max_abs_attribution": 0.1164,
+          "top_logits": [
+            "cannot",
+            "\u4e0d\u5f97",
+            "\u4e0d\u80fd"
+          ]
+        }
+      ]
+    },
+    "jb_roleplay_specific_vs_ctrl": {
+      "name": "jb_roleplay_specific_vs_ctrl",
+      "size": 31,
+      "features": [
+        "L22:F115025",
+        "L29:F37821",
+        "L30:F145400",
+        "L30:F28971",
+        "L30:F61981",
+        "L30:F65933",
+        "L30:F84936",
+        "L31:F121167",
+        "L31:F30954",
+        "L31:F60970",
+        "L32:F111505",
+        "L32:F119701",
+        "L32:F149625",
+        "L32:F71061",
+        "L32:F91251",
+        "L33:F32481",
+        "L33:F36808",
+        "L33:F51034",
+        "L33:F54452",
+        "L33:F73660",
+        "L33:F83512",
+        "L33:F87566",
+        "L33:F92820",
+        "L33:F97879",
+        "L34:F120439",
+        "L34:F128641",
+        "L34:F134804",
+        "L34:F15971",
+        "L34:F19786",
+        "L34:F73705",
+        "L34:F84304"
+      ],
+      "by_layer": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2,
+        4,
+        5
+      ],
+      "peak_layer": 33,
+      "peak_count": 5,
+      "n_layers_occupied": 5,
+      "mean_activation_frequency": 0.002966,
+      "top_features": [
+        {
+          "key": "L32:F71061",
+          "layer": 32,
+          "max_abs_attribution": 0.348,
+          "top_logits": [
+            " supporting",
+            " enabling",
+            " helping"
+          ]
+        },
+        {
+          "key": "L33:F97879",
+          "layer": 33,
+          "max_abs_attribution": 0.1632,
+          "top_logits": [
+            "validation",
+            "ccb",
+            " Converted"
+          ]
+        },
+        {
+          "key": "L33:F36808",
+          "layer": 33,
+          "max_abs_attribution": 0.1418,
+          "top_logits": [
+            "Hack",
+            "\u9738",
+            "ifle"
+          ]
+        },
+        {
+          "key": "L32:F119701",
+          "layer": 32,
+          "max_abs_attribution": 0.1159,
+          "top_logits": [
+            " PUR",
+            "-p",
+            "pur"
+          ]
+        },
+        {
+          "key": "L22:F115025",
+          "layer": 22,
+          "max_abs_attribution": 0.1155,
+          "top_logits": [
+            "\u81ea\u7136\u800c",
+            "/rc",
+            ".Please"
+          ]
+        }
+      ]
+    }
+  },
+  "jb_vs_ctrl_contrast": {
+    "cognitive_reframe": {
+      "jb_top50": 130,
+      "ctrl_top50": 129,
+      "intersection": 88,
+      "jb_specific": 42,
+      "ctrl_specific": 41,
+      "jb_specific_frac": 0.323,
+      "overlap_frac": 0.677
+    },
+    "fiction": {
+      "jb_top50": 129,
+      "ctrl_top50": 126,
+      "intersection": 77,
+      "jb_specific": 52,
+      "ctrl_specific": 49,
+      "jb_specific_frac": 0.403,
+      "overlap_frac": 0.597
+    },
+    "analytical": {
+      "jb_top50": 129,
+      "ctrl_top50": 134,
+      "intersection": 82,
+      "jb_specific": 47,
+      "ctrl_specific": 52,
+      "jb_specific_frac": 0.364,
+      "overlap_frac": 0.636
+    },
+    "completion": {
+      "jb_top50": 124,
+      "ctrl_top50": 127,
+      "intersection": 91,
+      "jb_specific": 33,
+      "ctrl_specific": 36,
+      "jb_specific_frac": 0.266,
+      "overlap_frac": 0.734
+    },
+    "roleplay": {
+      "jb_top50": 124,
+      "ctrl_top50": 130,
+      "intersection": 93,
+      "jb_specific": 31,
+      "ctrl_specific": 37,
+      "jb_specific_frac": 0.25,
+      "overlap_frac": 0.75
+    }
+  }
+}
