@@ -186,7 +186,48 @@ def _ensure_feature(features: dict, key: str, attr_val: float = 0.0) -> None:
             "feature_idx": feat_idx,
             "max_abs_attribution": abs(attr_val),
             "conditions_seen": set(),
+            "top50_conditions": set(),
         }
+
+
+def _top50_for_condition(cond: dict) -> dict:
+    """Return the canonical top50_features dict for a condition entry.
+
+    Prefers the new nested schema (cond.graphs.multi.top50_features — the multi
+    graph is the canonical source for downstream labeling). Falls back to the
+    legacy flat schema (cond.top50_features) so older runs keep working.
+    """
+    graphs = cond.get("graphs", {})
+    if isinstance(graphs, dict):
+        multi = graphs.get("multi", {})
+        if isinstance(multi, dict) and multi.get("top50_features"):
+            return multi["top50_features"]
+        # Fall back to single if multi is absent (disk-constrained runs)
+        single = graphs.get("single", {})
+        if isinstance(single, dict) and single.get("top50_features"):
+            return single["top50_features"]
+    return cond.get("top50_features", {}) or {}
+
+
+def _comparison_sub_buckets(cls_name: str, cls_comp: dict) -> list[tuple[str, dict]]:
+    """Unpack a per-class feature_comparison entry into (cond_tag, bucket) pairs.
+
+    New schema has 3 sub-buckets per class (vs_bare, vs_ctrl, ctrl_vs_bare),
+    each tagging a different condition. Legacy flat schema (no sub-buckets,
+    top_sign_flipped directly on the class entry) falls back to a single
+    bucket tagged with the raw class name.
+    """
+    jb_cond = f"jb_{cls_name}"
+    ctrl_cond = f"ctrl_{cls_name}"
+    nested = [
+        (jb_cond, cls_comp.get("vs_bare") or {}),
+        (jb_cond, cls_comp.get("vs_ctrl") or {}),
+        (ctrl_cond, cls_comp.get("ctrl_vs_bare") or {}),
+    ]
+    if any(b for _, b in nested):
+        return nested
+    # Legacy flat fallback — caller looked up class "fiction" before jb_/ctrl_ split
+    return [(cls_name, cls_comp)]
 
 
 def collect_all_features(results: list[dict]) -> dict[str, dict]:
@@ -194,92 +235,109 @@ def collect_all_features(results: list[dict]) -> dict[str, dict]:
     Collect ALL unique features from both top50 attribution data AND
     feature comparison data (sign-flipped, dampened, amplified-anti).
 
-    This ensures features that appear in comparisons but aren't in the
-    top-50 by attribution magnitude still get labeled.
+    Reads the new nested schema (conditions[x].graphs.{multi,single}.top50_features,
+    feature_comparison[cls].{vs_bare,vs_ctrl,ctrl_vs_bare}.top_*) with legacy-flat
+    fallback. Tags:
+      - conditions_seen:  union of every condition that referenced this feature
+        (via top-50 OR any comparison bucket). Full condition names, e.g.
+        'bare', 'jb_fiction', 'ctrl_fiction'.
+      - top50_conditions: strictly the conditions where this feature was in the
+        multi-graph top-50. Consumed by Stage 07 for per-condition subcircuit rules.
     """
     features = {}
 
     for row in results:
-        # Source 1: top50_features per condition
+        # Source 1: top50 features from the multi graph of each condition
         conds = row.get("conditions", row)
-        for cls_name, cond in conds.items():
-            if isinstance(cond, dict) and "error" not in cond:
-                top50 = cond.get("top50_features", {})
-                for key, attr_val in top50.items():
-                    _ensure_feature(features, key, attr_val)
-                    features[key]["max_abs_attribution"] = max(
-                        features[key]["max_abs_attribution"], abs(attr_val)
-                    )
-                    features[key]["conditions_seen"].add(cls_name)
-
-        # Source 2: feature comparison data (sign-flipped, dampened, amplified-anti)
-        comp = row.get("feature_comparison", {})
-        for cls_name, cls_comp in comp.items():
-            for feat in cls_comp.get("top_sign_flipped", []):
-                key = feat["key"]
-                attr_val = max(abs(feat.get("bare_attr", 0)), abs(feat.get("cls_attr", 0)))
+        for cond_name, cond in conds.items():
+            if not isinstance(cond, dict) or "error" in cond:
+                continue
+            top50 = _top50_for_condition(cond)
+            for key, attr_val in top50.items():
                 _ensure_feature(features, key, attr_val)
                 features[key]["max_abs_attribution"] = max(
-                    features[key]["max_abs_attribution"], attr_val
+                    features[key]["max_abs_attribution"], abs(attr_val)
                 )
-                features[key]["conditions_seen"].add(cls_name)
-            for feat in cls_comp.get("top_dampened", []):
-                key = feat["key"]
-                _ensure_feature(features, key)
-                features[key]["conditions_seen"].add(cls_name)
-            for feat in cls_comp.get("top_amplified_anti", []):
-                key = feat["key"]
-                _ensure_feature(features, key)
-                features[key]["conditions_seen"].add(cls_name)
+                features[key]["conditions_seen"].add(cond_name)
+                features[key]["top50_conditions"].add(cond_name)
+
+        # Source 2: comparison buckets (descend into the 3 sub-groups per class)
+        comp = row.get("feature_comparison", {})
+        for cls_name, cls_comp in comp.items():
+            for cond_tag, bucket in _comparison_sub_buckets(cls_name, cls_comp):
+                for feat in bucket.get("top_sign_flipped", []):
+                    key = feat["key"]
+                    attr_val = max(abs(feat.get("bare_attr", 0)), abs(feat.get("cls_attr", 0)))
+                    _ensure_feature(features, key, attr_val)
+                    features[key]["max_abs_attribution"] = max(
+                        features[key]["max_abs_attribution"], attr_val
+                    )
+                    features[key]["conditions_seen"].add(cond_tag)
+                for feat in bucket.get("top_dampened", []):
+                    _ensure_feature(features, feat["key"])
+                    features[feat["key"]]["conditions_seen"].add(cond_tag)
+                for feat in bucket.get("top_amplified_anti", []):
+                    _ensure_feature(features, feat["key"])
+                    features[feat["key"]]["conditions_seen"].add(cond_tag)
 
     for key in features:
         features[key]["conditions_seen"] = sorted(features[key]["conditions_seen"])
+        features[key]["top50_conditions"] = sorted(features[key]["top50_conditions"])
     return features                                                                                                                                       
 
                                                                                                                                                         
 def collect_comparison_features(results: list[dict]) -> dict:
-    """Collect mechanistically interesting features from comparisons."""
-    categories = {                                                                                                                                        
-        "sign_flipped": defaultdict(lambda: {"count": 0, "classes": set(), "examples": []}),
-        "dampened": defaultdict(lambda: {"count": 0, "classes": set(), "examples": []}),                                                                  
-        "amplified_anti": defaultdict(lambda: {"count": 0, "classes": set(), "examples": []}),                                                            
-    }                                                                                                                                                     
-                                                                                                                                                        
-    for row in results:                                                                                                                                   
+    """Collect mechanistically interesting features from comparison sub-buckets.
+
+    Under the new schema each class's feature_comparison has 3 sub-buckets:
+    vs_bare (jb features differing from bare), vs_ctrl (jb differing from ctrl),
+    ctrl_vs_bare (ctrl differing from bare). Each contributes to category tags
+    tagged with the 'active' condition name (jb_{cls} or ctrl_{cls}). The
+    `classes` field on each entry carries full condition names so downstream
+    rules in Stage 07/10 can separate JB-driven vs ctrl-driven effects.
+    """
+    categories = {
+        "sign_flipped":   defaultdict(lambda: {"count": 0, "classes": set(), "examples": []}),
+        "dampened":       defaultdict(lambda: {"count": 0, "classes": set(), "examples": []}),
+        "amplified_anti": defaultdict(lambda: {"count": 0, "classes": set(), "examples": []}),
+    }
+
+    for row in results:
         comp = row.get("feature_comparison", {})
         for cls_name, cls_comp in comp.items():
-            for feat in cls_comp.get("top_sign_flipped", []):                                                                                             
-                key = feat["key"]                                                                                                                         
-                categories["sign_flipped"][key]["count"] += 1                                                                                             
-                categories["sign_flipped"][key]["classes"].add(cls_name)                                                                                  
-                categories["sign_flipped"][key]["examples"].append({                                                                                      
-                    "class": cls_name,
-                    "bare_attr": feat["bare_attr"],                                                                                                       
-                    "cls_attr": feat["cls_attr"],                                                                                                         
-                })
-            for feat in cls_comp.get("top_dampened", []):                                                                                                 
-                key = feat["key"]      
-                categories["dampened"][key]["count"] += 1
-                categories["dampened"][key]["classes"].add(cls_name)                                                                                      
-                categories["dampened"][key]["examples"].append({
-                    "class": cls_name, "delta": feat["delta"],                                                                                            
-                })                                                                                                                                        
-            for feat in cls_comp.get("top_amplified_anti", []):
-                key = feat["key"]                                                                                                                         
-                categories["amplified_anti"][key]["count"] += 1
-                categories["amplified_anti"][key]["classes"].add(cls_name)
-                categories["amplified_anti"][key]["examples"].append({                                                                                    
-                    "class": cls_name, "delta": feat["delta"],
-                })                                                                                                                                        
-                                        
+            for cond_tag, bucket in _comparison_sub_buckets(cls_name, cls_comp):
+                for feat in bucket.get("top_sign_flipped", []):
+                    key = feat["key"]
+                    categories["sign_flipped"][key]["count"] += 1
+                    categories["sign_flipped"][key]["classes"].add(cond_tag)
+                    categories["sign_flipped"][key]["examples"].append({
+                        "class": cond_tag,
+                        "bare_attr": feat.get("bare_attr"),
+                        "cls_attr": feat.get("cls_attr"),
+                    })
+                for feat in bucket.get("top_dampened", []):
+                    key = feat["key"]
+                    categories["dampened"][key]["count"] += 1
+                    categories["dampened"][key]["classes"].add(cond_tag)
+                    categories["dampened"][key]["examples"].append({
+                        "class": cond_tag, "delta": feat.get("delta"),
+                    })
+                for feat in bucket.get("top_amplified_anti", []):
+                    key = feat["key"]
+                    categories["amplified_anti"][key]["count"] += 1
+                    categories["amplified_anti"][key]["classes"].add(cond_tag)
+                    categories["amplified_anti"][key]["examples"].append({
+                        "class": cond_tag, "delta": feat.get("delta"),
+                    })
+
     result = {}
     for cat_name, cat_data in categories.items():
-        result[cat_name] = {}                                                                                                                             
+        result[cat_name] = {}
         for key, info in cat_data.items():
-            result[cat_name][key] = {                                                                                                                     
+            result[cat_name][key] = {
                 "count": info["count"],
                 "classes": sorted(info["classes"]),
-                "examples": info["examples"],                                                                                                             
+                "examples": info["examples"],
             }
     return result                                                                                                                                         
                                         
@@ -345,7 +403,28 @@ def plot_layer_histogram(histogram: dict, out_dir: Path) -> None:
     plt.savefig(out_dir / "features_by_layer.png", dpi=150)
     plt.close()
 
-def build_feature_class_sets(comparison_labeled: dict) -> dict:                                                                 
+def build_per_condition_sets(all_features: dict) -> dict:
+    """Map each full condition name → sorted list of feature keys in its multi-graph top-50.
+
+    Uses `top50_conditions` so the sets are strictly per-condition top-50 membership,
+    not the broader `conditions_seen` (which also includes comparison-bucket sources).
+    Consumed by Stage 07 for ctrl-aware subcircuit rules (jb_specific_vs_ctrl, etc.).
+
+    Returns e.g. {
+        "bare":         ["L3:F7", "L12:F911", ...],
+        "jb_fiction":   [...], "ctrl_fiction": [...],
+        "jb_roleplay":  [...], "ctrl_roleplay": [...],
+        ...
+    }
+    """
+    per_cond = defaultdict(set)
+    for key, info in all_features.items():
+        for cond in info.get("top50_conditions", []):
+            per_cond[cond].add(key)
+    return {cond: sorted(keys) for cond, keys in per_cond.items()}
+
+
+def build_feature_class_sets(comparison_labeled: dict) -> dict:
     """A7: feature → class membership, per bucket and globally unioned."""
     classes = set()                                                                                                             
     per_bucket = {}
@@ -416,18 +495,27 @@ def main():
     run_dir = args.run_dir
     out_dir = get_stage_dir(run_dir, "04_labels")
 
-    # A7: upset-only path — regenerate feature-class overlap plot from existing labeled data                                    
-    if args.upset_only:                                                                                                         
+    # A7: upset-only path — regenerate feature-class overlap plot from existing labeled data
+    if args.upset_only:
         comp_path = out_dir / "feature_comparison_labeled.json"
-        if not comp_path.exists():                                                                                              
+        if not comp_path.exists():
             print(f"ERROR: --upset-only needs existing {comp_path.name}")
-            sys.exit(1)                                                                                                         
-        comp = load_json(comp_path)    
-        feature_sets = build_feature_class_sets(comp)                                                                           
-        save_json(feature_sets, out_dir / "feature_class_sets.json")                                                            
+            sys.exit(1)
+        comp = load_json(comp_path)
+        feature_sets = build_feature_class_sets(comp)
+        # Rebuild per-condition top-50 sets from attribution_results when available
+        # (local-only, no HF calls) so feature_class_sets.json stays fresh.
+        attr_json = run_dir / "02_attribution" / "attribution_results.json"
+        if attr_json.exists():
+            raw = load_json(attr_json)
+            results_list = raw if isinstance(raw, list) else raw.get("results", [])
+            feature_sets["per_condition_top50"] = build_per_condition_sets(
+                collect_all_features(results_list)
+            )
+        save_json(feature_sets, out_dir / "feature_class_sets.json")
         plot_feature_class_upset(feature_sets, out_dir)
-        print(f"  Saved feature_class_sets.json and feature_class_upset.png")                                                   
-        print("DONE!")                 
+        print(f"  Saved feature_class_sets.json and feature_class_upset.png")
+        print("DONE!")
         return
 
     # A8: histogram-only path — regenerate feature-by-layer histogram without HF
@@ -541,16 +629,17 @@ def main():
 
     for key, info in all_features.items():
         cached = cache.get(key)
-        feature_labels[key] = {                                                                                                                           
+        feature_labels[key] = {
             "layer": info["layer"],
-            "feature_idx": info["feature_idx"],                                                                                                           
+            "feature_idx": info["feature_idx"],
             "max_abs_attribution": info["max_abs_attribution"],
-            "conditions_seen": info["conditions_seen"],                                                                                                   
+            "conditions_seen": info["conditions_seen"],
+            "top50_conditions": info.get("top50_conditions", []),
             "top_logits": cached["top_logits"] if cached else None,
-            "bottom_logits": cached["bottom_logits"] if cached else None,                                                                                 
-            "activation_frequency": cached["activation_frequency"] if cached else None,                                                                   
+            "bottom_logits": cached["bottom_logits"] if cached else None,
+            "activation_frequency": cached["activation_frequency"] if cached else None,
             "examples": cached["examples"] if cached else None,
-            "labeled": cached is not None,                                                                                                                
+            "labeled": cached is not None,
         }                                                                                                                                                 
         if cached is not None:
             n_labeled += 1                                                                                                                                
@@ -646,11 +735,15 @@ def main():
     plot_layer_histogram(histogram, out_dir)
     print("    Saved features_by_layer.png + layer_histogram.json")  
 
-    # A7: feature-class UpSet                                                                                                   
+    # A7: feature-class UpSet — bucket-based sets + per-condition top-50 sets
     feature_sets = build_feature_class_sets(comparison_labeled)
-    save_json(feature_sets, out_dir / "feature_class_sets.json")                                                                
+    feature_sets["per_condition_top50"] = build_per_condition_sets(all_features)
+    save_json(feature_sets, out_dir / "feature_class_sets.json")
     plot_feature_class_upset(feature_sets, out_dir)
-    print("    Saved feature_class_upset.png + feature_class_sets.json")                                                                                                       
+    print(
+        f"    Saved feature_class_upset.png + feature_class_sets.json "
+        f"({len(feature_sets['per_condition_top50'])} conditions in per_condition_top50)"
+    )                                                                                                       
                                                                                                                                                         
     # Summary                                                                                                                                             
     print(f"\n{'='*60}")                                                                                                                                  

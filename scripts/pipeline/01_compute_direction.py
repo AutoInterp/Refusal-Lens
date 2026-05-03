@@ -49,6 +49,20 @@ def parse_args():
         "--update-metadata", action="store_true",
         help="Re-populate cosine matrix from existing per-layer directions (no model load)",
     )
+    parser.add_argument(
+        "--per-position-layer", type=int, default=config.PER_POSITION_LAYER,
+        help="Layer at which to compute per-position refusal directions (default: 15).",
+    )
+    parser.add_argument(
+        "--per-position-positions", type=int, nargs="+",
+        default=config.PER_POSITION_POSITIONS,
+        help="Negative position indices (from end of prompt) at which to compute "
+             "per-position directions (default: -15..-1).",
+    )
+    parser.add_argument(
+        "--skip-per-position", action="store_true",
+        help="Skip the per-position computation. Use for quick per-layer-only runs.",
+    )
     return parser.parse_args()
 
 
@@ -94,6 +108,72 @@ def compute_mean_activations(model, tokenizer, prompts, layers, batch_size=4):
             print(f"    {min(i + batch_size, n)}/{n}")
 
     return means
+
+
+def compute_per_position_means(
+    model, tokenizer, prompts, layer: int, positions: list[int], batch_size: int = 4,
+) -> tuple[dict, dict]:
+    """
+    Compute mean activations at (layer, position) for every position in `positions`.
+
+    `positions` is a list of negative ints (from the end of the real prompt, so
+    -2 is the "model" token, -3 is `<start_of_turn>`, etc.). For each prompt,
+    positions outside the prompt's real token span are skipped — the means are
+    averaged only over prompts long enough to have that position.
+
+    Returns ({pos: mean_tensor}, {pos: n_prompts_used}).
+    """
+    d_model = model.config.text_config.hidden_size
+    means = {p: torch.zeros(d_model, dtype=torch.float64) for p in positions}
+    counts = {p: 0 for p in positions}
+    n = len(prompts)
+
+    for i in range(0, n, batch_size):
+        batch = prompts[i:i + batch_size]
+        formatted = [format_prompt(tokenizer, p) for p in batch]
+        inputs = tokenizer(
+            formatted, return_tensors="pt", padding=True,
+            truncation=True, max_length=256,
+        )
+        input_ids = inputs["input_ids"].to(model.device)
+        attention_mask = inputs["attention_mask"].to(model.device)
+
+        with torch.no_grad():
+            out = model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                output_hidden_states=True,
+            )
+
+        total_len = input_ids.shape[1]
+        for j in range(len(batch)):
+            seq_len = int(attention_mask[j].sum().item())
+            for pos in positions:
+                if abs(pos) > seq_len:
+                    # Prompt too short for this position (would index padding).
+                    continue
+                # With padding_side='left', real tokens occupy the TAIL of
+                # input_ids, so pos=-2 is index (total_len - 2) regardless of
+                # how much left-padding was applied.
+                idx = total_len + pos  # pos is negative
+                act = out.hidden_states[layer + 1][j, idx, :].cpu().to(torch.float64)
+                means[pos] += act
+                counts[pos] += 1
+
+        del out
+        gc.collect()
+        torch.cuda.empty_cache()
+
+        if (i + batch_size) % 16 == 0 or i + batch_size >= n:
+            print(f"    {min(i + batch_size, n)}/{n}")
+
+    # Average by per-position count (NOT n — some prompts may have been skipped
+    # for short positions like -15 on a 12-token prompt).
+    averaged = {}
+    for pos, total in means.items():
+        if counts[pos] > 0:
+            averaged[pos] = total / counts[pos]
+    return averaged, counts
 
 def compute_full_cosine_matrix(normalized_directions: dict) -> list[list[float]]:
     """A5: full layer×layer cosine-similarity matrix between per-layer directions."""
@@ -258,6 +338,63 @@ def main():
         legacy[f"direction_pos-2_layer{layer}"] = normalized_directions[layer]
     torch.save(legacy, out_dir / "refusal_direction.pt")
 
+    # ---------------- Per-position directions at the causal layer --------
+    # Required by Stage 02 multi-position attribution (Georg's ask: attribute
+    # to every meaningful refusal direction at L15, not just pos=-2). One
+    # extra forward pass over harmful + harmless prompts, extracting every
+    # position in args.per_position_positions.
+    if not args.skip_per_position and args.per_position_layer is not None:
+        pl = args.per_position_layer
+        positions = sorted(set(args.per_position_positions))
+        print(
+            f"\nComputing per-position directions at L{pl} for "
+            f"positions {positions}..."
+        )
+        harmful_pos_means, h_counts = compute_per_position_means(
+            model, tokenizer, harmful, pl, positions,
+        )
+        harmless_pos_means, hl_counts = compute_per_position_means(
+            model, tokenizer, harmless, pl, positions,
+        )
+
+        pos_dir = out_dir / f"positions_L{pl:02d}"
+        pos_dir.mkdir(exist_ok=True)
+
+        positions_meta: dict = {}
+        for pos in positions:
+            if pos not in harmful_pos_means or pos not in harmless_pos_means:
+                print(f"  L{pl} pos={pos:+d}: skipped (no valid prompts long enough)")
+                continue
+            r = (harmful_pos_means[pos] - harmless_pos_means[pos]).to(torch.float32)
+            magnitude = r.norm().item()
+            r_hat = r / magnitude
+            # Save normalized + unnormalized side by side. Attribution uses
+            # r_hat (direction only); intervention uses r (magnitude matters).
+            torch.save(r_hat, pos_dir / f"pos_{pos:+d}.pt")
+            torch.save(r, pos_dir / f"pos_{pos:+d}_unnormalized.pt")
+            positions_meta[str(pos)] = {
+                "separation": round(magnitude, 4),
+                "n_harmful": h_counts[pos],
+                "n_harmless": hl_counts[pos],
+            }
+            print(
+                f"  L{pl} pos={pos:+3d}: separation={magnitude:>10.1f}  "
+                f"(n_h={h_counts[pos]}, n_hl={hl_counts[pos]})"
+            )
+
+        # Save a sidecar index mapping pos -> file for easy discovery by Stage 02.
+        save_json({
+            "layer": pl,
+            "positions": list(positions_meta.keys()),
+            "files": {
+                p: f"pos_{int(p):+d}.pt" for p in positions_meta.keys()
+            },
+        }, pos_dir / "index.json")
+
+        metadata[f"positions_L{pl:02d}"] = positions_meta
+    else:
+        print("\nSkipping per-position direction computation (--skip-per-position or disabled).")
+
     # Metadata
     save_json(metadata, out_dir / "direction_metadata.json")
 
@@ -269,6 +406,10 @@ def main():
         "n_layers": len(layers),
         "best_separation_layer": best_sep_layer,
         "best_separation": metadata["layers"][str(best_sep_layer)]["separation"],
+        "per_position_layer": args.per_position_layer if not args.skip_per_position else None,
+        "per_position_positions": (
+            sorted(set(args.per_position_positions)) if not args.skip_per_position else []
+        ),
     }, run_dir / "config.json")
 
     print(f"\n  Best separation: L{best_sep_layer} = {metadata['layers'][str(best_sep_layer)]['separation']:.1f}")
