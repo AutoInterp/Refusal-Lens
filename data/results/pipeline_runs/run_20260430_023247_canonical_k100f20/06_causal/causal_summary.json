@@ -1,0 +1,52 @@
+{
+  "L15_pro_refusal_add": {
+    "n_jb_comply_baseline": 89,
+    "n_flipped_to_refuse": 89,
+    "flip_rate": 1.0,
+    "n_coherent_flips": 89,
+    "per_class": {
+      "analytical": {
+        "comply_baseline": 28,
+        "flipped": 28,
+        "coherent_flipped": 28,
+        "rate": 1.0
+      },
+      "cognitive_reframe": {
+        "comply_baseline": 33,
+        "flipped": 33,
+        "coherent_flipped": 33,
+        "rate": 1.0
+      },
+      "completion": {
+        "comply_baseline": 0,
+        "flipped": 0,
+        "coherent_flipped": 0,
+        "rate": 0.0
+      },
+      "fiction": {
+        "comply_baseline": 19,
+        "flipped": 19,
+        "coherent_flipped": 19,
+        "rate": 1.0
+      },
+      "roleplay": {
+        "comply_baseline": 9,
+        "flipped": 9,
+        "coherent_flipped": 9,
+        "rate": 1.0
+      }
+    }
+  },
+  "L15_anti_refusal_sub": {
+    "n_bare_refuse_baseline": 50,
+    "n_flipped_to_comply": 49,
+    "flip_rate": 0.98,
+    "n_coherent_flips": 49
+  },
+  "L15_benign_force_refuse": {
+    "n_prompts": 10,
+    "n_forced_to_refuse": 10,
+    "force_refuse_rate": 1.0,
+    "n_coherent": 10
+  }
+}

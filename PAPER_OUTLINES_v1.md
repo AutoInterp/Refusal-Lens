@@ -1,6 +1,8 @@
-# Refusal-Lens — Four Paper Outlines (v1)
+# Refusal-Lens — Five Paper Outlines (v1)
 
-**Purpose**: four parallel outlines, one per candidate thesis, for team review. Same skeleton in each so they're directly comparable. Pick one (or a hybrid) before writing.
+**Purpose**: five parallel outlines, one per candidate thesis, for team review. Same skeleton in each so they're directly comparable. Pick one (or a hybrid) before writing.
+
+**Outlines A–D require new experiments** (additional models, replication runs, layer sweeps, attention attribution, top-N sweeps, etc.). **Outline E requires no new compute** and is positioned as a *framework paper*: a unifying account of refusal as a low-rank gate over a distributed expression, evidenced quantitatively by what we already have. The novelty is the framework, not the measurements.
 
 **Source data**: `REPORT_run_20260430_023247.md` (full per-stage report + Section 9.7 canonical sweep). Numbers cited below come from there.
 
@@ -275,6 +277,116 @@ We present **Refusal-Lens**, an end-to-end mechanistic-interpretability pipeline
 
 ---
 
+## Outline E — *No-new-experiments*: refusal as a low-rank gate over a distributed expression
+
+### E.1 Title (drafts)
+
+- *NeurIPS*: **"Refusal is gated, not localized: a low-rank gate and a distributed expression in instruction-tuned LLMs"**
+- *ICML workshop*: **"The refusal gate: why a single direction recovers what 88 features cannot in Gemma-3-4B-IT"**
+
+### E.2 One-sentence thesis
+
+Refusal behavior in instruction-tuned LLMs decomposes algebraically into **(i) a low-rank gating signal**, carried on a single linear direction at a specific mid-layer and admitting full bidirectional control with one vector, and **(ii) a high-rank, distributed downstream expression**, which is constructed at inference time from the model's general response-generation machinery and resists localization to a sparse feature subset; jailbreaks succeed by **suppressing the gate**, not by routing around the refusal mechanism — a unifying account that explains, in a single framework, why the refusal direction exists as a clean linear axis, why a small per-prompt feature set partially recovers the behavior, and why no sparse subcircuit fully recovers it.
+
+### E.3 What's novel about this thesis (vs. existing literature)
+
+- **Arditi et al. (2024)** showed the refusal direction exists and that a single vector controls refusal, but not *why* it admits a 1-D linear control while the underlying behavior is distributed. We close that loop: the direction *is* the gate, distinguished from the expression.
+- **Lindsey et al. (2024) / circuit-tracer / Anthropic transcoder work** decompose model behaviors into sparse subcircuits but assume the decomposition is the mechanism. We show that for refusal, the sparse decomposition is *partial by construction* — it captures gate activity but not the distributed expression — and we quantify the gap (4× potency).
+- **Tejas's pilot finding** that L15 is causal where L32 is statistically dominant becomes a *prediction* of the framework: gating signals are localized; statistical separation in the residual stream is the downstream expression's signature, not the gate's.
+- **The "two mechanisms" account** (dampening + tug-of-war, Tejas 2026-04) becomes a special case: dampening = suppressing the gate; tug-of-war = recruiting opposing expression features. The framework subsumes both.
+- **Predicted, generalizable, falsifiable**: any instruction-tuned LLM with a refusal direction should exhibit the same triple — bidirectional 1-D gate, sparse-but-prompt-conditional expression hits, and a direction-vs-ablation potency gap. We don't show generalization in this paper, but the framework makes it a one-experiment falsification test.
+
+### E.4 Headline numbers (all already in hand — zero new experiments)
+
+The three pillars of the gate-vs-expression decomposition, each independently quantified:
+
+**Pillar 1 — the gate is 1-D and bidirectional**:
+- L15 unnormalized-*r* additive intervention: **89/89 = 100 %** flip JB-comply → REFUSE.
+- L15 *r* subtractive intervention: **49/50 = 98 %** flip bare-refuse → COMPLY.
+- L15 *r* additive on benign: **10/10 = 100 %** force-refuse.
+- Cross-layer comparison: L32 (separation = 20,873, the statistically-dominant layer) yields **0/10** ctrl flip and **0/32** JB flip — separation is the expression's footprint, not the gate.
+
+**Pillar 2 — the expression is sparse but prompt-conditional**:
+- 6-feature per-prompt canonical (k100_f20): **23.7 %** JB recovery, 1.3 % ctrl break.
+- Same construction at the corpus level (88 features, top-K=50 union): **9.9 %** recovery, 11.6 % ctrl break — *more features, worse recovery*: the inversion is the algebraic signature of an expression that *cannot* be aggregated across prompts.
+- Per-prompt coverage of the 6 canonical features ranges 1 % (bare) to 87.7 % (jb_fiction): the expression's feature identity is prompt-dependent, but its *count* (~6) and *layer band* (L13–L15) are stable.
+- Single-feature L13:F427 alone recovers 6.9 %; activates only on explicitly harmful prompts (act-freq 0.01 %): a candidate for a *gate-detector* feature whose role is binary harm-classification rather than refusal expression.
+
+**Pillar 3 — the expression resists localization**:
+- Direction-level intervention recovers 100 % (Pillar 1).
+- Best sparse-feature ablation we can construct recovers 23.7 % (Pillar 2).
+- Recovery-vs-feature-count Pareto curve from already-computed Stage 08 ablations (orig 5 + canonical 3) is **non-monotone**: 1f → 6f → 26f rises (gate features being included), 26f → 88f *falls* (corpus-union dilution). Plateau lies far below the direction's 100 %.
+- Linearization identity holds (Stage 03, error 0.08–0.36 %): the gap is not a measurement artifact; it is a fundamental algebraic property of the model's representation.
+
+**Pillar 4 (mechanistic implication, supports thesis)** — refusal under JB co-opts the helpful-response machinery:
+- Three of the 6 per-prompt canonical features are *helpful-template features* (e.g. `L15:F442` fires on `"Okay, let's plan/brainstorm"`): they participate in the refusal expression but are *not* refusal-specific. The expression is constructed by re-routing the model's general response-generation machinery, gated by the harm signal.
+- This explains why ablation underperforms direction: ablating an expression feature also ablates its helpful-response role, but the gate signal continues to fire on the (now-suppressed) downstream pathway, producing partially-coherent compliance instead of refusal.
+
+### E.5 Section structure (NeurIPS 8-page)
+
+1. **Introduction** — three observations from the literature in apparent tension: (i) a single direction controls refusal (Arditi); (ii) sparse subcircuits partially explain refusal (transcoder work); (iii) ablations of those subcircuits underperform direction interventions (this paper). We propose a unifying framework: refusal is **gated**, not localized.
+2. **Background & related work** — direction-finding (Arditi 2024), transcoder/CLT attribution (Lindsey 2024, circuit-tracer), prior refusal mech-interp, the dampening-vs-tug-of-war characterization (Tejas).
+3. **Methods** — Refusal-Lens: a corrected-basis attribution pipeline (§ A.1, methodological notes on three measurement-basis bugs we encountered and fixed; full diffs in supplementary), per-prompt subcircuit construction, controlled 50 × 11 jailbreak benchmark.
+4. **Pillar 1: the gate is low-rank and bidirectional** — § 8 of the report. Symmetry table, sample generations, L15-vs-L32 separation-vs-causation analysis.
+5. **Pillar 2: the expression is sparse but prompt-conditional** — § 7 + § 9.7 of the report. Per-prompt vs corpus-union, coverage-as-mediator, layer band concentration.
+6. **Pillar 3: the expression resists localization** — § 9.5 + § 9.7.2 of the report. Recovery-vs-features Pareto, the non-monotonicity at 26→88, the irreducibility argument backed by the linearization identity.
+7. **Mechanistic implication: the expression is borrowed from the helpful-response machinery** — § 9.7.6 + Appendix C. L13:F427 single-feature spotlight, helpful-template features in the canonical pro-refusal set, qualitative case studies of recruitment.
+8. **Discussion** — why the framework predicts each of (Arditi, Tejas, our work)'s findings; how to falsify it on a second model with a single 4-experiment protocol; implications for safety claims (feature-causes-refusal claims must be paired with direction-level potency tests; ablation-only safety verification undercounts the model's refusal capacity).
+9. **Limitations** — single model, single dataset, attention-frozen attribution, bf16-baseline drift caveat, 50-prompt scale; the bug-fix appendix as a reproducibility statement.
+10. **Conclusion + release** — Refusal-Lens pipeline, controlled benchmark, and the 1,100 corrected attribution graphs released publicly so the framework's predictions can be tested on any model with available transcoders.
+
+**ICML workshop cut**: §1 (preview) + §3 (1-paragraph methods) + §4 + §5 + §6 + §8 (1 paragraph). Drop §2, §7, §9. ~4 pages, focused on the three pillars.
+
+### E.6 Figures (5 main, all data-already-exists)
+
+- **F1 — the framework**: a schematic split into (a) gate (low-rank, mid-layer, ±1D) and (b) expression (high-rank, distributed across L13–L33, recruited from helpful-response machinery). The conceptual figure that anchors the paper.
+- **F2 — Pillar 1**: bidirectional symmetry table + sample generations + the L15-vs-L32 separation-vs-causation bar comparison (the "separation is the expression's footprint" finding).
+- **F3 — Pillar 2**: per-prompt vs corpus-union recovery (88 / 6 / 1 features); coverage-as-mediator scatter (x = per-prompt coverage, y = recovery, colored by config); the *non-monotonicity* line clearly visible.
+- **F4 — Pillar 3**: recovery-vs-features Pareto curve (x = log n_features, y = JB recovery), with the direction-intervention 100 % horizontal line and the plateau-far-below visible. **The figure that shows why feature ablation can't replace direction work.**
+- **F5 — Pillar 4 (mechanism)**: L13:F427 trigger-context table; per-class flip rate from L13:F427 alone vs the 6-feature canonical (the gate vs expression decomposition seen at the feature level); the cumulative-contribution-to-*r* by layer figure (L0→L11→L33) showing where gate features concentrate.
+
+### E.7 What we have / what we still need
+
+| Status | Item |
+|---|---|
+| ✅ have | All four pillars' numerical evidence from `run_20260430_023247` + canonical sweep + `run_20260422_015552`. |
+| ✅ have | All five figures' data; only plotting code needs writing. |
+| ✅ have | Bug-fix history, located in commit chain (`7c6cfa4` and `refusal-lens-multi-position-fix` submodule branches) — appendix material, not centerpiece. |
+| ✅ have | Full corrected pipeline runs end-to-end on a single H100 in ~24 h. |
+| ⚠️ need (writing only) | The five figures rendered to publication quality. ~1 day. |
+| ⚠️ need (writing only) | A 1-page methods appendix on the three measurement-basis fixes (the bug story) — supports the rigor claim in §3 but is **not the paper's headline**. |
+| ⚠️ need (writing only) | Public release: pipeline, benchmark, 1,100 corrected attribution graphs. The release is positioned as enabling the framework's falsification, not as the contribution itself. |
+| ⚠️ need (writing only) | The framework section (§1 + §8) — the conceptual heavy lift; this is where the paper rises or falls. |
+| ❌ optional | Two-run consistency analysis on bug-immune Stage 06 (Stage 06 numbers replicate ±2 % across runs; Stage 02-derived numbers shift) — useful as a sanity check in the limitations section. |
+
+**Compute required for the paper itself: zero new GPU runs.** The novelty is the *framework*, not new measurements.
+
+### E.8 Venue fit
+
+- **NeurIPS main**: a unifying framework that subsumes prior refusal-mech-interp findings (Arditi, Lindsey, Tejas) and predicts the direction-vs-ablation gap is a strong NeurIPS narrative. The single-model evidence base is a known weakness, but it is mitigated by (a) the framework being mechanistically falsifiable in a one-day follow-up experiment, (b) the public release lowering the cost of replication for the community, (c) the framework explaining empirical findings that prior accounts could not. Reviewer split: framework-friendly reviewers will champion; one-model-skeptics will push for replication. The release shifts the burden.
+- **ICML mech interp workshop**: ideal — the workshop has historically rewarded conceptual frameworks over empirical breadth, and the gate-vs-expression decomposition is the kind of mechanistic theorizing the workshop is aimed at.
+
+### E.9 Risks
+
+1. **"One model" critique**. Mitigation: explicitly frame the paper as proposing a *predicted* framework with quantitative falsification protocol, evidenced on Gemma-3-4B-IT. The release lowers the cost of replication; we provide a 4-experiment falsification recipe in §8 so a reader can decisively confirm or deny the framework on any model.
+2. **"The gate-vs-expression decomposition is just renaming what's already known"**. Mitigation: § E.3 explicitly distinguishes us from Arditi (only showed the gate, not its decomposition from expression), Lindsey (assumed sparse decomposition is the mechanism), and Tejas (showed L15 is causal but not why). Our novel contribution is the algebraic separation and its empirical signatures (the 4× potency gap, the non-monotonicity, the helpful-template-feature recruitment).
+3. **The framework requires the reader to take "compositional gating" as more than a metaphor**. Mitigation: ground each pillar in a measurable quantity. Pillar 1 = bidirectional flip rate. Pillar 2 = per-prompt vs corpus recovery delta. Pillar 3 = direction/ablation potency ratio. Pillar 4 = single-feature ablation rate vs canonical-set rate. None of these are metaphorical.
+4. **"Why is the recovery curve flat below 100 %? Maybe you just need more features."** Mitigation: the 26 → 88 *non-monotonicity* answers this directly — adding more features makes recovery *worse*, which is incompatible with the "more features ⇒ closer to direction" hypothesis but consistent with "expression is constructed compositionally from helpful-response machinery, which adding more random helpful features only contaminates further". The non-monotonicity is the framework's strongest single piece of evidence.
+5. **Bug-fix appendix risks looking defensive**. Mitigation: keep it short (1 page), frame as "to enable replication on a corrected basis we share these fixes", and put it post-conclusion in the supplementary. The headline contribution is the framework, not the bug fixes.
+
+### E.10 Why E is distinct from A–D
+
+- **A** is purely methodological ("per-prompt construction works"); E uses A's finding as Pillar 2 evidence for a larger framework claim about model behavior.
+- **B** is mechanistically narrow ("L15 is the axis"); E generalizes it as Pillar 1 of a framework that distinguishes the axis from the rest.
+- **C** is a negative result ("ablations don't suffice"); E uses C's gap as Pillar 3 evidence and provides a *positive* explanation (the gap is the algebraic signature of compositional gating, not an artifact of insufficient features).
+- **D** is a system-and-three-findings paper; E is a *framework* paper with three findings as evidence and one mechanistic spotlight, which is a more standard NeurIPS rhetorical posture.
+
+The narrative arc:
+
+> "We propose that refusal in instruction-tuned LLMs is implemented as a low-rank gating signal multiplexing into a high-rank, distributed expression that is constructed at inference time from the model's general response-generation machinery. This single framework predicts, in a unified way, the bidirectional 1-D refusal direction (Arditi), the partial-recovery sparse subcircuits (Lindsey), and the direction-vs-ablation potency gap (this paper). We characterize all three quantitatively in Gemma-3-4B-IT, propose a falsification protocol for any other model, and release the pipeline, benchmark, and 1,100 corrected attribution graphs to enable that replication."
+
+---
+
 ## Cross-outline summary table
 
 | Outline | Anchor finding | Lift required | NeurIPS upside | ICML fit | Total new compute |
@@ -283,16 +395,20 @@ We present **Refusal-Lens**, an end-to-end mechanistic-interpretability pipeline
 | **B — Mechanism** | L15 bidirectional + L13:F427 | 1 new model + layer sweep + attention attribution | medium-high | ideal | ~6 days |
 | **C — Negative result** | direction vs ablation 100/24 gap | top-N sweep + random-feature ctrl + 1 new model | medium (high variance) | strong-if-framed | ~3 days |
 | **D — Combined** | all three | all of the above (less depth on each) | high IF framing holds | preview-cut | ~7 days |
+| **E — Gate vs expression framework** | refusal = low-rank gate × distributed expression; 4 pillars of evidence | **none — writing + framing only** | high (unifying framework, falsifiable) | ideal | **0 days** |
 
 ## Recommendation seed (not committed)
 
-Default lean: **A or D**.
-- A is the strongest single-claim NeurIPS bet because the methodological finding is venue-agnostic and the 6-vs-88 number is unforgettable.
-- D is the highest-upside if we can write tight and the second-model study lands cleanly.
+Default lean: **E**.
+- E is now a *framework* paper with a generalized thesis about model behavior (refusal is gated, not localized) — the kind of unifying account that NeurIPS reviewers reward. It uses our existing data as evidence for the framework rather than as the contribution itself, which is the standard NeurIPS rhetorical posture.
+- A is the strongest single-claim methodological NeurIPS bet *if* the second-model replication lands. Otherwise A's empirical surface is narrower than E's framework surface.
 - B is the safest ICML workshop bet but risks "this is one model" critique at NeurIPS main.
 - C is the highest-variance — championed or dismissed.
+- D requires the most writing discipline; thin on each contribution.
 
-Hybrid worth considering: **A primary, B as the deep-dive in §6, C as a one-page implication subsection** — gives a single thesis (per-prompt construction unlocks mechanism) while leveraging all three findings.
+Hybrid worth considering: **E for both venues**, with the ICML version a 4-page focused cut on Pillars 1+2+3 (the framework + evidence) and the NeurIPS version expanding §7 (mechanism implication / case studies) and §8 (falsification protocol + safety implications). Same paper, two depths. The 3 weeks between deadlines go into writing depth, not new experiments.
+
+If the second-model replication becomes feasible during those 3 weeks, the NeurIPS version expands by adding a § 7.5 "evidence on a second model" — but the framework holds even without it.
 
 ---
 

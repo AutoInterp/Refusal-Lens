@@ -1,0 +1,14 @@
+{
+  "total_features": 1149,
+  "labeled": 1149,
+  "unlabeled": 0,
+  "coverage_pct": 100.0,
+  "source": "HuggingFace: mwhanna/gemma-scope-2-4b-it",
+  "priority_features": 1055,
+  "priority_labeled": 1055,
+  "comparison_counts": {
+    "sign_flipped": 686,
+    "dampened": 348,
+    "amplified_anti": 240
+  }
+}
