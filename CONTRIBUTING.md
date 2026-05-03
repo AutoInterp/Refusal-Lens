@@ -13,19 +13,6 @@ source ./venv/bin/activate   # now `python` points to the virtualenv python
 pip install -v -e ".[dev]"    # -v for verbose, -e for editable, [dev] for dev dependencies
 ```
 
-# Post setup
-
-You should prepare pre-commit, which will help you by checking that commits pass
-required checks:
-
-```bash
-pip install pre-commit # or brew install pre-commit on macOS
-pre-commit install # this will install a pre-commit hook into the git repo
-```
-
-You can also/alternatively run `pre-commit run` (changes only) or
-`pre-commit run --all-files` to check even without installing the hook.
-
 # Testing
 
 Use pytest to run the unit checks:
@@ -42,12 +29,3 @@ Use pytest-cov to generate coverage reports:
 pytest --cov=ٍrefusal_lens
 ```
 
-# Pre-commit
-
-This project uses pre-commit for all style checking. Install pre-commit and run:
-
-```bash
-pre-commit run -a
-```
-
-to check all files.
