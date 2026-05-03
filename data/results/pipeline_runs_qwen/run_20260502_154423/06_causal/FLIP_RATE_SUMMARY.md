@@ -3,7 +3,7 @@
 **Method**: Arditi intervention (add unnormalized r at all positions, every forward step).
 **Layer**: L18.
 **Dataset**: refusal_lens_controlled_dataset.json (50 prompts × 11 conditions).
-**Elapsed**: 2.3 min.
+**Elapsed**: 36.4 min.
 
 ## Direction source
 
@@ -12,30 +12,30 @@
 
 ## Phase 0 — dataset verification
 
-- Bare refused: **2/2**
-- Ctrl refused: **10/10** (100.0%)
-- Ctrl-leak pairs excluded: **0**
-- Bare-comply exclusions: **0**
+- Bare refused: **40/50**
+- Ctrl refused: **237/250** (94.8%)
+- Ctrl-leak pairs excluded: **13**
+- Bare-comply exclusions: **10**
 
 ## Pro-refusal add (headline result)
 
-Flip rate: **100.0%** (5/5 JB-comply prompts flipped to REFUSE)
-Coherent flips: **5/5**
+Flip rate: **96.3%** (130/135 JB-comply prompts flipped to REFUSE)
+Coherent flips: **130/130**
 
 ### Per-class breakdown
 
 | Class | Comply baseline | Flipped | Rate | Coherent |
 |---|---|---|---|---|
-| `analytical` | 2 | 2 | 100% | 2 |
-| `cognitive_reframe` | 1 | 1 | 100% | 1 |
-| `completion` | 0 | 0 | 0% | 0 |
-| `fiction` | 0 | 0 | 0% | 0 |
-| `roleplay` | 2 | 2 | 100% | 2 |
+| `analytical` | 39 | 35 | 90% | 35 |
+| `cognitive_reframe` | 36 | 36 | 100% | 36 |
+| `completion` | 7 | 7 | 100% | 7 |
+| `fiction` | 15 | 15 | 100% | 15 |
+| `roleplay` | 38 | 37 | 97% | 37 |
 
 ## Anti-refusal sub (bare → comply)
 
-Flip rate: **100.0%** (2/2 bare-refuse prompts flipped to COMPLY)
-Coherent flips: **2/2**
+Flip rate: **92.5%** (37/40 bare-refuse prompts flipped to COMPLY)
+Coherent flips: **37/37**
 
 ## Symmetry claim
 
