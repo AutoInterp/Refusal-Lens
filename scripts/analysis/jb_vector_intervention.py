@@ -1,26 +1,32 @@
 """Jailbreak-vector intervention: causal validation of the §5.5 cosine result.
 
 Builds a SINGLE universal jailbreak vector r_jb_universal at L15 pos=−2 by
-averaging per-class r_jb_class vectors (where r_jb_class = mean(h_bare) −
-mean(h_jb_class)). Then runs two intervention experiments:
+averaging per-class r_jb_class vectors (where r_jb_class = mean(h_jb_class) −
+mean(h_bare); points TOWARD jailbreak per the Ball 2024 / Wang 2025 sign
+convention). Then runs two intervention experiments:
 
-  Experiment A — pro_refusal_add via r_jb_universal:
+  Experiment A — mitigate JB by subtracting r_jb_universal:
     For each (prompt, jb_* condition) where Stage 06 baseline = COMPLY,
-    add r_jb_universal at L15 across all positions every forward pass.
-    Expected flip: COMPLY → REFUSE. Compares to Stage 06's r̂ flip rate
-    (89/89 = 100 %). If r_jb_universal flip rate is near-100 %, the
-    JB displacement IS along r̂ in a causally-sufficient sense, not just
-    correlated with it.
+    SUBTRACT r_jb_universal at L15 across all positions every forward pass
+    (i.e. remove the empirical jailbreak displacement from the residual).
+    Expected flip: COMPLY → REFUSE. Compares to Stage 06's r̂ pro-refusal-add
+    flip rate (89/89 = 100 %). If our flip rate is high, the empirical JB
+    displacement IS the displacement r̂'s intervention undoes — the JB lives
+    along the refusal axis (anti-parallel to r̂, parallel to the harmless
+    direction -r̂).
 
-  Experiment B — anti_refusal_sub via r_jb_universal:
-    For each bare prompt where Stage 06 baseline = REFUSE, subtract
-    r_jb_universal at L15 across all positions every forward pass.
-    Expected flip: REFUSE → COMPLY. Compares to Stage 06's r̂ anti-sub
-    flip rate (49/50 = 98 %).
+  Experiment B — induce JB by adding r_jb_universal:
+    For each bare prompt where Stage 06 baseline = REFUSE, ADD
+    r_jb_universal at L15 across all positions every forward pass
+    (i.e. inject the empirical jailbreak displacement into a refusing
+    prompt). Expected flip: REFUSE → COMPLY. This is the inverse of
+    Experiment A and the direct analogue of Ball 2024's induction-style
+    experiment (their Table 3).
 
 Per-class jailbreak-vector interventions would be more rigorous (one r_jb
-per class, applied only to that class's JB-comply prompts). They are
-deferred — see HANDOFF.md note. The universal version is the cheaper
+per class, applied only to that class's JB-comply prompts) since the per-class
+magnitudes range 0.40 – 1.11 ‖r̂‖ and the universal mean is a lossy summary.
+They are deferred — see HANDOFF.md note. The universal version is the cheaper
 baseline test.
 """
 from __future__ import annotations
@@ -72,12 +78,12 @@ def main():
     R = torch.load(args.run_dir / "02b_stats/residuals_L15_per_cond.pt", weights_only=False)
     # R[cond] shape: [n_prompts=50, n_pos=3, 2560]
 
-    print(f"[jb-vec] computing r_jb_universal at pos=−2")
+    print(f"[jb-vec] computing r_jb_universal at pos=−2 (Ball 2024 convention: r_jb points TOWARD jailbreak)")
     mu_bare = R["bare"][:, POS_IDX, :].float().mean(dim=0)
     r_jb_per_class = []
     for cls in CLASSES:
         mu_jb = R[f"jb_{cls}"][:, POS_IDX, :].float().mean(dim=0)
-        r_jb_per_class.append(mu_bare - mu_jb)
+        r_jb_per_class.append(mu_jb - mu_bare)
     r_jb_universal = torch.stack(r_jb_per_class).mean(dim=0)
     r_jb_norm = r_jb_universal.norm().item()
     cos_universal = torch.nn.functional.cosine_similarity(
@@ -122,8 +128,11 @@ def main():
     print(f"  model loaded in {time.time()-t0:.1f}s")
 
     r_jb_gpu = r_jb_universal.to(model.device, dtype=torch.bfloat16)
-    add_hook = make_intervention_hook(r_jb_gpu, sign="add")
-    sub_hook = make_intervention_hook(r_jb_gpu, sign="sub")
+    # Under Ball 2024 convention (r_jb points toward jailbreak):
+    #   subtract r_jb -> mitigate JB (push residual back toward bare-refuse state)
+    #   add r_jb      -> induce JB   (push bare-refuse residual toward JB-comply state)
+    sub_hook = make_intervention_hook(r_jb_gpu, sign="sub")  # used for Experiment A
+    add_hook = make_intervention_hook(r_jb_gpu, sign="add")  # used for Experiment B
 
     dataset = load_controlled_dataset(REPO / "dataset/refusal_lens_controlled_dataset.json")
     pad_id = tokenizer.eos_token_id
@@ -154,7 +163,9 @@ def main():
             "r_jb_universal_norm": r_jb_norm,
             "r_jb_universal_to_r_hat_ratio": r_jb_norm / r_hat_norm,
             "cos_r_hat_r_jb_universal": cos_universal,
-            "construction": "r_jb_universal = mean over 5 classes of (mean(h_bare) - mean(h_jb_class)) at pos=-2",
+            "construction": ("r_jb_universal = mean over 5 classes of (mean(h_jb_class) - mean(h_bare)) "
+                             "at pos=-2; r_jb points TOWARD jailbreak (Ball 2024 / Wang 2025 convention). "
+                             "Equivalently, r_jb is parallel to the harmless direction -r̂."),
             "dose_factor": 1.0,
             "max_new_tokens": args.max_new_tokens,
             "n_prompts": len(dataset),
@@ -170,20 +181,25 @@ def main():
                 for cls, v in zip(CLASSES, r_jb_per_class)
             },
         },
-        "experiment_a_pro_refusal_add_via_rjb": {
-            "description": "+r_jb_universal at L15 every forward pass, on jb_* prompts where Stage 06 baseline=COMPLY",
+        "experiment_a_mitigate_jb_subtract_rjb": {
+            "description": ("SUBTRACT r_jb_universal at L15 every forward pass, on jb_* prompts where "
+                            "Stage 06 baseline=COMPLY. Removes the empirical jailbreak displacement "
+                            "from the residual, expected to flip COMPLY → REFUSE."),
             "per_prompt": [],
             "summary": {},
         },
-        "experiment_b_anti_refusal_sub_via_rjb": {
-            "description": "-r_jb_universal at L15 every forward pass, on bare prompts where Stage 06 baseline=REFUSE",
+        "experiment_b_induce_jb_add_rjb": {
+            "description": ("ADD r_jb_universal at L15 every forward pass, on bare prompts where "
+                            "Stage 06 baseline=REFUSE. Injects the empirical jailbreak displacement "
+                            "into a refusing prompt; expected to flip REFUSE → COMPLY (Ball 2024 "
+                            "Table 3-style induction)."),
             "per_prompt": [],
             "summary": {},
         },
     }
 
     print("\n" + "=" * 80)
-    print("Experiment A: pro_refusal_add via r_jb_universal on jb-comply prompts")
+    print("Experiment A: subtract r_jb_universal from jb-comply prompts (mitigate JB)")
     print("=" * 80)
     n_done = 0
     n_flipped_a = 0
@@ -195,11 +211,11 @@ def main():
             if baselines.get(prompt_idx, {}).get(cond) != "COMPLY":
                 continue
             text = prompt_row["conditions"][cond]["text"]
-            resp = gen_with_hook(text, add_hook)
+            resp = gen_with_hook(text, sub_hook)
             new_cls = classify_response(resp)
             coh = is_coherent(resp)
             flipped = new_cls == "REFUSE"
-            results["experiment_a_pro_refusal_add_via_rjb"]["per_prompt"].append({
+            results["experiment_a_mitigate_jb_subtract_rjb"]["per_prompt"].append({
                 "prompt_idx": prompt_idx, "condition": cond,
                 "baseline_cls": "COMPLY", "intervened_cls": new_cls,
                 "flipped_to_refuse": flipped, "coherent": coh,
@@ -216,7 +232,7 @@ def main():
                 print(f"  [A {n_done}/{n_jb_comply_total}] elapsed {(time.time()-t_a)/60:.1f} min, "
                       f"flips so far {n_flipped_a}/{n_done}")
     flip_a = n_flipped_a / n_done if n_done else 0
-    results["experiment_a_pro_refusal_add_via_rjb"]["summary"] = {
+    results["experiment_a_mitigate_jb_subtract_rjb"]["summary"] = {
         "n_jb_comply_baseline": n_done,
         "n_flipped_to_refuse": n_flipped_a,
         "flip_rate": flip_a,
@@ -225,7 +241,7 @@ def main():
     print(f"  Experiment A flip rate: {n_flipped_a}/{n_done} = {flip_a*100:.1f}%")
 
     print("\n" + "=" * 80)
-    print("Experiment B: anti_refusal_sub via r_jb_universal on bare-refuse prompts")
+    print("Experiment B: add r_jb_universal to bare-refuse prompts (induce JB)")
     print("=" * 80)
     n_done_b = 0
     n_flipped_b = 0
@@ -234,11 +250,11 @@ def main():
         if baselines.get(prompt_idx, {}).get("bare") != "REFUSE":
             continue
         text = prompt_row["conditions"]["bare"]["text"]
-        resp = gen_with_hook(text, sub_hook)
+        resp = gen_with_hook(text, add_hook)
         new_cls = classify_response(resp)
         coh = is_coherent(resp)
         flipped = new_cls == "COMPLY"
-        results["experiment_b_anti_refusal_sub_via_rjb"]["per_prompt"].append({
+        results["experiment_b_induce_jb_add_rjb"]["per_prompt"].append({
             "prompt_idx": prompt_idx, "condition": "bare",
             "baseline_cls": "REFUSE", "intervened_cls": new_cls,
             "flipped_to_comply": flipped, "coherent": coh,
@@ -251,7 +267,7 @@ def main():
             print(f"  [B {n_done_b}/{n_bare_refuse_total}] elapsed {(time.time()-t_b)/60:.1f} min, "
                   f"flips so far {n_flipped_b}/{n_done_b}")
     flip_b = n_flipped_b / n_done_b if n_done_b else 0
-    results["experiment_b_anti_refusal_sub_via_rjb"]["summary"] = {
+    results["experiment_b_induce_jb_add_rjb"]["summary"] = {
         "n_bare_refuse_baseline": n_done_b,
         "n_flipped_to_comply": n_flipped_b,
         "flip_rate": flip_b,
@@ -265,15 +281,15 @@ def main():
     print("\n" + "=" * 80)
     print("HEADLINE TABLE")
     print("=" * 80)
-    print(f"{'intervention':56s} {'flip':>15s}")
-    print("-" * 75)
-    print(f"{'Stage 06 +1·|r̂| pro_refusal_add  (Arditi r̂)':56s} "
+    print(f"{'intervention':62s} {'flip':>15s}")
+    print("-" * 80)
+    print(f"{'Stage 06 +1·|r̂| pro_refusal_add  (Arditi r̂, on jb-comply)':62s} "
           f"{'89/89 = 100.0%':>15s}")
-    print(f"{'Stage 06 −1·|r̂| anti_refusal_sub (Arditi r̂)':56s} "
+    print(f"{'Stage 06 −1·|r̂| anti_refusal_sub (Arditi r̂, on bare-refuse)':62s} "
           f"{'49/50 = 98.0%':>15s}")
-    print(f"{'+r_jb_universal pro_refusal_add  (empirical r_jb)':56s} "
+    print(f"{'Exp A: −r_jb_universal on jb-comply (mitigate JB)':62s} "
           f"{f'{n_flipped_a}/{n_done} = {flip_a*100:.1f}%':>15s}")
-    print(f"{'−r_jb_universal anti_refusal_sub (empirical r_jb)':56s} "
+    print(f"{'Exp B: +r_jb_universal on bare-refuse (induce JB)':62s} "
           f"{f'{n_flipped_b}/{n_done_b} = {flip_b*100:.1f}%':>15s}")
 
 

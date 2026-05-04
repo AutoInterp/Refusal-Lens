@@ -5,15 +5,22 @@ capture the residual stream at L15 (hook_resid_post == hidden_states[16]) at
 positions [-5, -3, -2]. Then compute:
 
   - Per-condition mean residual mu_cond
-  - Class-wise "JB direction":   r_jb_cls   = mu_bare        - mu_jb_cls
-  - Class-wise semantic JB dir:  r_jb_sem   = mu_ctrl_cls    - mu_jb_cls
+  - Class-wise "JB direction":   r_jb_cls   = mu_jb_cls    - mu_bare        # points TOWARD jailbreak (Ball 2024 / Wang 2025 convention)
+  - Class-wise semantic JB dir:  r_jb_sem   = mu_jb_cls    - mu_ctrl_cls    # same convention; ctrl is the prefix-matched neutral baseline
   - Cosine similarity of each derived direction with r_hat (the refusal direction)
   - Magnitude ratios |r_jb| / |r_hat|
 
-The cos(r_hat, r_jb) values answer: "is the JB-induced shift parallel to r_hat
-as a vector, or just along the same scalar projection axis?" If cos ≈ 1, JBs
-literally edit r_hat. If cos < 0.7, JBs operate on a partially-orthogonal axis
-that happens to project onto r_hat at the magnitude observed in §5.4.
+Sign convention (matches Ball 2024 / Wang 2025): r_jb points TOWARD jailbreak.
+Therefore cos(r_hat, r_jb) is NEGATIVE for an effective JB (anti-parallel to
+refusal). Equivalently, cos(-r_hat, r_jb) is POSITIVE — i.e. r_jb is parallel
+to the harmless-pointing axis (-r_hat). This is the geometric content of the
+'JBs make the model perceive the prompt as harmless' hypothesis.
+
+The cos(-r_hat, r_jb) values answer: "is the JB-induced shift parallel to the
+harmless direction as a vector, or just along the same scalar projection axis?"
+If cos ≈ 1, JBs literally edit toward harmless. If cos < 0.7, JBs operate on a
+partially-orthogonal axis that happens to project onto the harmless axis at
+the magnitude observed in §5.4.
 
 Output: data/results/pipeline_runs/run_20260430_023247/02b_stats/direction_alignment.{json,png}
 """
@@ -192,8 +199,9 @@ def main():
         mu_bare_p = mu_per_pos["bare"][pos_idx_minus2]
         mu_jb_p = mu_per_pos[f"jb_{cls}"][pos_idx_minus2]
         mu_ctrl_p = mu_per_pos[f"ctrl_{cls}"][pos_idx_minus2]
-        r_jb_p = (mu_bare_p - mu_jb_p).float()
-        r_jb_sem_p = (mu_ctrl_p - mu_jb_p).float()
+        # Ball 2024 / Wang 2025 convention: r_jb points TOWARD jailbreak.
+        r_jb_p = (mu_jb_p - mu_bare_p).float()
+        r_jb_sem_p = (mu_jb_p - mu_ctrl_p).float()
         cos_jb = torch.nn.functional.cosine_similarity(
             r_jb_p.unsqueeze(0), r_hat.unsqueeze(0)).item()
         cos_sem = torch.nn.functional.cosine_similarity(
@@ -223,8 +231,9 @@ def main():
             mu_b = mu_per_pos["bare"][ipos]
             mu_j = mu_per_pos[f"jb_{cls}"][ipos]
             mu_c = mu_per_pos[f"ctrl_{cls}"][ipos]
-            r_jb = (mu_b - mu_j).float()
-            r_jb_sem = (mu_c - mu_j).float()
+            # Ball 2024 / Wang 2025 convention: r_jb points TOWARD jailbreak.
+            r_jb = (mu_j - mu_b).float()
+            r_jb_sem = (mu_j - mu_c).float()
             cos_jb = torch.nn.functional.cosine_similarity(
                 r_jb.unsqueeze(0), r_hat.unsqueeze(0)).item()
             cos_sem = torch.nn.functional.cosine_similarity(

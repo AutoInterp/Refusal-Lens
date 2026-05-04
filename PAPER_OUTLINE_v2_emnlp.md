@@ -139,18 +139,18 @@ Each experiment below has: rationale, hypothesis, method, expected result, GPU/w
 
 ### 4.3a Per-class jailbreak-vector intervention (next-priority follow-up to v1 § 5.6)
 
-**Rationale**: v1's § 5.6 ran a *universal* jailbreak-vector intervention (single *r_jb_universal* averaged across the 5 JB classes), and obtained Experiment A flip rate **47/89 = 52.8 %** on jb-comply prompts. The shortfall vs Stage 06's 100 % is dominated by two factors that the universal-vector design conflates:
+**Rationale**: v1's § 5.6 ran a *universal* jailbreak-vector intervention (single *r_jb_universal* averaged across the 5 JB classes, where *r_jb_class* = mean(*h_jb_class*) − mean(*h_bare*) under the Ball 2024 / Wang 2025 sign convention pointing TOWARD jailbreak). It obtained Experiment A flip rate **47/89 = 52.8 %** on jb-comply prompts (subtracting *r_jb_universal* to mitigate the JB). The shortfall vs Stage 06's 100 % is dominated by two factors that the universal-vector design conflates:
 
 - **Magnitude shrinkage from averaging**: ‖*r_jb_universal*‖ = 0.65 ‖*r̂*‖, vs per-class magnitudes ranging 0.40 to 1.11 ‖*r̂*‖. Averaging across classes that share most but not all of their direction in the residual stream cancels per-class signal — the universal vector is a structurally lossy summary.
 - **Per-class dose mismatch**: the per-class flip rate is *inversely* related to per-class *r_jb_class* magnitude — universal-vector dose under-corrects cognitive_reframe (1.11 ‖*r̂*‖ empirical edit, only 27.3 % flip) and over-corrects fiction (0.49 ‖*r̂*‖ empirical edit, 73.7 % flip).
 
-**Hypothesis**: applying *r_jb_class* of magnitude ≈ ‖*r̂*‖ (i.e., per-class vector, magnitude-matched to *r̂*) to its own class's prompts produces flip rates approaching Stage 06's 100 %, closing most of the universal-version 47 pp gap. This would be the rigorous version of the v1 § 5.6 experiment and would make the "JBs edit *r̂*" claim quantitatively decisive.
+**Hypothesis**: applying *r_jb_class* of magnitude ≈ ‖*r̂*‖ (i.e., per-class vector, magnitude-matched to *r̂*, subtracted from JB-comply prompts of that class) produces flip rates approaching Stage 06's 100 %, closing most of the universal-version 47 pp gap. This would be the rigorous version of the v1 § 5.6 experiment and would make the "JBs edit *r̂* toward the harmless direction" claim quantitatively decisive.
 
 **Method**:
-1. Reuse `scripts/analysis/jb_vector_intervention.py` and the saved `02b_stats/residuals_L15_per_cond.pt`. Iterate on the per-class `r_jb_per_class` list instead of the mean.
-2. Two intervention conditions per class:
-   - **Empirical magnitude**: apply *r_jb_class* at its native magnitude (0.40–1.11 ‖*r̂*‖). Discriminates "magnitude" from "direction" as the bottleneck.
-   - **Magnitude-matched**: scale *r_jb_class* to ‖*r̂*‖ (i.e., apply *r_jb_class* / ‖*r_jb_class*‖ × ‖*r̂*‖). Matches Stage 06's 1.0·‖*r̂*‖ dose along the per-class axis.
+1. Reuse `scripts/analysis/jb_vector_intervention.py` (post-2026-05-04 sign-convention update) and the saved `02b_stats/residuals_L15_per_cond.pt`. Iterate on the per-class `r_jb_per_class` list instead of the mean. Each entry is computed as `mean(h_jb_class) − mean(h_bare)` (Ball convention; points toward jailbreak).
+2. Two intervention conditions per class, both using the **subtraction** hook (mitigate JB):
+   - **Empirical magnitude**: subtract *r_jb_class* at its native magnitude (0.40–1.11 ‖*r̂*‖). Discriminates "magnitude" from "direction" as the bottleneck.
+   - **Magnitude-matched**: scale *r_jb_class* to ‖*r̂*‖ (i.e., subtract *r_jb_class* / ‖*r_jb_class*‖ × ‖*r̂*‖). Matches Stage 06's 1.0·‖*r̂*‖ dose along the per-class axis.
 3. For each (prompt, jb_*) where Stage 06 baseline = COMPLY, apply the relevant per-class hook only to that class's prompts.
 4. Compute per-class flip rates and Wilson CIs.
 5. Same renormalization protocol as Stage 06.
@@ -162,6 +162,8 @@ Each experiment below has: rationale, hypothesis, method, expected result, GPU/w
 **Acceptance**: magnitude-matched per-class intervention produces flip rate ≥ 90 % on at least 3 of 5 classes (where n_baseline_comply > 5); empirical-magnitude intervention's per-class flip rate scales linearly with per-class ‖*r_jb_class*‖. If both pass, the v1 § 5.6 result becomes "the directional component is causally sufficient at full dose" — closing the workshop paper's biggest open question.
 
 **Why this is in v2 not v1**: by user direction (2026-05-04 conversation), the workshop submission keeps the universal-only run for time-budget reasons, and the per-class version moves to v2. The HANDOFF.md § P8c-ii note carries this forward explicitly.
+
+**Sign-convention note**: this section is written in the post-2026-05-04 Ball 2024 / Wang 2025 convention (*r_jb* points toward jailbreak; subtract to mitigate, add to induce). The earlier in-tree v1 work briefly used the opposite convention; HANDOFF.md § P8c documents the rewrite.
 
 ---
 

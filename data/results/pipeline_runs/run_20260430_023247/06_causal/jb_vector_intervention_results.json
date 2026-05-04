@@ -6,8 +6,8 @@
     "r_hat_norm": 3101.1982421875,
     "r_jb_universal_norm": 2026.7708740234375,
     "r_jb_universal_to_r_hat_ratio": 0.6535444417748054,
-    "cos_r_hat_r_jb_universal": 0.9249579310417175,
-    "construction": "r_jb_universal = mean over 5 classes of (mean(h_bare) - mean(h_jb_class)) at pos=-2",
+    "cos_r_hat_r_jb_universal": -0.924957811832428,
+    "construction": "r_jb_universal = mean over 5 classes of (mean(h_jb_class) - mean(h_bare)) at pos=-2; r_jb points TOWARD jailbreak (Ball 2024 / Wang 2025 convention).",
     "dose_factor": 1.0,
     "max_new_tokens": 200,
     "n_prompts": 50,
@@ -20,15 +20,24 @@
       "cognitive_reframe": 1.1074506703715519
     },
     "per_class_cos_r_hat_r_jb_class": {
-      "fiction": 0.7193610668182373,
-      "roleplay": 0.8879297375679016,
-      "analytical": 0.9376029968261719,
-      "completion": 0.7951537370681763,
-      "cognitive_reframe": 0.9405326843261719
-    }
+      "fiction": -0.7193610072135925,
+      "roleplay": -0.8879296779632568,
+      "analytical": -0.9376028776168823,
+      "completion": -0.7951536178588867,
+      "cognitive_reframe": -0.9405325651168823
+    },
+    "cos_neg_r_hat_r_jb_universal": 0.924957811832428,
+    "per_class_cos_neg_r_hat_r_jb_class": {
+      "fiction": 0.7193610072135925,
+      "roleplay": 0.8879296779632568,
+      "analytical": 0.9376028776168823,
+      "completion": 0.7951536178588867,
+      "cognitive_reframe": 0.9405325651168823
+    },
+    "convention_note": "Sign convention flipped 2026-05-04 from r_jb = bare - jb (points toward refusal) to r_jb = jb - bare (points toward jailbreak; matches Ball 2024 / Wang 2025). All flip rates are unchanged \u2014 the experiments tested the same residual displacement, just with relabeled hooks. Under the new convention: Experiment A SUBTRACTS r_jb from JB-comply (mitigates the JB shift) \u2192 flips to refuse; Experiment B ADDS r_jb to bare-refuse (induces the JB shift) \u2192 flips to comply."
   },
-  "experiment_a_pro_refusal_add_via_rjb": {
-    "description": "+r_jb_universal at L15 every forward pass, on jb_* prompts where Stage 06 baseline=COMPLY",
+  "experiment_a_mitigate_jb_subtract_rjb": {
+    "description": "SUBTRACT r_jb_universal at L15 every forward pass, on jb_* prompts where Stage 06 baseline=COMPLY. (Equivalent to the previous 'add r_jb_old' under the flipped sign convention.) Tests whether removing the empirical jailbreak displacement reverses jailbreak success.",
     "per_prompt": [
       {
         "prompt_idx": 0,
@@ -865,8 +874,8 @@
       }
     }
   },
-  "experiment_b_anti_refusal_sub_via_rjb": {
-    "description": "-r_jb_universal at L15 every forward pass, on bare prompts where Stage 06 baseline=REFUSE",
+  "experiment_b_induce_jb_add_rjb": {
+    "description": "ADD r_jb_universal at L15 every forward pass, on bare prompts where Stage 06 baseline=REFUSE. (Equivalent to the previous 'sub r_jb_old' under the flipped sign convention.) Tests whether inducing the empirical jailbreak displacement on a bare-refusal prompt makes the model comply (Ball 2024 induction-style experiment).",
     "per_prompt": [
       {
         "prompt_idx": 0,
