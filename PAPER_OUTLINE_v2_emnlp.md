@@ -137,6 +137,34 @@ Each experiment below has: rationale, hypothesis, method, expected result, GPU/w
 
 ---
 
+### 4.3a Per-class jailbreak-vector intervention (next-priority follow-up to v1 § 5.6)
+
+**Rationale**: v1's § 5.6 ran a *universal* jailbreak-vector intervention (single *r_jb_universal* averaged across the 5 JB classes), and obtained Experiment A flip rate **47/89 = 52.8 %** on jb-comply prompts. The shortfall vs Stage 06's 100 % is dominated by two factors that the universal-vector design conflates:
+
+- **Magnitude shrinkage from averaging**: ‖*r_jb_universal*‖ = 0.65 ‖*r̂*‖, vs per-class magnitudes ranging 0.40 to 1.11 ‖*r̂*‖. Averaging across classes that share most but not all of their direction in the residual stream cancels per-class signal — the universal vector is a structurally lossy summary.
+- **Per-class dose mismatch**: the per-class flip rate is *inversely* related to per-class *r_jb_class* magnitude — universal-vector dose under-corrects cognitive_reframe (1.11 ‖*r̂*‖ empirical edit, only 27.3 % flip) and over-corrects fiction (0.49 ‖*r̂*‖ empirical edit, 73.7 % flip).
+
+**Hypothesis**: applying *r_jb_class* of magnitude ≈ ‖*r̂*‖ (i.e., per-class vector, magnitude-matched to *r̂*) to its own class's prompts produces flip rates approaching Stage 06's 100 %, closing most of the universal-version 47 pp gap. This would be the rigorous version of the v1 § 5.6 experiment and would make the "JBs edit *r̂*" claim quantitatively decisive.
+
+**Method**:
+1. Reuse `scripts/analysis/jb_vector_intervention.py` and the saved `02b_stats/residuals_L15_per_cond.pt`. Iterate on the per-class `r_jb_per_class` list instead of the mean.
+2. Two intervention conditions per class:
+   - **Empirical magnitude**: apply *r_jb_class* at its native magnitude (0.40–1.11 ‖*r̂*‖). Discriminates "magnitude" from "direction" as the bottleneck.
+   - **Magnitude-matched**: scale *r_jb_class* to ‖*r̂*‖ (i.e., apply *r_jb_class* / ‖*r_jb_class*‖ × ‖*r̂*‖). Matches Stage 06's 1.0·‖*r̂*‖ dose along the per-class axis.
+3. For each (prompt, jb_*) where Stage 06 baseline = COMPLY, apply the relevant per-class hook only to that class's prompts.
+4. Compute per-class flip rates and Wilson CIs.
+5. Same renormalization protocol as Stage 06.
+
+**Cost**: ~60 min on the 4090 (≈5× the universal v1 run, minus model-load amortization). Full sweep across both magnitude conditions and 5 classes is ~2 hours.
+
+**Dependencies**: nothing — all data is local. Script is ~30 min of refactoring.
+
+**Acceptance**: magnitude-matched per-class intervention produces flip rate ≥ 90 % on at least 3 of 5 classes (where n_baseline_comply > 5); empirical-magnitude intervention's per-class flip rate scales linearly with per-class ‖*r_jb_class*‖. If both pass, the v1 § 5.6 result becomes "the directional component is causally sufficient at full dose" — closing the workshop paper's biggest open question.
+
+**Why this is in v2 not v1**: by user direction (2026-05-04 conversation), the workshop submission keeps the universal-only run for time-budget reasons, and the per-class version moves to v2. The HANDOFF.md § P8c-ii note carries this forward explicitly.
+
+---
+
 ### 4.4 Steering instead of zeroing (Stage 09d)
 
 **Rationale**: Stage 08 clamps features to zero. This is **not** the only intervention; it could be over-strong (deletes information) or under-strong (the feature was negative-valued, so zeroing pushes the wrong direction). Steering — replacing the feature's value with its mean over harmless prompts, or with a target value drawn from a distribution — is more nuanced and may recover more fraction of the gap.
@@ -229,10 +257,13 @@ If EMNLP deadline is earlier (e.g., mid-May), pivot to NeurIPS main (mid-July) a
 | 4.1 | Edge ablation (Stage 09a) | Mahmoud | Not started | Implement edge-ablation hook in circuit-tracer fork |
 | 4.2 | Transcoder error-node attribution | Mahmoud | Not started | Pull .pt graphs locally |
 | 4.3 | Attention-head attribution (Stage 09c) | Mahmoud | Not started | Read circuit-tracer attention-attribution path |
+| **4.3a** | **Per-class jailbreak-vector intervention (rigorous v1 § 5.6 follow-up)** | **Mahmoud** | **Not started** | **None — script is in place; iterate on `r_jb_per_class` list** |
 | 4.4 | Steering vs zeroing (Stage 09d) | Mahmoud | Not started | Compute harmless-prompt mean activations per feature |
 | 4.5 | Manual circuit inspection (Stage 09e) | Mahmoud | Not started | Frontend manual ablation cart (≥70 % built — see `FRONTEND_ABLATION_PLAN.md`) |
 | 4.6 | Cross-model on Qwen3 | Ruqiya + Mahmoud | Blocked on Qwen3 pipeline rebase | Qwen3 Stage 06 + Stage 08 land |
 | 4.7 | Replication on Gemma-2-9B-IT (stretch) | Open | Not started | Compute budget; lower priority |
+
+**Suggested ordering for v2 work**: 4.3a is the cheapest and highest-leverage (closes the v1 § 5.6 gap to a quantitative claim within ~2 hours); run it before any of 4.1–4.5. After 4.3a lands, 4.2 (transcoder error-node attribution, ~5 hours) is the cheapest remaining decomposition lever and answers a directly-falsifiable hypothesis from v1's § 4 Discussion.
 
 ---
 

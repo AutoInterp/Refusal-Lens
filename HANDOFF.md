@@ -396,6 +396,58 @@ PYTHONPATH=src python3 scripts/pipeline/push_graph_data.py \
 
 ---
 
+## P8 — Post-run analyses (2026-05-04)
+
+After P7 produced `run_20260430_023247`, three follow-up analyses were run on the same run dir without rerunning the pipeline. All outputs live alongside the pipeline-stage outputs in the same `run_20260430_023247/` tree.
+
+### P8a: Canonical pro-refusal sweep (`run_20260430_023247_canonical_*`)
+
+Three sister-run-dirs cloned from the original to ablate `canonical_pro_refusal` under three Stage 07 construction rules (legacy 88f / k100_f20 6f / k50_f50 1f). Wall: 6.6 h on local 4090. **Headline**: per-prompt 6-feature canonical (k100_f20) recovers 23.7 % of JB compliances at 1.3 % ctrl-break, dominating the 88-feature corpus-union (9.9 % / 11.6 %). Documented in REPORT § 9.7.
+
+### P8b: Stage 08 sweeps + Option B baseline renormalization
+
+- **Tier 2** (`run_20260430_023247_full_k100f20`, `run_20260430_023247_full_k50f50`): 8 subcircuits × 2 K/F configs, ~30 h wall each. Strongest is `universal_refusal_core` k100_f20 at 31.5 % [Wilson 22.8, 41.7].
+- **Tier 1** (`run_20260430_023247_topN`): per-prompt top-N at N ∈ {1, 5, 10, 20, 50, 100} + random-N=6 control, 29 h wall. Pareto plateau at top_50 = 34.8 % [25.7, 45.2].
+- **Renormalization**: all of P8a + P8b results normalized to Stage 06 `causal_results.json` baselines via `scripts/pipeline/08_renorm_baselines.py` (Option B). Closes the cross-run baseline drift caveat.
+- Outputs in `08_ablation/{ablation_results, ablation_summary, ABLATION_SUMMARY}_renorm.{json, md}` per sister run.
+
+### P8c: Refusal-direction alignment + JB-vector intervention
+
+Two analyses on Gemma-3-4b-it residuals, captured at L15 hook_resid_post for the 50×11 controlled dataset (≈25 s on 4090, no attribution). Outputs in `02b_stats/`.
+
+#### P8c-i: Direction alignment (`scripts/analysis/refusal_direction_alignment.py`)
+
+For each (prompt × condition), capture h[L15] at positions [−5, −3, −2]; project on r̂. Build per-class `r_jb_class = mean(h_bare) − mean(h_jb_class)`. Compute cos(r̂, r_jb_class) and ‖r_jb_class‖/‖r̂‖.
+
+**Headline**: at pos=−2, cos(r̂, r_jb_class) = +0.72 to +0.94 across the 5 classes; magnitudes 0.40 to 1.11 ‖r̂‖ (cognitive_reframe at 1.04 ‖r̂‖). At template positions (pos=−5, −3) the cosine flips sign (down to −0.84 for cognitive_reframe at pos=−5), so cross-position averaging cancels the alignment — pos=−2 is the only meaningful measurement position. Documented in REPORT § 5.5; figure F7 in `figures/`.
+
+Saves the per-condition residuals tensor `02b_stats/residuals_L15_per_cond.pt` (16.9 MB) for downstream reuse.
+
+#### P8c-ii: Jailbreak-vector intervention (`scripts/analysis/jb_vector_intervention.py`)
+
+Causal counterpart to the cosine measurement. Builds **`r_jb_universal` = mean over 5 classes of `r_jb_class`** at L15 pos=−2, then runs:
+
+- **Experiment A** (pro_refusal_add via r_jb): on each (prompt, jb_*) where Stage 06 baseline = COMPLY, add r_jb_universal at L15 across all positions every forward pass. Compares flip rate to Stage 06's r̂ pro-add (89/89 = 100 %).
+- **Experiment B** (anti_refusal_sub via r_jb): on each bare prompt where Stage 06 baseline = REFUSE, subtract r_jb_universal. Compares to Stage 06's r̂ anti-sub (49/50 = 98 %).
+
+Reuses Stage 06 hook infrastructure (`utils.make_intervention_hook`); no model surgery.
+
+Output: `06_causal/jb_vector_intervention_results.json`. Run completed 2026-05-04 ~16:10 UTC, ~25 min wall on local 4090.
+
+**Headline results**:
+- Diagnostics: ‖*r_jb_universal*‖ = 2026.77 = 0.654·‖*r̂*‖; cos(*r̂*, *r_jb_universal*) = +0.925.
+- **Experiment A** (+*r_jb_universal* on jb-comply): **47/89 = 52.8 %** [Wilson 95 % CI 42.5, 62.8] flip rate. Coherence 89/89.
+- **Experiment B** (−*r_jb_universal* on bare-refuse): **8/50 = 16.0 %** [Wilson 8.3, 28.5]. Coherence 50/50.
+- Per-class Exp A: fiction 14/19 (73.7 %), roleplay 9/9 (100 %), analytical 15/28 (53.6 %), cognitive_reframe 9/33 (27.3 %), completion 0/0 (n=0). The per-class flip rate is *inversely* related to per-class r_jb magnitude — universal-vector dose under-corrects cognitive_reframe (which has the strongest per-class edit) and over-corrects fiction.
+- Comparators: Stage 06 +1.0·‖*r̂*‖ pro-add = 100 %; Stage 06 −1.0·‖*r̂*‖ anti-sub = 98 %; strongest sparse subcircuit `universal_refusal_core` k100_f20 = 31.5 % [22.8, 41.7]; per-prompt top-50 Pareto plateau = 34.8 % [25.7, 45.2].
+- **Headline interpretation**: empirical *r_jb* (dose-reduced 0.65× of *r̂*) flips 1.7× more JB-comply than the strongest sparse-feature ablation, with non-overlapping Wilson CIs. Confirms "bottleneck is basis, not dimensionality" framing for the direction-vs-ablation gap claim. Documented in REPORT § 5.6.
+
+**Methodological caveat — universal vs per-class**: this run uses a single universal r_jb_universal (averaged across the 5 classes) for both interventions. **A more rigorous version would build five separate r_jb_class vectors and apply each only to its own class's prompts** — the per-class alignment in REPORT § 5.5.2 already shows class-by-class variation in cos(r̂, r_jb_class) (fiction +0.72 to cognitive_reframe +0.94) and in magnitude (fiction 0.49 ‖r̂‖ to cognitive_reframe 1.11 ‖r̂‖), so a universal vector is a lossy summary that may underweight strong-edit classes (cognitive_reframe) and overweight weak-edit classes (completion).
+
+The current 52.8 % universal flip rate makes the per-class follow-up high-priority: under linear-additive directional intervention, applying *r_jb_class* of magnitude ≈ ‖*r̂*‖ to its own class's prompts should produce flip rates approaching Stage 06's 100 % — closing most of the 47 pp gap. The script structure already supports it (iterate on the `r_jb_per_class` list instead of the mean and apply each to its class's jb_* prompts only). Estimated cost: ~60 min on the 4090 (≈5× the universal run, minus model-load amortization). **Logged as the next-priority experiment in `PAPER_OUTLINE_v2_emnlp.md` § 4 follow-ups.**
+
+---
+
 ## Stage-by-stage status (2026-05-01, post-P7)
 
 | # | Stage | Code status | Validated at N=50? | Notes |
