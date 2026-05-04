@@ -117,6 +117,10 @@ celerybeat.pid
 env/
 venv/
 ENV/
+
+# Descriptions folder
+descriptions/feature_descriptions.csv
+descriptions/__pycache__/
 env.bak/
 venv.bak/
 
