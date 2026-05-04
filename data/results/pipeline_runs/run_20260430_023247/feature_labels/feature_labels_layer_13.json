@@ -1,0 +1,20 @@
+{
+  "427": {
+    "explanation": {
+      "label": "activates on: amic, Descent, Company, Preface, incompatible...",
+      "description": "activates on: amic, Descent, Company, Preface, incompatible; suppresses: zašt, Dernière, ആഘോഷ, ⓧ, contaminación"
+    }
+  },
+  "43": {
+    "explanation": {
+      "label": "activates on: Fol, Julia, दुर्ग, Already, Stretch...",
+      "description": "activates on: Fol, Julia, दुर्ग, Already, Stretch; suppresses: 방법을, 및, and, وم, )}\\"
+    }
+  },
+  "471": {
+    "explanation": {
+      "label": "activates on: Nobel, Let, hadn, 辖, Let...",
+      "description": "activates on: Nobel, Let, hadn, 辖, Let; suppresses: deletes, destroys, logout, 판매, replicates"
+    }
+  }
+}
