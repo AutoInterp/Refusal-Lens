@@ -25,6 +25,10 @@
 > **Headline 2b (Stage 08b drilldown — the killer finding).** When Qwen's `jb_fiction_specific_vs_ctrl` subcircuit (19 features) is ablated, **95.7% of jb_roleplay prompts** flip back to REFUSE (44/46) — but only **6.7% of jb_fiction prompts** do (1/15). The "fiction-specific" features on Qwen are doing **14× more work for roleplay than for fiction**. This dovetails with Headline 2: the rule names point to JB-class, the actual mechanism doesn't respect that labelling.
 >
 > **Headline 3.** Universality claim, refined: the **1-D refusal axis** transfers (Headline 1) but is gated by harm-content semantics on Qwen (Headline 1b). The **per-class subcircuit decomposition** does not transfer (Headlines 2, 2b) — the same set-logic rules pull out features that play different roles on the two models. For a paper, this is two findings, not one universality result.
+>
+> **Headline 4 (NEW — Stage 08-canonical, methodology negative result).** A companion Gemma run [`run_20260430_023247_canonical`](data/results/pipeline_runs/run_20260430_023247_canonical/) ablates the corpus-union `canonical_pro_refusal` set (88 features) instead of the per-prompt `universal_refusal_core` (26 features). Same prompts, same attribution graphs — only the subcircuit-identification rule changes. The corpus-union version achieves **half the JB recovery (12.8% vs 26.6%) at 4× the bare-refusal break rate (17.4% vs 4.3%)**, with **0/88 of its features appearing in any prompt's `bare` top-50** and 100% low-coverage prompts in every one of the 11 conditions. On `jb_analytical` it breaks **10 baseline refusals (47.6% break rate, n=21) while recovering only 4 baseline-comply prompts (13.8% recovery, n=29) — net effect is −6 refusals**, i.e. ablation pushes the model toward more compliance, not less. This is a paper-grade methodological negative result that justifies the per-prompt (k50_f50) rule used in all main results.
+>
+> **Headline 5 (NEW — Gemma 08b drilldown, parity with Qwen).** Aggregating Gemma's per-prompt drilldown ([recovery_drilldown.csv](data/results/pipeline_runs/run_20260430_023247/08_ablation/recovery_drilldown.csv)) shows a similar off-diagonal pattern as Qwen, but **much smaller in magnitude and partly an artefact of unequal denominators**: ablating `jb_fiction_specific_vs_ctrl` recovers **4/10 (40%) of jb_roleplay** prompts vs **6/20 (30%) of its target jb_fiction**. The *rate* is higher on roleplay, but the *absolute count* of recovered prompts is higher on the target (6 > 4). Qwen's 95.7% (44/46) is qualitatively different — it's a high rate AND a high count, and the target gets 1/15. So the cross-model claim is conservative: **the target-class is not the highest-recovery class on either model**, but only Qwen shows a near-total off-diagonal effect. Same direction, very different magnitudes.
 
 ---
 
@@ -47,7 +51,8 @@ This is the *if-you-read-one-table* view. Same row structure as the canonical Ge
 | 07 | k50_f50 universal_refusal_core size | 26 features | **18 features** |
 | 07 | k50_f50 ctrl_shared_refusal size | 4 features | **20 features** |
 | 07 | k50_f50 jb_*_specific size range | 8–17 features | **15–19 features** |
-| 07 | k50_f50 canonical_pro_refusal size | 88 features | **3 features** |
+| 07 | corpus-union canonical_pro_refusal size | 88 features | **8 features** |
+| 07 | k50_f50 canonical_pro_refusal size | **1 feature** (verified) | **3 features** |
 | 08 | universal_refusal_core JB weighted recovery | **26.6%** (n_jb_comply=94) | **10.4%** (n_jb_comply=163) |
 | 08 | jb_fiction_specific_vs_ctrl Δ | **+16.0pp** ✓ | **−23.9pp** ✗✗ |
 | 08 | jb_analytical_specific_vs_ctrl Δ | **−13.8pp** ✗ | **−4.4pp** ✗ |
@@ -79,7 +84,8 @@ Same structure as HANDOFF.md's "Stage-by-stage status" table; rightmost columns 
 | 06 | causal intervention | ✅ 100% / 98% / 100% (pro / anti / benign) | ✅ 96.3% / 92.5% / **0%** ⚠ — benign control collapse is the headline cross-family asymmetry |
 | 07 | subcircuits | ✅ k50_f50: universal=26, ctrl_shared=4, jb_*_specific=8–17, canonical_pro=88 | ✅ k50_f50: universal=18, ctrl_shared=20, jb_*_specific=15–19, canonical_pro=3 |
 | 08 | ablation | ✅ 5 ablations × 11 conds × 50 prompts × 1 pos-mode in 985 min; coverage 83–96% on target | ✅ 5 ablations × 11 conds × 50 prompts in 331 min; **all 3 dissociation Δ negative** |
-| 08b | recovery drilldown | run available; not aggregated for paper | ✅ run; fiction-features → 95.7% roleplay recovery is the cross-family killer cell |
+| 08b | recovery drilldown | ✅ aggregated (newly added); fiction-features → 40% roleplay recovery (vs 30% target). Same direction as Qwen, smaller magnitude | ✅ run; fiction-features → 95.7% roleplay recovery is the cross-family killer cell |
+| 08-canonical | corpus-union vs per-prompt methodology comparison | ✅ companion run [`run_20260430_023247_canonical`](data/results/pipeline_runs/run_20260430_023247_canonical/): canonical_pro_refusal (88 feat) → 12.8% JB recovery / 17.4% bare break / 0/88 in bare top-50 | n/a (Qwen k50_f50 has only 3 canonical_pro features; Qwen corpus-union is empty) |
 | 09 | (proposed) attention-head attribution | ⏳ not started | ⏳ not started |
 
 ---
@@ -152,29 +158,139 @@ Qwen Stage 02 attribution ran on the full 50-prompt set; Stage 02b statistical-a
 
 For the paper, **`vs_ctrl` is the comparison that matters** — it isolates JB *semantics* from token-position artifacts. Comparison rows below:
 
-### Gemma `vs_ctrl` headline (multi, L15) — from `run_20260430_023247`
+### Gemma full Stage 02b — from [run_20260430_023247/02b_stats/EXPERIMENT_SUMMARY.md](data/results/pipeline_runs/run_20260430_023247/02b_stats/EXPERIMENT_SUMMARY.md)
 
-| Class | ΔNet | Cohen's d | Dominant |
-|---|---|---|---|
-| roleplay | +1607.5 | +0.57 | Amplification-dominant |
-| fiction | +1268.8 | +0.45 | Pro-refusal recruitment |
-| analytical | -8874.0 | -3.78 | Balanced |
-| completion | -1682.4 | -0.97 | Anti-suppression |
-| cognitive_reframe | -11774.1 | -3.21 | Balanced |
+The l15 Stage 02b emits two graph modes (`multi` over template anchors `[-5, -3, -2]`; `single` over pos=-2 only) crossed with three comparisons (`vs_bare`, `vs_ctrl`, `ctrl_vs_bare`). All N=50, all p-values strongly significant (Wilcoxon).
 
-### Qwen `vs_bare` (L34, n=5 per class) — from `run_20260502_154423/02b_stats/statistical_analysis.json`
+#### multi · vs_bare (Gemma)
 
-The Qwen Stage 02b only computed the `vs_bare` decomposition (top-level JSON keys are the 5 classes; no `vs_ctrl` split was produced). So this row is the closer-to-Gemma's-`vs_bare` analogue, not the `vs_ctrl` headline. All p-values are 0.0625 (not significant at n=5); Cohen's d magnitudes are large but should be read as preliminary.
+| Class | Baseline | Treatment | ΔNet | % Change | Cohen's d | 95% CI | Dominant |
+|---|---|---|---|---|---|---|---|
+| **roleplay** | +51056.6 | +54766.4 | +3709.8 | +7.3% | +1.58 | [+3066.3, +4358.7] | Pro-refusal recruitment |
+| **fiction** | +51056.6 | +57258.6 | +6202.0 | +12.1% | +1.84 | [+5293.3, +7129.0] | Pro-refusal recruitment |
+| **analytical** | +51056.6 | +47900.3 | -3156.3 | -6.2% | -1.05 | [-3974.5, -2356.3] | Balanced |
+| **completion** | +51056.6 | +53825.2 | +2768.6 | +5.4% | +1.05 | [+2041.2, +3490.4] | Balanced |
+| **cognitive_reframe** | +51056.6 | +46412.7 | -4643.9 | -9.1% | -1.07 | [-5819.8, -3439.7] | Balanced |
 
-| Class | ΔNet | % change | Cohen's d | Dominant (dual mech.) |
+#### multi · vs_ctrl (Gemma — paper headline comparison)
+
+| Class | Baseline | Treatment | ΔNet | % Change | Cohen's d | 95% CI | Dominant |
+|---|---|---|---|---|---|---|---|
+| **roleplay** | +53158.9 | +54766.4 | +1607.5 | +3.0% | +0.57 | [+839.7, +2385.4] | Amplification-dominant |
+| **fiction** | +55989.7 | +57258.6 | +1268.8 | +2.3% | +0.45 | [+492.0, +2041.9] | Pro-refusal recruitment |
+| **analytical** | +56774.3 | +47900.3 | -8874.0 | -15.6% | -3.78 | [-9535.9, -8227.8] | Balanced |
+| **completion** | +55507.5 | +53825.2 | -1682.4 | -3.0% | -0.97 | [-2166.3, -1215.8] | Anti-suppression |
+| **cognitive_reframe** | +58186.8 | +46412.7 | -11774.1 | -20.2% | -3.21 | [-12755.0, -10735.3] | Balanced |
+
+#### multi · ctrl_vs_bare (Gemma — sanity / prefix-confound check)
+
+| Class | Baseline | Treatment | ΔNet | % Change | Cohen's d | Dominant |
+|---|---|---|---|---|---|---|
+| **roleplay** | +51056.6 | +53158.9 | +2102.3 | +4.1% | +0.60 | Balanced |
+| **fiction** | +51056.6 | +55989.7 | +4933.1 | +9.7% | +1.85 | Balanced |
+| **analytical** | +51056.6 | +56774.3 | +5717.7 | +11.2% | +3.55 | Pro-refusal recruitment |
+| **completion** | +51056.6 | +55507.5 | +4450.9 | +8.7% | +2.53 | Balanced |
+| **cognitive_reframe** | +51056.6 | +58186.8 | +7130.2 | +14.0% | +2.87 | Pro-refusal recruitment |
+
+The ctrl-vs-bare deltas are **all positive and large** (Cohen's d 0.60–3.55) — i.e. just adding the JB prefix tokens (without the JB *content*) already moves the projection. This is exactly why `vs_ctrl` is the comparison that matters for paper claims.
+
+#### single · vs_bare (Gemma — pos=-2 only)
+
+| Class | Baseline | Treatment | ΔNet | % Change | Cohen's d | Dominant |
+|---|---|---|---|---|---|---|
+| **roleplay** | -48886.4 | -52117.5 | -3231.1 | +6.6% | -5.37 | Anti-suppression |
+| **fiction** | -48886.4 | -51693.0 | -2806.6 | +5.7% | -3.75 | Anti-suppression |
+| **analytical** | -48886.4 | -52344.1 | -3457.7 | +7.1% | -6.33 | Anti-suppression |
+| **completion** | -48886.4 | -51580.4 | -2694.0 | +5.5% | -5.05 | Anti-suppression |
+| **cognitive_reframe** | -48886.4 | -53961.3 | -5074.9 | +10.4% | -5.87 | Anti-suppression |
+
+#### single · vs_ctrl (Gemma — pos=-2 only)
+
+| Class | Baseline | Treatment | ΔNet | % Change | Cohen's d | Dominant |
+|---|---|---|---|---|---|---|
+| **roleplay** | -52663.9 | -52117.5 | +546.4 | -1.0% | +0.88 | Balanced |
+| **fiction** | -52086.6 | -51693.0 | +393.5 | -0.8% | +0.61 | Balanced |
+| **analytical** | -51729.2 | -52344.1 | -614.8 | +1.2% | -1.20 | Dampening-dominant |
+| **completion** | -51898.1 | -51580.4 | +317.7 | -0.6% | +0.61 | Balanced |
+| **cognitive_reframe** | -52291.8 | -53961.3 | -1669.5 | +3.2% | -2.03 | Anti-suppression |
+
+#### single · ctrl_vs_bare (Gemma)
+
+| Class | ΔNet | % Change | Cohen's d | Dominant |
 |---|---|---|---|---|
-| roleplay | −7.0 | −20.7% | −1.03 | Dampening-dominant |
-| fiction | −21.5 | −63.9% | −1.85 | Dampening-dominant |
-| analytical | −13.2 | −39.5% | −2.54 | Dampening-dominant |
-| completion | −5.2 | −15.5% | −1.27 | Dampening-dominant |
-| cognitive_reframe | −4.9 | −14.7% | −1.12 | Dampening-dominant |
+| **roleplay** | -3777.5 | +7.7% | -7.81 | Anti-suppression |
+| **fiction** | -3200.2 | +6.5% | -6.38 | Anti-suppression |
+| **analytical** | -2842.8 | +5.8% | -6.60 | Anti-suppression |
+| **completion** | -3011.7 | +6.2% | -8.16 | Anti-suppression |
+| **cognitive_reframe** | -3405.4 | +7.0% | -7.17 | Anti-suppression |
+
+(Stage 01 summary embedded in the same file: best separation = L32 (|r|=20873), best causal = L15 — used for attribution.)
+
+### Qwen full Stage 02b — from [run_20260502_154423/02b_stats/EXPERIMENT_SUMMARY.md](data/results/pipeline_runs_qwen/run_20260502_154423/02b_stats/EXPERIMENT_SUMMARY.md)
+
+The Qwen Stage 02b only computed the `vs_bare` decomposition (top-level JSON keys are the 5 classes; no `vs_ctrl` split was produced). So this row is the closer-to-Gemma's-`vs_bare` analogue, not the `vs_ctrl` headline. All p-values are 0.0625 (not significant at n=5); Cohen's d magnitudes are large but should be read as preliminary. **Direction**: Layer 34 (best separation), N=5, all 5/5 prompt-consistent.
+
+#### Main Results — vs_bare (Qwen, L34, n=5)
+
+| Class | ΔNet | % Change | Cohen's d | 95% CI |
+|---|---|---|---|---|
+| **roleplay** | -7.0 | -20.7% | -1.03 | [-13.0, -3.3] |
+| **fiction** | -21.5 | -63.9% | -1.85 | [-30.6, -12.9] |
+| **analytical** | -13.2 | -39.5% | -2.54 | [-17.4, -9.3] |
+| **completion** | -5.2 | -15.5% | -1.27 | [-8.9, -2.8] |
+| **cognitive_reframe** | -4.9 | -14.7% | -1.12 | [-8.9, -2.1] |
+
+#### Dual Mechanism Decomposition (Qwen)
+
+| Class | dPos (pro-refusal) | dNeg (anti-refusal) | Net | Dominant |
+|---|---|---|---|---|
+| **roleplay** | -6.7 (-17.0%) | -0.3 (-4.8%) | -7.0 | Dampening-dominant |
+| **fiction** | -20.6 (-52.4%) | -0.8 (-14.3%) | -21.5 | Dampening-dominant |
+| **analytical** | -12.3 (-31.4%) | -0.9 (-15.6%) | -13.2 | Dampening-dominant |
+| **completion** | -3.8 (-9.6%) | -1.4 (-24.9%) | -5.2 | Dampening-dominant |
+| **cognitive_reframe** | -4.4 (-11.2%) | -0.5 (-8.8%) | -4.9 | Dampening-dominant |
 
 **All five Qwen classes are "Dampening-dominant"** — JB reduces the existing pro-refusal signal more than it recruits anti-refusal features. Compare Gemma's mixed picture (analytical/cognitive_reframe "Balanced", roleplay "Amplification", fiction "Pro-refusal recruitment", completion "Anti-suppression"). On Qwen, the JB effect is monotonically suppressive across classes; on Gemma it is class-differentiated.
+
+#### Feature Comparison (Qwen)
+
+| Class | Bare features | JB features | Shared % | JB-only % | Sign-flip % |
+|---|---|---|---|---|---|
+| **roleplay** | 3981 | 4020 | 59.0% | 41.6% | 8.2% |
+| **fiction** | 3981 | 3994 | 49.0% | 51.2% | 12.8% |
+| **analytical** | 3981 | 4200 | 55.9% | 47.0% | 9.9% |
+| **completion** | 3981 | 4049 | 68.0% | 33.1% | 7.3% |
+| **cognitive_reframe** | 3981 | 4065 | 64.4% | 37.0% | 8.1% |
+
+Fiction has the lowest shared-feature overlap (49%) and the highest sign-flip rate (12.8%) — consistent with fiction being the most-rewired JB class on Qwen, and dovetails with Stage 08b's "fiction-features → 95.7% roleplay recovery" off-diagonal cell.
+
+### Stage 02b figures (side-by-side)
+
+For every metric we keep only the **`single`-mode Gemma chart** (pos=-2 only) so each row pairs cleanly with Qwen's mode-less chart; Gemma's `_multi` variants exist (template anchors `[-5,-3,-2]`) but have no Qwen counterpart and the tables above already carry both modes' numbers. Per-layer separation is shown only once, under Stage 01 (no duplicate panel here).
+
+**Per-class effect sizes (Cohen's d):**
+
+Gemma:
+![Gemma effect sizes](data/results/pipeline_runs/run_20260430_023247/02b_stats/effect_sizes_single.png)
+
+Qwen:
+![Qwen effect sizes](data/results/pipeline_runs_qwen/run_20260502_154423/02b_stats/effect_sizes.png)
+
+**Class comparison (per-class baseline vs treatment):**
+
+Gemma:
+![Gemma class comparison](data/results/pipeline_runs/run_20260430_023247/02b_stats/class_comparison_single.png)
+
+Qwen:
+![Qwen class comparison](data/results/pipeline_runs_qwen/run_20260502_154423/02b_stats/class_comparison.png)
+
+**Distribution by class (per-prompt projection densities):**
+
+Gemma:
+![Gemma distribution by class](data/results/pipeline_runs/run_20260430_023247/02b_stats/distribution_by_class_single.png)
+
+Qwen:
+![Qwen distribution by class](data/results/pipeline_runs_qwen/run_20260502_154423/02b_stats/distribution_by_class.png)
 
 ---
 
@@ -319,6 +435,29 @@ Stage 08b drills into per-prompt classifications of `(ablation, jb_class) → re
 
 This is the cleanest cross-family negative result we have: **the same feature-set, picked by the same set-logic rule, drives a totally different class on Qwen than on Gemma**. For the paper, this argues against framing the per-class subcircuits as a stable mechanistic decomposition — the rule names don't survive transfer.
 
+### Gemma 08b drilldown (newly aggregated from [recovery_drilldown.csv](data/results/pipeline_runs/run_20260430_023247/08_ablation/recovery_drilldown.csv))
+
+Same matrix shape as Qwen, computed from the unweighted per-prompt recovery rate (rows = ablation, cols = jb_class, cell = `n_recovered / n_baseline_comply`):
+
+| Ablation \ JB class | analytical (n=29) | cog_reframe (n=33) | completion (n=2) | fiction (n=20) | roleplay (n=10) |
+|---|---|---|---|---|---|
+| `universal_refusal_core` | 6 = 20.7% | 4 = 12.1% | 1 = 50.0% | **9 = 45.0%** | 5 = 50.0% |
+| `ctrl_shared_refusal` | 3 = 10.3% | 1 = 3.0% | 1 = 50.0% | 0 = 0.0% | 1 = 10.0% |
+| `jb_fiction_specific_vs_ctrl` | 2 = 6.9% | 3 = 9.1% | 0 = 0.0% | **6 = 30.0%** ← target | **4 = 40.0%** |
+| `jb_analytical_specific_vs_ctrl` | **5 = 17.2%** ← target | 3 = 9.1% | 1 = 50.0% | 1 = 5.0% | 6 = 60.0% |
+| `jb_cognitive_reframe_specific_vs_ctrl` | 1 = 3.4% | **4 = 12.1%** ← target | 1 = 50.0% | 2 = 10.0% | 3 = 30.0% |
+
+**Reading the off-diagonal carefully.** The denominators are very different across columns (n=2 to n=33), so rates and absolute counts disagree. Two ways to read the fiction-ablation row:
+
+- **By rate**: roleplay (40%) > target fiction (30%) → off-diagonal stronger than diagonal.
+- **By count**: target fiction (6 prompts recovered) > roleplay (4 prompts) → diagonal stronger than off-diagonal.
+
+So on Gemma, the "fiction-features → roleplay" leak is real *as a rate* but small *as a count*. On Qwen the same off-diagonal is unambiguous on both metrics (44/46 = 95.7% rate, 44 absolute prompts on roleplay vs 1 on target fiction). The cross-model claim is therefore conservative: **the target-class is not the highest-recovery class on either model, and on Qwen the off-diagonal is overwhelming**.
+
+`jb_analytical_specific_vs_ctrl × roleplay` (6/10 = 60%) is the largest unambiguous off-diagonal on Gemma — and unlike fiction→roleplay it has both a higher rate (60% vs target 17.2%) and a higher count (6 vs 5) than the diagonal. So **`analytical_specific` features patch roleplay better than they patch analytical, on both metrics**. This is the cleanest single-model dissociation-failure cell.
+
+The completion column (n=2) is too small to support any claim and is shown only for completeness.
+
 **The dissociation figure.** The headline NeurIPS-style result is the heatmap `dissociation_matrix.png`:
 
 - rows = subcircuits (universal core, per-class specific)
@@ -326,6 +465,63 @@ This is the cleanest cross-family negative result we have: **the same feature-se
 - cell = per-class JB recovery rate when that subcircuit is zero-ablated
 
 A diagonally-dominant matrix means **each class-specific subcircuit drives its own class disproportionately** — proof of dissociation. Off-diagonal leakage = shared mechanism. Same matrix on Gemma and Qwen → universality. Different patterns → architectural divergence in how refusal is decomposed.
+
+---
+
+## Stage 08-canonical — corpus-union vs per-prompt methodology (Gemma-only, paper-grade negative result)
+
+A separate companion run, [run_20260430_023247_canonical](data/results/pipeline_runs/run_20260430_023247_canonical/), reuses Stages 01–07 from the main Gemma run (configs are byte-identical) and replaces only Stage 08 with a single ablation: **`canonical_pro_refusal` (88 features)** drawn from the **legacy corpus-union** [`subcircuits.json`](data/results/pipeline_runs/run_20260430_023247/07_subcircuits/subcircuits.json), rather than the per-prompt `subcircuits_k50_f50.json` used in the main run. The previous 5-ablation Stage 08 is preserved at `_old_5_ablations/`.
+
+This is the controlled methodological comparison the paper needs: same prompts, same model, same Stage 02 attribution graphs — only the **subcircuit-identification rule** changes.
+
+### Headline contrast (corpus-union `canonical_pro_refusal` vs per-prompt `universal_refusal_core`)
+
+| Metric | corpus-union `canonical_pro_refusal` (88 feat) | per-prompt `universal_refusal_core` (26 feat) |
+|---|---|---|
+| Comply-weighted JB recovery | **12.8%** | **26.6%** (~2× stronger with ~1/3 the features) |
+| Comply-weighted ctrl break | **11.1%** | 4.9% |
+| bare break (collateral on baseline refusals) | **17.4%** (8/46) | **4.3%** (2/46) — ~4× lower |
+| Mean fraction of features in any prompt's top-K | **3.9–18.2%** | 96.5–100% |
+| Low-coverage prompts (<30% in top-K) | **50/50 in every one of the 11 conditions** | 0/50 in every condition |
+| Features that ever appear in `bare`-condition top-50 | **0/88** | 26/26 |
+| `jb_analytical`: recovered / broken (counts) | 4 recovered / **10 broken** = net **−6 refusals** | 6 recovered / 5 broken = net +1 |
+
+**Reading.** The corpus-union "canonical pro-refusal" set picks features that are *never load-bearing on any individual prompt* — the activation audit shows 0/88 features in `bare` top-50 ever. Ablating them therefore removes signal that wasn't doing anything in those graphs, and the small recovery effect that does appear (12.8%) comes packaged with **11–17% collateral damage on baseline / control refusals**. On `jb_analytical` the absolute count of broken refusals (10) exceeds recovered ones (4) — i.e. the ablation pushes the net refusal count *down* rather than up.
+
+### Per-condition breakdown (canonical_pro_refusal, from [ABLATION_SUMMARY.md](data/results/pipeline_runs/run_20260430_023247_canonical/08_ablation/ABLATION_SUMMARY.md))
+
+| Condition | Baseline REFUSE / COMPLY | Recovery rate | Break rate |
+|---|---|---|---|
+| `bare` | 46 / 4 | 75.0% (3/4, n small) | **17.4%** (8/46) |
+| `jb_roleplay` | 40 / 10 | 40.0% | **20.0%** |
+| `ctrl_roleplay` | 48 / 2 | 100% (2/2) | 12.5% |
+| `jb_fiction` | 30 / 20 | **0.0%** | **23.3%** |
+| `ctrl_fiction` | 47 / 3 | 100% (3/3) | 2.1% |
+| `jb_analytical` | 21 / 29 | 13.8% | **47.6%** ⚠ |
+| `ctrl_analytical` | 44 / 6 | 83.3% | 6.8% |
+| `jb_completion` | 48 / 2 | 100% (2/2) | 10.4% |
+| `ctrl_completion` | 44 / 6 | 83.3% | **22.7%** |
+| `jb_cognitive_reframe` | 17 / 33 | 6.1% | 23.5% |
+| `ctrl_cognitive_reframe` | 42 / 8 | 75.0% | 11.9% |
+
+### Cross-model relevance
+
+`canonical_pro_refusal` set sizes across the two views, on both models (verified directly from `subcircuits.json` / `subcircuits_k50_f50.json`):
+
+| | Gemma corpus-union | Gemma per-prompt (k50_f50) | Qwen corpus-union | Qwen per-prompt (k50_f50) |
+|---|---|---|---|---|
+| `canonical_pro_refusal` size | **88** | **1** | **8** | **3** |
+
+Two things to note:
+
+1. **Gemma's contraction is much sharper (88 → 1)** than Qwen's (8 → 3). On Gemma, only 1 feature out of the 88 corpus-union "canonical" features clears the per-prompt k50_f50 threshold — i.e. 87/88 features are individually weak on every graph and only "look canonical" because of the rule's union-style aggregation. Qwen's corpus-union view is already small (8 features), and 3/8 survive per-prompt aggregation.
+2. The reverse-direction `*_vs_ctrl` and `ctrl_shared_refusal` rules are empty on Qwen corpus-union (size 0) but populated on Qwen k50_f50 (15–20 features each) — same direction of contraction asymmetry.
+
+Combined, the canonical run on Gemma is the cleanest single-model evidence that **corpus-union set logic produces features that are not load-bearing on any individual graph**. The Qwen results showed the same direction qualitatively; the canonical run quantifies the methodological cost (12.8% recovery vs 26.6%, 17.4% bare break vs 4.3%) on the model where the corpus-union rule produces a non-empty set to ablate.
+
+### Paper takeaway (suggested wording)
+
+> Corpus-union set logic selects "canonical" features that have ≤18% top-K coverage on any individual prompt's attribution graph and 0/88 presence in baseline top-50 features. Zero-ablating them removes signal that wasn't load-bearing on individual graphs and breaks 17% of baseline refusals as collateral; on one JB class (analytical) the absolute count of broken refusals (10) exceeds recovered ones (4), pushing the net refusal count down rather than up. We therefore use a per-prompt aggregation (top-K=50, ≥F=50% prompt frequency, "k50_f50") for all subcircuit definitions in this paper; on Gemma it produces a 26-feature universal refusal core that achieves ~2× the JB-recovery rate (26.6% vs 12.8%) at ~1/4 the collateral break rate (4.3% vs 17.4% bare break) of the corpus-union 88-feature canonical set.
 
 ---
 
@@ -456,7 +652,23 @@ Numerical comparison is in the Stage 03 table above (Gemma attr/dot=1.659, basel
 **Gemma per-layer contribution:**
 ![Gemma per-layer contribution](data/results/pipeline_runs/run_20260430_023247/03_verification/per_layer_contribution.png)
 
-**Qwen per-layer contribution — currently empty** (`per_layer_decomposition.json` is `[]` and the PNG renders with `n=0 prompts` and NaN values, despite `verification_results.json` having the full N=39 summary). This is a pipeline_qwen Stage 03 bug: the script writes the summary but not the per-layer breakdown. To fix: re-run `python3 scripts/pipeline_qwen/03_verify_attribution.py --run-dir <run> --emit-per-layer` (or whichever flag enables the breakdown). Until then, Qwen's per-layer chart is omitted here.
+**Qwen per-layer contribution (regenerated 2026-05-04, N=5 decomposed prompts at L34, pos=-1):**
+![Qwen per-layer contribution](data/results/pipeline_runs_qwen/run_20260502_154423/03_verification/per_layer_contribution.png)
+
+**Pipeline-bug fix note.** This chart was previously empty because [`03_verify_attribution.py`](scripts/pipeline_qwen/03_verify_attribution.py#L478) hardcoded `decomp_pos = -2` (Gemma's "model" token), but Qwen's anchored positions are `[-5, -3, -1]` — so `pos=-2` was never in `r_hats`, the decomposition loop was skipped, and `aggregate_and_plot([], …)` produced a NaN bar chart. Fix: position fallback `-2 → -1 → positions[0]` (commit on `temp/gemma-vs-qwen-pipeline`). After the fix the plot renders correctly.
+
+**What the chart shows.** Qwen's L34 projection builds up monotonically from L17 onwards, with the bulk of the signal accumulated in the last ~12 layers. Mid-network layers (0–16) contribute close to zero individually; L13 is the largest negative contributor (−1.02 ± 0.03), and L35 (post-measurement, RMSNorm artifact, intentionally excluded from `sum_check`) registers −144.7 ± 14.7 — same shape as Gemma's L33 RMSNorm collapse, just one layer later.
+
+**Cross-model comparison of per-layer buildup:**
+
+| Region | Gemma L0–L15 (target=15) | Qwen L0–L34 (target=34) |
+|---|---|---|
+| Largest single positive layer | concentrated in mid-layers (causal at L15) | **L34: 32.5 ± 3.2** (last block before measurement) |
+| Largest single negative layer (pre-measurement) | small | **L13: −1.02 ± 0.03** |
+| Peak buildup region | L8–L15 (concentrated) | **L22–L34** (gradual, broad) |
+| Post-measurement RMSNorm artifact | L33: large negative, not in projection | **L35: −144.7 ± 14.7**, not in projection |
+
+The qualitative story matches Headline 3: the same axis exists in both models, but Qwen's refusal-direction signal is built up over a much longer stretch of layers (≈13 layers in the back half) vs Gemma's tighter mid-network concentration. Combined with the Stage 06 result that Qwen's L18 (not L34) is the *causal* sweet spot, this hints that Qwen separates **representational accumulation** (L22–L34, where the projection grows) from **causal control** (L18, where intervention flips behaviour) — a dissociation Gemma shows less of.
 
 ---
 

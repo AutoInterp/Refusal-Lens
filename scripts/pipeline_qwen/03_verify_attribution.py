@@ -472,12 +472,18 @@ def main():
     print(f"\n{'='*60}")
     print(f"CHECK 2: Per-layer decomposition ({args.n_decompose} prompts, L{target_layer} @ pos=-2)")
     print(f"{'='*60}")
-    # Per-layer decomposition is always at pos=-2 (the causal position) against
-    # r_{L,pos=-2} — this tells the layer-buildup story for the causal target.
-    # For multi-position mode, this is one projection of the multi-target scalar.
-    decomp_pos = -2
+    # Per-layer decomposition is at the causal position against r_{L,pos}.
+    # Gemma's causal position is -2 ("model" token); Qwen's anchored positions
+    # are [-5, -3, -1] (no -2). Pick -2 if available, else -1, else the first
+    # loaded position — this tells the layer-buildup story for that target.
+    if -2 in r_hats:
+        decomp_pos = -2
+    elif -1 in r_hats:
+        decomp_pos = -1
+    else:
+        decomp_pos = positions[0]
     if decomp_pos not in r_hats:
-        print(f"  WARN: pos=-2 not loaded (positions: {positions}). Skipping per-layer decomposition.")
+        print(f"  WARN: no usable position in {positions}. Skipping per-layer decomposition.")
         decomposition_results = []
     else:
         r_hat_decomp = r_hats[decomp_pos].to(model.device)
