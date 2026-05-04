@@ -1,0 +1,378 @@
+{
+  "source": "pipeline_runs/run_20260430_023247_full_k50f50/02_attribution/attribution_results.json",
+  "n_prompts_per_condition": {
+    "bare": 50,
+    "ctrl_analytical": 50,
+    "ctrl_cognitive_reframe": 50,
+    "ctrl_completion": 50,
+    "ctrl_fiction": 50,
+    "ctrl_roleplay": 50,
+    "jb_analytical": 50,
+    "jb_cognitive_reframe": 50,
+    "jb_completion": 50,
+    "jb_fiction": 50,
+    "jb_roleplay": 50
+  },
+  "per_ablation": {
+    "universal_refusal_core": {
+      "n_features": 26,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.9646,
+          "mean_attr_per_prompt": 492.59306,
+          "n_features_never_in_top50": 0,
+          "n_features": 26
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.9831,
+          "mean_attr_per_prompt": 488.34865,
+          "n_features_never_in_top50": 0,
+          "n_features": 26
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.9822,
+          "mean_attr_per_prompt": 491.87423,
+          "n_features_never_in_top50": 0,
+          "n_features": 26
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.9931,
+          "mean_attr_per_prompt": 500.79215
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.9915,
+          "mean_attr_per_prompt": 500.77559
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.9923,
+          "mean_attr_per_prompt": 494.03797
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.9638,
+          "mean_attr_per_prompt": 461.48181
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.9746,
+          "mean_attr_per_prompt": 484.65573
+        }
+      }
+    },
+    "ctrl_shared_refusal": {
+      "n_features": 4,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.88,
+          "mean_attr_per_prompt": 249.1994,
+          "n_features_never_in_top50": 0,
+          "n_features": 4
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.6,
+          "mean_attr_per_prompt": 184.66803,
+          "n_features_never_in_top50": 0,
+          "n_features": 4
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.824,
+          "mean_attr_per_prompt": 233.63779,
+          "n_features_never_in_top50": 0,
+          "n_features": 4
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.69,
+          "mean_attr_per_prompt": 201.72441
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.485,
+          "mean_attr_per_prompt": 149.19607
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.825,
+          "mean_attr_per_prompt": 262.63028
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.545,
+          "mean_attr_per_prompt": 170.73004
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.455,
+          "mean_attr_per_prompt": 139.05937
+        }
+      }
+    },
+    "jb_fiction_specific_vs_ctrl": {
+      "n_features": 11,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.0309,
+          "mean_attr_per_prompt": 6.76581,
+          "n_features_never_in_top50": 8,
+          "n_features": 11
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.2738,
+          "mean_attr_per_prompt": 71.30456,
+          "n_features_never_in_top50": 0,
+          "n_features": 11
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.1444,
+          "mean_attr_per_prompt": 34.21312,
+          "n_features_never_in_top50": 5,
+          "n_features": 11
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.2018,
+          "mean_attr_per_prompt": 50.97467
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.2164,
+          "mean_attr_per_prompt": 63.26585
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.0691,
+          "mean_attr_per_prompt": 18.99597
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.7364,
+          "mean_attr_per_prompt": 189.01414
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.1455,
+          "mean_attr_per_prompt": 34.27219
+        }
+      }
+    },
+    "jb_analytical_specific_vs_ctrl": {
+      "n_features": 9,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.1511,
+          "mean_attr_per_prompt": 48.33202,
+          "n_features_never_in_top50": 4,
+          "n_features": 9
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.448,
+          "mean_attr_per_prompt": 138.78858,
+          "n_features_never_in_top50": 0,
+          "n_features": 9
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.2858,
+          "mean_attr_per_prompt": 103.96805,
+          "n_features_never_in_top50": 2,
+          "n_features": 9
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.8778,
+          "mean_attr_per_prompt": 248.1787
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.4622,
+          "mean_attr_per_prompt": 134.29622
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.3111,
+          "mean_attr_per_prompt": 120.3181
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.2978,
+          "mean_attr_per_prompt": 91.31312
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.2911,
+          "mean_attr_per_prompt": 99.83675
+        }
+      }
+    },
+    "jb_cognitive_reframe_specific_vs_ctrl": {
+      "n_features": 9,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.1689,
+          "mean_attr_per_prompt": 28.33672,
+          "n_features_never_in_top50": 6,
+          "n_features": 9
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.3062,
+          "mean_attr_per_prompt": 58.1603,
+          "n_features_never_in_top50": 0,
+          "n_features": 9
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.1684,
+          "mean_attr_per_prompt": 31.08307,
+          "n_features_never_in_top50": 2,
+          "n_features": 9
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.2533,
+          "mean_attr_per_prompt": 49.15739
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.6756,
+          "mean_attr_per_prompt": 131.6177
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.2667,
+          "mean_attr_per_prompt": 48.14252
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.1133,
+          "mean_attr_per_prompt": 20.33172
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.2222,
+          "mean_attr_per_prompt": 41.55218
+        }
+      }
+    },
+    "jb_completion_specific_vs_ctrl": {
+      "n_features": 8,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.36,
+          "mean_attr_per_prompt": 79.91117,
+          "n_features_never_in_top50": 3,
+          "n_features": 8
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.398,
+          "mean_attr_per_prompt": 90.65812,
+          "n_features_never_in_top50": 0,
+          "n_features": 8
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.3355,
+          "mean_attr_per_prompt": 68.9869,
+          "n_features_never_in_top50": 0,
+          "n_features": 8
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.45,
+          "mean_attr_per_prompt": 94.40934
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.4425,
+          "mean_attr_per_prompt": 95.74334
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.745,
+          "mean_attr_per_prompt": 181.46515
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.1775,
+          "mean_attr_per_prompt": 43.11274
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.175,
+          "mean_attr_per_prompt": 38.56005
+        }
+      }
+    },
+    "jb_roleplay_specific_vs_ctrl": {
+      "n_features": 6,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.1733,
+          "mean_attr_per_prompt": 39.19807,
+          "n_features_never_in_top50": 2,
+          "n_features": 6
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.1813,
+          "mean_attr_per_prompt": 34.47937,
+          "n_features_never_in_top50": 0,
+          "n_features": 6
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.1187,
+          "mean_attr_per_prompt": 23.77017,
+          "n_features_never_in_top50": 2,
+          "n_features": 6
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.05,
+          "mean_attr_per_prompt": 13.25614
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.0833,
+          "mean_attr_per_prompt": 16.50034
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.0867,
+          "mean_attr_per_prompt": 16.61927
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.0367,
+          "mean_attr_per_prompt": 6.64817
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.65,
+          "mean_attr_per_prompt": 119.37291
+        }
+      }
+    },
+    "anti_refusal_amplifiers": {
+      "n_features": 64,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.2037,
+          "mean_attr_per_prompt": 79.75694,
+          "n_features_never_in_top50": 35,
+          "n_features": 64
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.2344,
+          "mean_attr_per_prompt": 94.21702,
+          "n_features_never_in_top50": 25,
+          "n_features": 64
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.2351,
+          "mean_attr_per_prompt": 92.07132,
+          "n_features_never_in_top50": 29,
+          "n_features": 64
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.245,
+          "mean_attr_per_prompt": 96.66702
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.2397,
+          "mean_attr_per_prompt": 99.45608
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.2297,
+          "mean_attr_per_prompt": 93.68662
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.2328,
+          "mean_attr_per_prompt": 90.95561
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.2247,
+          "mean_attr_per_prompt": 90.31977
+        }
+      }
+    }
+  }
+}
