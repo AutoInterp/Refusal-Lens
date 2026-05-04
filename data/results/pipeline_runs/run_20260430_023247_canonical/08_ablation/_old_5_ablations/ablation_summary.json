@@ -1,0 +1,597 @@
+{
+  "per_ablation": {
+    "canonical_pro_refusal": {
+      "n_features": 88,
+      "positions": {
+        "all": {
+          "bare": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "jb_roleplay": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "ctrl_roleplay": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "jb_fiction": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "ctrl_fiction": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "jb_analytical": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "ctrl_analytical": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "jb_completion": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "ctrl_completion": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "jb_cognitive_reframe": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "ctrl_cognitive_reframe": {
+            "n_seen": 0,
+            "n_baseline_refuse": 0,
+            "n_baseline_comply": 0,
+            "n_ablated_refuse": 0,
+            "n_ablated_comply": 0,
+            "n_changed": 0,
+            "n_coherent_changed": 0,
+            "n_recovered_refusal": 0,
+            "n_broke_refusal": 0,
+            "recovery_rate": 0.0,
+            "break_rate": 0.0
+          },
+          "weighted": {
+            "jb_weighted_recovery_rate": 0.0,
+            "jb_total_baseline_comply": 0,
+            "ctrl_weighted_break_rate": 0.0,
+            "ctrl_total_baseline_refuse": 0,
+            "bare_break_rate": 0.0,
+            "bare_baseline_refuse": 0,
+            "per_class_jb": {
+              "analytical": {
+                "recovery_rate": 0.0,
+                "n_baseline_comply": 0,
+                "n_recovered_refusal": 0
+              },
+              "cognitive_reframe": {
+                "recovery_rate": 0.0,
+                "n_baseline_comply": 0,
+                "n_recovered_refusal": 0
+              },
+              "completion": {
+                "recovery_rate": 0.0,
+                "n_baseline_comply": 0,
+                "n_recovered_refusal": 0
+              },
+              "fiction": {
+                "recovery_rate": 0.0,
+                "n_baseline_comply": 0,
+                "n_recovered_refusal": 0
+              },
+              "roleplay": {
+                "recovery_rate": 0.0,
+                "n_baseline_comply": 0,
+                "n_recovered_refusal": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "dissociation": {},
+  "coverage": {
+    "universal_refusal_core": {
+      "all": {
+        "bare": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9738,
+          "mean_sum_abs_attribution": 12839.552655,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_roleplay": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9877,
+          "mean_sum_abs_attribution": 12661.502894,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_roleplay": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9823,
+          "mean_sum_abs_attribution": 12674.351986,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_fiction": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9731,
+          "mean_sum_abs_attribution": 12041.540852,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_fiction": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9938,
+          "mean_sum_abs_attribution": 12970.245043,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_analytical": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 1.0,
+          "mean_sum_abs_attribution": 13052.694875,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_analytical": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9861,
+          "mean_sum_abs_attribution": 12769.911753,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_completion": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 1.0,
+          "mean_sum_abs_attribution": 12878.691933,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_completion": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9877,
+          "mean_sum_abs_attribution": 13005.763719,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_cognitive_reframe": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9938,
+          "mean_sum_abs_attribution": 13032.299609,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_cognitive_reframe": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9869,
+          "mean_sum_abs_attribution": 12633.665026,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        }
+      }
+    },
+    "ctrl_shared_refusal": {
+      "all": {
+        "bare": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.93,
+          "mean_sum_abs_attribution": 1020.644455,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_roleplay": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.655,
+          "mean_sum_abs_attribution": 658.114122,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_roleplay": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.905,
+          "mean_sum_abs_attribution": 968.294314,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_fiction": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.75,
+          "mean_sum_abs_attribution": 806.279566,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_fiction": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.965,
+          "mean_sum_abs_attribution": 1057.690243,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_analytical": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.785,
+          "mean_sum_abs_attribution": 867.197996,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_analytical": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.935,
+          "mean_sum_abs_attribution": 996.971008,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_completion": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.98,
+          "mean_sum_abs_attribution": 1136.46407,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_completion": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.945,
+          "mean_sum_abs_attribution": 1031.592328,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_cognitive_reframe": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.75,
+          "mean_sum_abs_attribution": 736.829455,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_cognitive_reframe": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.875,
+          "mean_sum_abs_attribution": 927.072857,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        }
+      }
+    },
+    "jb_fiction_specific_vs_ctrl": {
+      "all": {
+        "bare": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.0691,
+          "mean_sum_abs_attribution": 119.487442,
+          "n_low_coverage_prompts": 50,
+          "frac_low_coverage": 1.0
+        },
+        "jb_roleplay": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.2218,
+          "mean_sum_abs_attribution": 494.521802,
+          "n_low_coverage_prompts": 40,
+          "frac_low_coverage": 0.8
+        },
+        "ctrl_roleplay": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.1982,
+          "mean_sum_abs_attribution": 457.522234,
+          "n_low_coverage_prompts": 43,
+          "frac_low_coverage": 0.86
+        },
+        "jb_fiction": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.8327,
+          "mean_sum_abs_attribution": 2257.308351,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_fiction": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.2727,
+          "mean_sum_abs_attribution": 653.485726,
+          "n_low_coverage_prompts": 30,
+          "frac_low_coverage": 0.6
+        },
+        "jb_analytical": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.2182,
+          "mean_sum_abs_attribution": 589.220833,
+          "n_low_coverage_prompts": 44,
+          "frac_low_coverage": 0.88
+        },
+        "ctrl_analytical": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.1745,
+          "mean_sum_abs_attribution": 363.816783,
+          "n_low_coverage_prompts": 46,
+          "frac_low_coverage": 0.92
+        },
+        "jb_completion": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.1273,
+          "mean_sum_abs_attribution": 291.193671,
+          "n_low_coverage_prompts": 43,
+          "frac_low_coverage": 0.86
+        },
+        "ctrl_completion": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.1945,
+          "mean_sum_abs_attribution": 444.358324,
+          "n_low_coverage_prompts": 45,
+          "frac_low_coverage": 0.9
+        },
+        "jb_cognitive_reframe": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.24,
+          "mean_sum_abs_attribution": 737.368299,
+          "n_low_coverage_prompts": 42,
+          "frac_low_coverage": 0.84
+        },
+        "ctrl_cognitive_reframe": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.2054,
+          "mean_sum_abs_attribution": 487.816256,
+          "n_low_coverage_prompts": 43,
+          "frac_low_coverage": 0.86
+        }
+      }
+    },
+    "jb_analytical_specific_vs_ctrl": {
+      "all": {
+        "bare": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.2378,
+          "mean_sum_abs_attribution": 518.715325,
+          "n_low_coverage_prompts": 33,
+          "frac_low_coverage": 0.66
+        },
+        "jb_roleplay": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.3822,
+          "mean_sum_abs_attribution": 1010.934125,
+          "n_low_coverage_prompts": 13,
+          "frac_low_coverage": 0.26
+        },
+        "ctrl_roleplay": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.4444,
+          "mean_sum_abs_attribution": 1294.61537,
+          "n_low_coverage_prompts": 3,
+          "frac_low_coverage": 0.06
+        },
+        "jb_fiction": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.52,
+          "mean_sum_abs_attribution": 1128.976265,
+          "n_low_coverage_prompts": 1,
+          "frac_low_coverage": 0.02
+        },
+        "ctrl_fiction": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.5089,
+          "mean_sum_abs_attribution": 1386.405032,
+          "n_low_coverage_prompts": 12,
+          "frac_low_coverage": 0.24
+        },
+        "jb_analytical": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9644,
+          "mean_sum_abs_attribution": 2357.307418,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_analytical": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.3666,
+          "mean_sum_abs_attribution": 765.965417,
+          "n_low_coverage_prompts": 18,
+          "frac_low_coverage": 0.36
+        },
+        "jb_completion": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.4422,
+          "mean_sum_abs_attribution": 1247.113999,
+          "n_low_coverage_prompts": 7,
+          "frac_low_coverage": 0.14
+        },
+        "ctrl_completion": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.4,
+          "mean_sum_abs_attribution": 939.110039,
+          "n_low_coverage_prompts": 11,
+          "frac_low_coverage": 0.22
+        },
+        "jb_cognitive_reframe": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.6222,
+          "mean_sum_abs_attribution": 1410.835244,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_cognitive_reframe": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.4422,
+          "mean_sum_abs_attribution": 1195.858645,
+          "n_low_coverage_prompts": 3,
+          "frac_low_coverage": 0.06
+        }
+      }
+    },
+    "jb_cognitive_reframe_specific_vs_ctrl": {
+      "all": {
+        "bare": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.2822,
+          "mean_sum_abs_attribution": 383.284556,
+          "n_low_coverage_prompts": 27,
+          "frac_low_coverage": 0.54
+        },
+        "jb_roleplay": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.3355,
+          "mean_sum_abs_attribution": 536.689581,
+          "n_low_coverage_prompts": 17,
+          "frac_low_coverage": 0.34
+        },
+        "ctrl_roleplay": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.3666,
+          "mean_sum_abs_attribution": 529.114151,
+          "n_low_coverage_prompts": 10,
+          "frac_low_coverage": 0.2
+        },
+        "jb_fiction": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.3933,
+          "mean_sum_abs_attribution": 576.297528,
+          "n_low_coverage_prompts": 2,
+          "frac_low_coverage": 0.04
+        },
+        "ctrl_fiction": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.4267,
+          "mean_sum_abs_attribution": 639.872571,
+          "n_low_coverage_prompts": 6,
+          "frac_low_coverage": 0.12
+        },
+        "jb_analytical": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.6867,
+          "mean_sum_abs_attribution": 949.857306,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_analytical": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.3822,
+          "mean_sum_abs_attribution": 509.943614,
+          "n_low_coverage_prompts": 6,
+          "frac_low_coverage": 0.12
+        },
+        "jb_completion": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.5756,
+          "mean_sum_abs_attribution": 822.785244,
+          "n_low_coverage_prompts": 1,
+          "frac_low_coverage": 0.02
+        },
+        "ctrl_completion": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.5356,
+          "mean_sum_abs_attribution": 724.022531,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "jb_cognitive_reframe": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.9022,
+          "mean_sum_abs_attribution": 1500.453805,
+          "n_low_coverage_prompts": 0,
+          "frac_low_coverage": 0.0
+        },
+        "ctrl_cognitive_reframe": {
+          "n_prompts": 50,
+          "mean_frac_in_top_k": 0.4022,
+          "mean_sum_abs_attribution": 516.930365,
+          "n_low_coverage_prompts": 2,
+          "frac_low_coverage": 0.04
+        }
+      }
+    }
+  }
+}
