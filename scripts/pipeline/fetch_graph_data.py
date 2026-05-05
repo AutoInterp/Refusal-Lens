@@ -36,7 +36,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config
-from utils_viz import VENDOR_FRONTEND, stage_frontend
+from utils_viz import VENDOR_FRONTEND, inject_feature_evidence, inject_feature_labels, stage_frontend
 
 DEFAULT_DATASET_REPO = "AutoInterp/refusal-lens-graphs"
 
@@ -179,6 +179,31 @@ def main():
         sc_dir.mkdir(exist_ok=True)
         shutil.copy2(sc_src, sc_dir / "subcircuits.json")
         print(f"  subcircuits.json: copied into 07_subcircuits/")
+
+    # Bake human-readable labels into every graph's CLT nodes so the
+    # frontend shows them in place of bare F#... ids. Source lives outside
+    # the run dir (shared across runs); silently no-ops if absent.
+    labels_dir = config.REPO_ROOT / "data" / "results" / "feature_labels"
+    label_stats = inject_feature_labels(graph_data_dst, labels_dir)
+    if label_stats["skipped"]:
+        print(f"  Feature labels: skipped (no {labels_dir.relative_to(config.REPO_ROOT)})")
+    else:
+        total = label_stats["labeled"] + label_stats["missed"]
+        pct = (100 * label_stats["labeled"] / total) if total else 0
+        print(f"  Feature labels: {label_stats['labeled']}/{total} CLT nodes "
+              f"labeled ({pct:.0f}%) across {label_stats['files']} graph(s)")
+
+    # Bake top logits + activation examples onto each CLT node so a hover
+    # tooltip can show ground-truth evidence (catches misleading labels).
+    # Source: aggregated 04_labels/feature_labels_cache.json across all runs.
+    evidence_stats = inject_feature_evidence(graph_data_dst, config.REPO_ROOT)
+    if evidence_stats["skipped"]:
+        print(f"  Feature evidence: skipped (no cache files found)")
+    else:
+        e_total = evidence_stats["enriched"] + evidence_stats["missed"]
+        e_pct = (100 * evidence_stats["enriched"] / e_total) if e_total else 0
+        print(f"  Feature evidence: {evidence_stats['enriched']}/{e_total} CLT nodes "
+              f"enriched ({e_pct:.0f}%) across {evidence_stats['files']} graph(s)")
 
     # Detect gzip: if we pulled .json.gz files, tell stage_frontend to inject
     # the gzip-fetch patch + USE_GZIP flag.
