@@ -259,7 +259,7 @@ If EMNLP deadline is earlier (e.g., mid-May), pivot to NeurIPS main (mid-July) a
 | 4.1 | Edge ablation (Stage 09a) | Mahmoud | Not started | Implement edge-ablation hook in circuit-tracer fork |
 | 4.2 | Transcoder error-node attribution | Mahmoud | Not started | Pull .pt graphs locally |
 | 4.3 | Attention-head attribution (Stage 09c) | Mahmoud | Not started | Read circuit-tracer attention-attribution path |
-| **4.3a** | **Per-class jailbreak-vector intervention (rigorous v1 § 5.6 follow-up)** | **Mahmoud** | **Not started** | **None — script is in place; iterate on `r_jb_per_class` list** |
+| **4.3a** | **Per-class jailbreak-vector intervention** | **Mahmoud** | **DONE 2026-05-04** — promoted to v1 § 5.7. Headline: empirical Exp A 93.3 % vs universal 52.8 %; fiction-matched Exp B 100 % flip on bare. | (script `scripts/analysis/jb_vector_intervention_per_class.py`) |
 | 4.4 | Steering vs zeroing (Stage 09d) | Mahmoud | Not started | Compute harmless-prompt mean activations per feature |
 | 4.5 | Manual circuit inspection (Stage 09e) | Mahmoud | Not started | Frontend manual ablation cart (≥70 % built — see `FRONTEND_ABLATION_PLAN.md`) |
 | 4.6 | Cross-model on Qwen3 | Ruqiya + Mahmoud | Blocked on Qwen3 pipeline rebase | Qwen3 Stage 06 + Stage 08 land |

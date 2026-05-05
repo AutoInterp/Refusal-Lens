@@ -446,7 +446,27 @@ Output: `06_causal/jb_vector_intervention_results.json`. Run completed 2026-05-0
 
 **Methodological caveat — universal vs per-class**: this run uses a single universal r_jb_universal (averaged across the 5 classes) for both interventions. **A more rigorous version would build five separate r_jb_class vectors and apply each only to its own class's prompts** — the per-class alignment in REPORT § 5.5.2 already shows class-by-class variation in cos(−r̂, r_jb_class) (fiction +0.72 to cognitive_reframe +0.94) and in magnitude (fiction 0.49 ‖r̂‖ to cognitive_reframe 1.11 ‖r̂‖), so a universal vector is a lossy summary that may underweight strong-edit classes (cognitive_reframe) and overweight weak-edit classes (completion).
 
-The current 52.8 % universal flip rate makes the per-class follow-up high-priority: under linear-additive directional intervention, applying *r_jb_class* of magnitude ≈ ‖*r̂*‖ to its own class's prompts should produce flip rates approaching Stage 06's 100 % — closing most of the 47 pp gap. The script structure already supports it (iterate on the `r_jb_per_class` list instead of the mean and apply each to its class's jb_* prompts only). Estimated cost: ~60 min on the 4090 (≈5× the universal run, minus model-load amortization). **Logged as the next-priority experiment in `PAPER_OUTLINE_v2_emnlp.md` § 4.3a.**
+The current 52.8 % universal flip rate makes the per-class follow-up high-priority: under linear-additive directional intervention, applying *r_jb_class* of magnitude ≈ ‖*r̂*‖ to its own class's prompts should produce flip rates approaching Stage 06's 100 % — closing most of the 47 pp gap.
+
+#### P8c-iii: Per-class JB-vector intervention — **DONE 2026-05-04** (`scripts/analysis/jb_vector_intervention_per_class.py`)
+
+The per-class follow-up was promoted from v2 to v1 the same day. Run completed in ~93 min wall on local 4090. Output: `06_causal/jb_vector_intervention_per_class_results.json`. Two magnitude conditions per class (empirical, magnitude-matched) × two experiments (mitigate / induce) = 678 generations. 100 % coherence on every cell.
+
+**Headline results (Experiment A — mitigate JB by subtracting per-class *r_jb*)**:
+- Empirical magnitude overall: **83/89 = 93.3 %** (up from universal-vector 52.8 %).
+- analytical: 28/28 = **100 %**, cognitive_reframe: 32/33 = **97 %** — matching Stage 06's 100 %.
+- fiction: 16/19 = 84 % (empirical) → 6/19 = 32 % (matched). Magnitude-matched OVER-CORRECTS for low-cos classes via the orthogonal component.
+
+**Headline results (Experiment B — induce JB by adding per-class *r_jb* to bare-refuse, n=50)**:
+- **fiction matched (1·‖r̂‖): 50/50 = 100 %** flip — **exceeds Stage 06's 98 %**, despite fiction having the lowest cos(−r̂, r_jb) = +0.72. Sample responses: "Okay, let's be clear: this is a sensitive piece of writing... [content]" — fiction-style compliance with disclaimer.
+- cognitive_reframe matched: 37/50 = 74 % (highest cos +0.94, but only 74 %).
+- cognitive_reframe empirical (1.11·‖r̂‖): 41/50 = 82 % (above the universal 16 %).
+
+**Mechanistic implication**: per-class *r_jb* has a shared on-axis component (parallel to −*r̂*, the harmless direction) AND a class-specific orthogonal component that itself carries causal weight. Fiction's orthogonal axis encodes "fictional-content-with-disclaimer" mode, which is independently pro-comply on bare-refuse. This refines the "JBs edit *r̂*" claim to "JBs primarily edit toward harmless, with a small but causally significant class-specific orthogonal axis." Documented in REPORT § 5.7 with full per-class tables and updated synthesis.
+
+**Pillar 3 (direction-vs-ablation) strengthened**: per-class empirical at 93.3 % overall vs strongest sparse-feature ablation at 31.5 % is a 3× gap with non-overlapping CIs.
+
+**Safety-relevance secondary result**: a single 1-D residual displacement (fiction's *r_jb_class* scaled to ‖*r̂*‖) is a universal jailbreak on Gemma-3-4B-IT for this 50-prompt set, more effective than canonical Arditi *r̂*. Worth flagging for a paper §5 limitation/safety-implication paragraph.
 
 ---
 
