@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -24,7 +25,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config
 
 DEFAULT_DATASET_REPO = "AutoInterp/refusal-lens-graphs"
-PT_SUBDIR = "raw_graphs"
+# Historical location used by `push_raw_graphs.py`. New layout used by
+# `push_run.py` is `02_attribution/graphs/` — selectable via --subdir.
+DEFAULT_PT_SUBDIR = "raw_graphs"
+GRAPH_MODES = ("multi", "single")
 
 
 def parse_args():
@@ -35,21 +39,39 @@ def parse_args():
                    help="Comma-separated prompt indices (default: all)")
     p.add_argument("--classes", type=str, default=None,
                    help="Comma-separated condition names (default: all)")
+    p.add_argument("--subdir", type=str, default=DEFAULT_PT_SUBDIR,
+                   help=f"HF subdir under runs/<run>/ containing .pt files "
+                        f"(default: {DEFAULT_PT_SUBDIR!r}; new runs pushed via "
+                        f"push_run.py use '02_attribution/graphs').")
+    p.add_argument("--mode", choices=[*GRAPH_MODES, "both"], default="both",
+                   help="Filter by graph mode suffix for new-schema slugs "
+                        "({idx}_{cond}_{mode}.pt). 'single' halves the download "
+                        "when both multi + single are on HF. Default: both.")
     p.add_argument("--out-base", type=Path, default=None)
+    p.add_argument("--copy", action="store_true",
+                   help="Copy .pt files into dst (default: symlink, saves ~80 GB on disk-tight pods).")
     return p.parse_args()
 
 
-def patterns_for(run: str, prompts: str | None, classes: str | None) -> list[str]:
-    """Build HF allow_patterns list from filters."""
-    base = f"runs/{run}/{PT_SUBDIR}/"
+def patterns_for(run: str, subdir: str, prompts: str | None,
+                 classes: str | None, mode: str) -> list[str]:
+    """Build HF allow_patterns list from filters.
+
+    When mode is 'multi' or 'single', appends the mode suffix to filenames so
+    the glob only matches new-schema slugs of that mode. Legacy slugs
+    ({idx}_{class}.pt with no mode suffix) still match when mode='both'.
+    """
+    base = f"runs/{run}/{subdir}/"
+    mode_suffix = f"_{mode}" if mode in GRAPH_MODES else ""
     if not prompts and not classes:
-        return [base + "*.pt"]
+        # With mode filter: 'runs/X/subdir/*_single.pt'; without: '*.pt'
+        return [f"{base}*{mode_suffix}.pt"]
     prompt_ids = [f"{int(p):03d}" for p in prompts.split(",")] if prompts else ["*"]
     class_names = classes.split(",") if classes else ["*"]
     patterns = []
     for pid in prompt_ids:
         for cls in class_names:
-            patterns.append(f"{base}{pid}_{cls}.pt")
+            patterns.append(f"{base}{pid}_{cls}{mode_suffix}.pt")
     return patterns
 
 
@@ -66,9 +88,11 @@ def main():
     dst = run_dir / "02_attribution" / "graphs"
     dst.mkdir(parents=True, exist_ok=True)
 
-    patterns = patterns_for(args.run, args.prompts, args.classes)
+    patterns = patterns_for(args.run, args.subdir, args.prompts, args.classes, args.mode)
 
     print(f"Downloading raw .pt graphs for {args.run} from {args.dataset_repo}...")
+    print(f"  Subdir:   runs/{args.run}/{args.subdir}/")
+    print(f"  Mode:     {args.mode}")
     print(f"  Patterns: {patterns}")
     try:
         snapshot = snapshot_download(
@@ -80,17 +104,28 @@ def main():
         print(f"ERROR downloading: {e}")
         sys.exit(1)
 
-    src = Path(snapshot) / "runs" / args.run / PT_SUBDIR
+    # The snapshot cache preserves the repo's internal dir structure, so the
+    # .pt files land at <snapshot>/runs/<run>/<subdir>/ regardless of what
+    # --subdir we chose.
+    src = Path(snapshot) / "runs" / args.run / args.subdir
     if not src.exists():
-        print(f"ERROR: no raw graphs found at runs/{args.run}/{PT_SUBDIR}/ on {args.dataset_repo}")
+        print(f"ERROR: no .pt files found at runs/{args.run}/{args.subdir}/ on {args.dataset_repo}.")
+        print(f"  Hint: try --subdir 'raw_graphs' or --subdir '02_attribution/graphs'")
         sys.exit(1)
 
     n, total_bytes = 0, 0
+    mode_word = "Copied" if args.copy else "Linked"
     for pt in sorted(src.glob("*.pt")):
-        shutil.copy2(pt, dst / pt.name)
+        target = dst / pt.name
+        if target.exists() or target.is_symlink():
+            target.unlink()
+        if args.copy:
+            shutil.copy2(pt, target)
+        else:
+            os.symlink(pt.resolve(), target)
         n += 1
         total_bytes += pt.stat().st_size
-    print(f"\nDONE! Copied {n} .pt files ({total_bytes/1e9:.2f} GB) to {dst}")
+    print(f"\nDONE! {mode_word} {n} .pt files ({total_bytes/1e9:.2f} GB) to {dst}")
 
 
 if __name__ == "__main__":

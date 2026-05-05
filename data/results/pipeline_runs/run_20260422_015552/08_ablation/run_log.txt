@@ -1,0 +1,107 @@
+============================================================
+STAGE 08a: Subcircuit ablation via feature_intervention_generate
+============================================================
+  universal_refusal_core                        → 116 features
+  ctrl_shared_refusal                           → 50 features
+  jb_fiction_specific_vs_ctrl                   → 52 features
+  jb_analytical_specific_vs_ctrl                → 69 features
+  jb_cognitive_reframe_specific_vs_ctrl         → 88 features
+  positions_modes: ['all', 'anchors']
+  Loaded controlled dataset: 50 prompts × 11 conditions = 550 total runs
+  prompts: [0, 50) → 50 rows
+  conditions: 11 (['bare', 'jb_roleplay', 'ctrl_roleplay', 'jb_fiction', 'ctrl_fiction', 'jb_analytical', 'ctrl_analytical', 'jb_completion', 'ctrl_completion', 'jb_cognitive_reframe', 'ctrl_cognitive_reframe'])
+
+  Loading ReplacementModel (this takes a minute)...
+Fetching 34 files:   0%|          | 0/34 [00:00<?, ?it/s]Fetching 34 files:   3%|▎         | 1/34 [00:06<03:22,  6.15s/it]Fetching 34 files:  15%|█▍        | 5/34 [00:06<00:27,  1.04it/s]Fetching 34 files:  21%|██        | 7/34 [00:06<00:17,  1.58it/s]Fetching 34 files:  26%|██▋       | 9/34 [00:08<00:18,  1.33it/s]Fetching 34 files:  29%|██▉       | 10/34 [00:11<00:29,  1.24s/it]Fetching 34 files:  50%|█████     | 17/34 [00:13<00:10,  1.61it/s]Fetching 34 files:  53%|█████▎    | 18/34 [00:16<00:14,  1.13it/s]Fetching 34 files:  56%|█████▌    | 19/34 [00:16<00:11,  1.28it/s]Fetching 34 files:  59%|█████▉    | 20/34 [00:17<00:09,  1.46it/s]Fetching 34 files:  62%|██████▏   | 21/34 [00:17<00:07,  1.70it/s]Fetching 34 files:  68%|██████▊   | 23/34 [00:17<00:04,  2.26it/s]Fetching 34 files:  74%|███████▎  | 25/34 [00:19<00:05,  1.78it/s]Fetching 34 files:  76%|███████▋  | 26/34 [00:20<00:05,  1.37it/s]Fetching 34 files:  82%|████████▏ | 28/34 [00:22<00:04,  1.41it/s]Fetching 34 files:  85%|████████▌ | 29/34 [00:22<00:03,  1.45it/s]Fetching 34 files:  97%|█████████▋| 33/34 [00:24<00:00,  1.71it/s]Fetching 34 files: 100%|██████████| 34/34 [00:24<00:00,  1.38it/s]
+Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]Fetching 2 files:  50%|█████     | 1/2 [00:24<00:24, 24.50s/it]Fetching 2 files: 100%|██████████| 2/2 [00:24<00:00, 12.25s/it]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 1/2 [00:00<00:00,  1.08it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:01<00:00,  1.30it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:01<00:00,  1.26it/s]
+  Model ready.
+
+  [resume] skipping 5 done; 45 remain
+
+[PHASE 2] Ablation generation per prompt...
+The following generation flags are not valid and may be ignored: ['top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+You have set `compile_config`, but we are unable to meet the criteria for compilation. Compilation will be skipped.
+/workspace/venv/lib/python3.11/site-packages/circuit_tracer/transcoder/single_layer_transcoder.py:122: UserWarning: Attempting to run cuBLAS, but there was no current CUDA context! Attempting to set the primary context... (Triggered internally at /pytorch/aten/src/ATen/cuda/CublasHandlePool.cpp:335.)
+  pre_acts = F.linear(input_acts.to(W_enc.dtype), W_enc, self.b_enc)
+  [1/45] id=  6  (1141s)  ablated_gens=110
+  [2/45] id=  7  (1111s)  ablated_gens=110
+  [3/45] id=  8  (1115s)  ablated_gens=110
+  [4/45] id=  9  (1141s)  ablated_gens=110
+  [5/45] id= 10  (1148s)  ablated_gens=110
+  [6/45] id= 11  (1140s)  ablated_gens=110
+  [7/45] id= 12  (1130s)  ablated_gens=110
+  [8/45] id= 13  (1133s)  ablated_gens=110
+  [9/45] id= 14  (1130s)  ablated_gens=110
+  [10/45] id= 15  (1118s)  ablated_gens=110
+  [11/45] id= 16  (1157s)  ablated_gens=110
+  [12/45] id= 17  (1144s)  ablated_gens=110
+  [13/45] id= 18  (1112s)  ablated_gens=110
+  [14/45] id= 19  (1124s)  ablated_gens=110
+  [15/45] id= 20  (1112s)  ablated_gens=110
+  [16/45] id= 21  (1133s)  ablated_gens=110
+  [17/45] id= 22  (1119s)  ablated_gens=110
+  [18/45] id= 23  (1137s)  ablated_gens=110
+  [19/45] id= 24  (1144s)  ablated_gens=110
+  [20/45] id= 25  (1159s)  ablated_gens=110
+  [21/45] id= 26  (1142s)  ablated_gens=110
+  [22/45] id= 27  (1149s)  ablated_gens=110
+  [23/45] id= 28  (1159s)  ablated_gens=110
+  [24/45] id= 29  (1160s)  ablated_gens=110
+  [25/45] id= 30  (1115s)  ablated_gens=110
+  [26/45] id= 31  (1135s)  ablated_gens=110
+  [27/45] id= 32  (1143s)  ablated_gens=110
+  [28/45] id= 33  (1141s)  ablated_gens=110
+  [29/45] id= 34  (1129s)  ablated_gens=110
+  [30/45] id= 35  (1139s)  ablated_gens=110
+  [31/45] id= 36  (1147s)  ablated_gens=110
+  [32/45] id= 37  (1146s)  ablated_gens=110
+  [33/45] id= 38  (1160s)  ablated_gens=110
+  [34/45] id= 39  (1133s)  ablated_gens=110
+  [35/45] id= 40  (1171s)  ablated_gens=110
+  [36/45] id= 41  (1170s)  ablated_gens=110
+  [37/45] id= 42  (1181s)  ablated_gens=110
+  [38/45] id= 43  (1179s)  ablated_gens=110
+  [39/45] id= 44  (1170s)  ablated_gens=110
+  [40/45] id= 45  (1190s)  ablated_gens=110
+  [41/45] id= 46  (1195s)  ablated_gens=110
+  [42/45] id= 47  (1151s)  ablated_gens=110
+  [43/45] id= 48  (1155s)  ablated_gens=110
+  [44/45] id= 49  (1156s)  ablated_gens=110
+  [45/45] id= 50  (1178s)  ablated_gens=110
+
+[PHASE 4] Activation audit from Stage 02 attribution data...
+  Saved activation_audit.json — covers 5 ablation sets
+
+  Saved ablation_results.json + ablation_summary.json
+
+  Generating figures + report...
+    dissociation_matrix_all.png
+    dissociation_matrix_anchors.png
+    positions_comparison.png
+    ABLATION_SUMMARY.md
+
+============================================================
+HEADLINE RESULTS
+============================================================
+  universal_refusal_core                        [all    ] bare_break= 21.7%  jb_recovery_avg= 30.6%
+  universal_refusal_core                        [anchors] bare_break= 21.4%  jb_recovery_avg= 38.3%
+  ctrl_shared_refusal                           [all    ] bare_break=  2.2%  jb_recovery_avg= 33.6%
+  ctrl_shared_refusal                           [anchors] bare_break=  2.4%  jb_recovery_avg= 21.9%
+  jb_fiction_specific_vs_ctrl                   [all    ] bare_break=  4.3%  jb_recovery_avg=  9.2%
+  jb_fiction_specific_vs_ctrl                   [anchors] bare_break=  2.4%  jb_recovery_avg= 13.9%
+  jb_analytical_specific_vs_ctrl                [all    ] bare_break= 16.7%  jb_recovery_avg= 24.4%
+  jb_analytical_specific_vs_ctrl                [anchors] bare_break=  7.1%  jb_recovery_avg= 13.2%
+  jb_cognitive_reframe_specific_vs_ctrl         [all    ] bare_break= 11.9%  jb_recovery_avg= 23.2%
+  jb_cognitive_reframe_specific_vs_ctrl         [anchors] bare_break=  2.4%  jb_recovery_avg=  9.6%
+
+  Class-specific dissociation (positive = class-selective):
+    jb_fiction_specific_vs_ctrl                   [all    ] target=fiction              Δ=-11.5pp
+    jb_fiction_specific_vs_ctrl                   [anchors] target=fiction              Δ=-17.4pp
+    jb_analytical_specific_vs_ctrl                [all    ] target=analytical           Δ=-7.4pp
+    jb_analytical_specific_vs_ctrl                [anchors] target=analytical           Δ=-11.9pp
+    jb_cognitive_reframe_specific_vs_ctrl         [all    ] target=cognitive_reframe    Δ=-20.4pp
+    jb_cognitive_reframe_specific_vs_ctrl         [anchors] target=cognitive_reframe    Δ=-12.0pp
+
+  Elapsed: 859.2 min
+DONE!

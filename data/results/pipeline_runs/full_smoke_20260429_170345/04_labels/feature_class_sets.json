@@ -1,0 +1,3934 @@
+{
+  "n_classes": 10,
+  "classes": [
+    "ctrl_analytical",
+    "ctrl_cognitive_reframe",
+    "ctrl_completion",
+    "ctrl_fiction",
+    "ctrl_roleplay",
+    "jb_analytical",
+    "jb_cognitive_reframe",
+    "jb_completion",
+    "jb_fiction",
+    "jb_roleplay"
+  ],
+  "by_bucket": {
+    "sign_flipped": {
+      "total": 154,
+      "features": {
+        "L13:F970": [
+          "ctrl_fiction",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L13:F2106": [
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L14:F178": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "jb_analytical",
+          "jb_cognitive_reframe"
+        ],
+        "L14:F64": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L12:F491": [
+          "ctrl_analytical",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L14:F984": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe"
+        ],
+        "L2:F542": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_fiction"
+        ],
+        "L12:F8023": [
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L0:F3997": [
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L12:F39": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L11:F507": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_roleplay",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L10:F439": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L8:F199": [
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L9:F1060": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L9:F9095": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "jb_completion"
+        ],
+        "L8:F221": [
+          "ctrl_completion",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L11:F828": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L11:F41": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L0:F77": [
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_roleplay"
+        ],
+        "L10:F234": [
+          "jb_analytical"
+        ],
+        "L10:F13320": [
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe"
+        ],
+        "L11:F5067": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L13:F14283": [
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L9:F15783": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_fiction"
+        ],
+        "L11:F15969": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L4:F189": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L6:F10": [
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_roleplay"
+        ],
+        "L12:F257": [
+          "jb_cognitive_reframe",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L13:F1163": [
+          "jb_analytical"
+        ],
+        "L10:F7930": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L9:F137": [
+          "jb_cognitive_reframe",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L14:F487": [
+          "ctrl_fiction",
+          "jb_roleplay"
+        ],
+        "L7:F383": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "jb_analytical",
+          "jb_roleplay"
+        ],
+        "L12:F66": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L0:F11240": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion"
+        ],
+        "L6:F3300": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "ctrl_roleplay"
+        ],
+        "L0:F182": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L13:F407": [
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L6:F553": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "jb_completion"
+        ],
+        "L11:F155": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L15:F187": [
+          "jb_analytical",
+          "jb_roleplay"
+        ],
+        "L11:F3610": [
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_fiction"
+        ],
+        "L12:F688": [
+          "jb_analytical",
+          "jb_completion"
+        ],
+        "L0:F3486": [
+          "ctrl_fiction",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L15:F16371": [
+          "jb_roleplay"
+        ],
+        "L11:F150": [
+          "jb_roleplay"
+        ],
+        "L10:F2172": [
+          "jb_fiction"
+        ],
+        "L14:F1779": [
+          "ctrl_cognitive_reframe",
+          "jb_cognitive_reframe",
+          "jb_fiction"
+        ],
+        "L0:F363": [
+          "jb_analytical",
+          "jb_cognitive_reframe"
+        ],
+        "L13:F653": [
+          "ctrl_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L8:F179": [
+          "jb_roleplay"
+        ],
+        "L13:F1001": [
+          "ctrl_roleplay",
+          "jb_cognitive_reframe"
+        ],
+        "L6:F5150": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "ctrl_roleplay"
+        ],
+        "L3:F525": [
+          "jb_fiction"
+        ],
+        "L13:F6636": [
+          "jb_cognitive_reframe"
+        ],
+        "L13:F2673": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L13:F3329": [
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L11:F14872": [
+          "ctrl_cognitive_reframe",
+          "ctrl_roleplay"
+        ],
+        "L12:F2560": [
+          "jb_fiction"
+        ],
+        "L9:F422": [
+          "ctrl_completion",
+          "jb_fiction"
+        ],
+        "L9:F2203": [
+          "jb_analytical"
+        ],
+        "L11:F6990": [
+          "ctrl_analytical",
+          "ctrl_completion"
+        ],
+        "L14:F7968": [
+          "jb_completion"
+        ],
+        "L14:F187": [
+          "jb_completion"
+        ],
+        "L14:F6951": [
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L11:F3352": [
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L11:F1085": [
+          "ctrl_cognitive_reframe",
+          "jb_cognitive_reframe"
+        ],
+        "L10:F428": [
+          "jb_cognitive_reframe"
+        ],
+        "L14:F277": [
+          "jb_cognitive_reframe",
+          "jb_fiction"
+        ],
+        "L14:F8186": [
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L13:F529": [
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L10:F270": [
+          "ctrl_fiction",
+          "jb_completion"
+        ],
+        "L9:F414": [
+          "ctrl_completion",
+          "ctrl_fiction"
+        ],
+        "L10:F252": [
+          "ctrl_analytical",
+          "ctrl_completion"
+        ],
+        "L9:F15682": [
+          "ctrl_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L15:F2277": [
+          "jb_completion"
+        ],
+        "L12:F4314": [
+          "ctrl_cognitive_reframe",
+          "ctrl_completion"
+        ],
+        "L14:F12817": [
+          "ctrl_cognitive_reframe",
+          "jb_cognitive_reframe"
+        ],
+        "L11:F10422": [
+          "jb_cognitive_reframe"
+        ],
+        "L0:F59": [
+          "ctrl_roleplay",
+          "jb_roleplay"
+        ],
+        "L14:F389": [
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L15:F1537": [
+          "ctrl_completion",
+          "ctrl_fiction"
+        ],
+        "L13:F6712": [
+          "jb_analytical"
+        ],
+        "L14:F3115": [
+          "jb_analytical"
+        ],
+        "L14:F2421": [
+          "ctrl_analytical",
+          "ctrl_completion"
+        ],
+        "L14:F7655": [
+          "jb_roleplay"
+        ],
+        "L8:F13589": [
+          "jb_roleplay"
+        ],
+        "L13:F844": [
+          "jb_roleplay"
+        ],
+        "L10:F649": [
+          "jb_roleplay"
+        ],
+        "L11:F1286": [
+          "jb_roleplay"
+        ],
+        "L12:F575": [
+          "jb_roleplay"
+        ],
+        "L11:F46": [
+          "ctrl_roleplay"
+        ],
+        "L10:F1806": [
+          "ctrl_roleplay"
+        ],
+        "L13:F3523": [
+          "ctrl_roleplay"
+        ],
+        "L14:F497": [
+          "jb_fiction"
+        ],
+        "L15:F372": [
+          "jb_fiction"
+        ],
+        "L13:F315": [
+          "jb_fiction"
+        ],
+        "L12:F381": [
+          "jb_fiction"
+        ],
+        "L13:F5261": [
+          "jb_fiction"
+        ],
+        "L3:F39": [
+          "jb_fiction"
+        ],
+        "L11:F4977": [
+          "ctrl_fiction"
+        ],
+        "L9:F143": [
+          "jb_analytical"
+        ],
+        "L15:F1739": [
+          "jb_analytical"
+        ],
+        "L14:F1305": [
+          "jb_analytical"
+        ],
+        "L12:F11067": [
+          "ctrl_analytical"
+        ],
+        "L14:F602": [
+          "jb_completion"
+        ],
+        "L13:F511": [
+          "ctrl_completion"
+        ],
+        "L13:F841": [
+          "jb_cognitive_reframe"
+        ],
+        "L0:F14516": [
+          "jb_cognitive_reframe"
+        ],
+        "L14:F1093": [
+          "jb_cognitive_reframe"
+        ],
+        "L7:F349": [
+          "jb_roleplay"
+        ],
+        "L7:F1775": [
+          "jb_roleplay"
+        ],
+        "L8:F247": [
+          "jb_roleplay"
+        ],
+        "L14:F1440": [
+          "jb_roleplay"
+        ],
+        "L11:F15620": [
+          "jb_roleplay"
+        ],
+        "L13:F517": [
+          "jb_roleplay"
+        ],
+        "L6:F248": [
+          "ctrl_roleplay"
+        ],
+        "L11:F7318": [
+          "jb_fiction"
+        ],
+        "L6:F1418": [
+          "jb_fiction"
+        ],
+        "L14:F524": [
+          "jb_fiction"
+        ],
+        "L12:F4": [
+          "jb_fiction"
+        ],
+        "L13:F13727": [
+          "jb_fiction"
+        ],
+        "L6:F304": [
+          "ctrl_fiction"
+        ],
+        "L6:F4137": [
+          "ctrl_analytical"
+        ],
+        "L14:F4933": [
+          "jb_completion"
+        ],
+        "L15:F369": [
+          "jb_completion"
+        ],
+        "L11:F101": [
+          "jb_completion"
+        ],
+        "L6:F10338": [
+          "jb_cognitive_reframe"
+        ],
+        "L14:F171": [
+          "jb_cognitive_reframe"
+        ],
+        "L14:F541": [
+          "ctrl_cognitive_reframe"
+        ],
+        "L11:F112": [
+          "jb_roleplay"
+        ],
+        "L13:F599": [
+          "jb_roleplay"
+        ],
+        "L14:F2062": [
+          "jb_roleplay"
+        ],
+        "L9:F12819": [
+          "jb_roleplay"
+        ],
+        "L10:F131": [
+          "jb_roleplay"
+        ],
+        "L10:F637": [
+          "jb_roleplay"
+        ],
+        "L12:F250": [
+          "ctrl_roleplay"
+        ],
+        "L14:F406": [
+          "jb_fiction"
+        ],
+        "L12:F12602": [
+          "jb_fiction"
+        ],
+        "L8:F220": [
+          "ctrl_fiction"
+        ],
+        "L9:F970": [
+          "ctrl_fiction"
+        ],
+        "L11:F399": [
+          "jb_analytical"
+        ],
+        "L11:F9587": [
+          "jb_analytical"
+        ],
+        "L14:F107": [
+          "jb_analytical"
+        ],
+        "L12:F851": [
+          "ctrl_analytical"
+        ],
+        "L13:F500": [
+          "jb_completion"
+        ],
+        "L14:F12272": [
+          "jb_completion"
+        ],
+        "L11:F1757": [
+          "jb_completion"
+        ],
+        "L13:F2820": [
+          "jb_completion"
+        ],
+        "L12:F490": [
+          "jb_cognitive_reframe"
+        ],
+        "L13:F608": [
+          "jb_cognitive_reframe"
+        ],
+        "L15:F38": [
+          "jb_cognitive_reframe"
+        ],
+        "L14:F8737": [
+          "jb_cognitive_reframe"
+        ],
+        "L11:F11067": [
+          "ctrl_cognitive_reframe"
+        ]
+      }
+    },
+    "dampened": {
+      "total": 108,
+      "features": {
+        "L10:F234": [
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L2:F343": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L9:F11573": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L7:F361": [
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L9:F1080": [
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_fiction"
+        ],
+        "L10:F439": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L15:F383": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L3:F4750": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L11:F315": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L3:F29": [
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L13:F427": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L14:F178": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_roleplay",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L14:F566": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L0:F6994": [
+          "jb_analytical",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L11:F9217": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L9:F341": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L15:F369": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L13:F132": [
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L13:F419": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "jb_analytical",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L8:F2746": [
+          "ctrl_fiction",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L3:F15048": [
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L11:F8241": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L13:F500": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L6:F9460": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "jb_cognitive_reframe"
+        ],
+        "L8:F452": [
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L0:F338": [
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L11:F6739": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L10:F422": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L14:F497": [
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical"
+        ],
+        "L8:F360": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "jb_analytical",
+          "jb_completion"
+        ],
+        "L14:F619": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L14:F189": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_fiction"
+        ],
+        "L12:F490": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_roleplay",
+          "jb_analytical"
+        ],
+        "L3:F525": [
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_fiction"
+        ],
+        "L15:F413": [
+          "jb_analytical"
+        ],
+        "L10:F259": [
+          "ctrl_analytical",
+          "jb_analytical",
+          "jb_cognitive_reframe"
+        ],
+        "L1:F665": [
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_roleplay"
+        ],
+        "L9:F1060": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_roleplay"
+        ],
+        "L15:F110": [
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L15:F4114": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "ctrl_roleplay",
+          "jb_roleplay"
+        ],
+        "L8:F221": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "jb_roleplay"
+        ],
+        "L15:F427": [
+          "ctrl_analytical",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_completion"
+        ],
+        "L9:F349": [
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L11:F46": [
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L8:F1148": [
+          "jb_analytical",
+          "jb_fiction"
+        ],
+        "L9:F500": [
+          "jb_cognitive_reframe",
+          "jb_fiction"
+        ],
+        "L12:F688": [
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L14:F524": [
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L9:F143": [
+          "ctrl_analytical",
+          "jb_roleplay"
+        ],
+        "L3:F2450": [
+          "jb_roleplay"
+        ],
+        "L12:F257": [
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L6:F325": [
+          "jb_roleplay"
+        ],
+        "L11:F56": [
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L2:F658": [
+          "jb_completion"
+        ],
+        "L10:F111": [
+          "jb_completion"
+        ],
+        "L2:F148": [
+          "jb_cognitive_reframe"
+        ],
+        "L5:F19": [
+          "jb_roleplay"
+        ],
+        "L0:F7361": [
+          "ctrl_fiction",
+          "jb_roleplay"
+        ],
+        "L3:F4825": [
+          "ctrl_roleplay",
+          "jb_analytical"
+        ],
+        "L12:F318": [
+          "jb_analytical",
+          "jb_completion"
+        ],
+        "L10:F13320": [
+          "ctrl_analytical",
+          "jb_analytical"
+        ],
+        "L3:F2906": [
+          "ctrl_completion",
+          "jb_cognitive_reframe"
+        ],
+        "L7:F437": [
+          "ctrl_fiction",
+          "jb_roleplay"
+        ],
+        "L14:F277": [
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L9:F256": [
+          "ctrl_roleplay",
+          "jb_analytical"
+        ],
+        "L0:F10600": [
+          "jb_analytical",
+          "jb_cognitive_reframe"
+        ],
+        "L3:F500": [
+          "jb_roleplay"
+        ],
+        "L7:F220": [
+          "jb_roleplay"
+        ],
+        "L14:F4933": [
+          "jb_fiction"
+        ],
+        "L12:F2839": [
+          "jb_analytical"
+        ],
+        "L9:F574": [
+          "jb_analytical"
+        ],
+        "L12:F8023": [
+          "jb_completion"
+        ],
+        "L0:F492": [
+          "jb_completion"
+        ],
+        "L3:F5646": [
+          "jb_completion"
+        ],
+        "L0:F37": [
+          "jb_completion"
+        ],
+        "L14:F916": [
+          "ctrl_completion"
+        ],
+        "L8:F503": [
+          "jb_cognitive_reframe"
+        ],
+        "L8:F125": [
+          "jb_cognitive_reframe"
+        ],
+        "L13:F529": [
+          "jb_roleplay"
+        ],
+        "L8:F187": [
+          "jb_roleplay"
+        ],
+        "L8:F287": [
+          "jb_roleplay"
+        ],
+        "L0:F9760": [
+          "ctrl_fiction"
+        ],
+        "L14:F684": [
+          "jb_analytical"
+        ],
+        "L14:F406": [
+          "jb_analytical"
+        ],
+        "L15:F7232": [
+          "jb_analytical"
+        ],
+        "L13:F383": [
+          "jb_analytical"
+        ],
+        "L13:F6605": [
+          "jb_completion"
+        ],
+        "L14:F765": [
+          "jb_cognitive_reframe"
+        ],
+        "L14:F464": [
+          "jb_cognitive_reframe"
+        ],
+        "L3:F494": [
+          "jb_roleplay"
+        ],
+        "L13:F79": [
+          "jb_roleplay"
+        ],
+        "L8:F247": [
+          "jb_roleplay"
+        ],
+        "L12:F572": [
+          "jb_fiction"
+        ],
+        "L2:F322": [
+          "jb_fiction"
+        ],
+        "L11:F150": [
+          "jb_fiction"
+        ],
+        "L0:F454": [
+          "ctrl_fiction"
+        ],
+        "L1:F16382": [
+          "jb_analytical"
+        ],
+        "L3:F1030": [
+          "jb_analytical"
+        ],
+        "L3:F5467": [
+          "jb_analytical"
+        ],
+        "L15:F1440": [
+          "ctrl_analytical"
+        ],
+        "L13:F14656": [
+          "jb_completion"
+        ],
+        "L11:F9587": [
+          "jb_completion"
+        ],
+        "L13:F315": [
+          "ctrl_completion"
+        ],
+        "L13:F406": [
+          "ctrl_completion"
+        ],
+        "L12:F79": [
+          "jb_cognitive_reframe"
+        ],
+        "L14:F1208": [
+          "jb_cognitive_reframe"
+        ],
+        "L12:F66": [
+          "jb_cognitive_reframe"
+        ],
+        "L15:F1541": [
+          "jb_cognitive_reframe"
+        ]
+      }
+    },
+    "amplified_anti": {
+      "total": 94,
+      "features": {
+        "L13:F51": [
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L14:F187": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L13:F140": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L13:F471": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L14:F541": [
+          "ctrl_completion",
+          "ctrl_fiction",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L15:F1341": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L0:F460": [
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L14:F426": [
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L14:F42": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L15:F476": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_completion"
+        ],
+        "L10:F7901": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L0:F369": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L14:F480": [
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L15:F24": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L14:F3327": [
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_analytical",
+          "jb_fiction"
+        ],
+        "L13:F6712": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L8:F9866": [
+          "jb_analytical",
+          "jb_completion"
+        ],
+        "L12:F2560": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "ctrl_roleplay",
+          "jb_completion",
+          "jb_roleplay"
+        ],
+        "L14:F1402": [
+          "ctrl_cognitive_reframe",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L14:F738": [
+          "ctrl_completion",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe",
+          "jb_completion",
+          "jb_fiction"
+        ],
+        "L11:F762": [
+          "jb_completion",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L15:F10909": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion",
+          "jb_analytical"
+        ],
+        "L14:F167": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L12:F10313": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "jb_cognitive_reframe"
+        ],
+        "L14:F3115": [
+          "ctrl_fiction",
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L12:F1017": [
+          "jb_analytical"
+        ],
+        "L10:F9866": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L0:F45": [
+          "jb_roleplay"
+        ],
+        "L2:F1247": [
+          "ctrl_roleplay",
+          "jb_roleplay"
+        ],
+        "L12:F586": [
+          "ctrl_cognitive_reframe",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe"
+        ],
+        "L11:F99": [
+          "jb_cognitive_reframe",
+          "jb_fiction"
+        ],
+        "L13:F43": [
+          "jb_analytical",
+          "jb_cognitive_reframe",
+          "jb_completion"
+        ],
+        "L14:F496": [
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "ctrl_roleplay",
+          "jb_cognitive_reframe"
+        ],
+        "L11:F9817": [
+          "ctrl_cognitive_reframe",
+          "ctrl_fiction",
+          "jb_roleplay"
+        ],
+        "L7:F562": [
+          "jb_fiction"
+        ],
+        "L6:F587": [
+          "jb_fiction"
+        ],
+        "L8:F4586": [
+          "jb_fiction"
+        ],
+        "L3:F11868": [
+          "ctrl_completion",
+          "jb_analytical"
+        ],
+        "L3:F13491": [
+          "jb_completion"
+        ],
+        "L10:F335": [
+          "ctrl_analytical",
+          "ctrl_completion"
+        ],
+        "L15:F429": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe",
+          "ctrl_completion"
+        ],
+        "L12:F292": [
+          "jb_fiction"
+        ],
+        "L0:F66": [
+          "ctrl_analytical",
+          "ctrl_completion",
+          "ctrl_fiction"
+        ],
+        "L4:F5196": [
+          "jb_roleplay"
+        ],
+        "L11:F4977": [
+          "jb_roleplay"
+        ],
+        "L14:F1779": [
+          "jb_roleplay"
+        ],
+        "L14:F11061": [
+          "jb_fiction"
+        ],
+        "L13:F407": [
+          "jb_completion"
+        ],
+        "L12:F1085": [
+          "jb_completion"
+        ],
+        "L14:F598": [
+          "jb_cognitive_reframe"
+        ],
+        "L11:F295": [
+          "jb_roleplay"
+        ],
+        "L11:F399": [
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L13:F2546": [
+          "jb_fiction",
+          "jb_roleplay"
+        ],
+        "L13:F608": [
+          "ctrl_fiction",
+          "jb_fiction"
+        ],
+        "L10:F100": [
+          "ctrl_analytical",
+          "ctrl_fiction"
+        ],
+        "L13:F1254": [
+          "ctrl_analytical",
+          "ctrl_cognitive_reframe"
+        ],
+        "L9:F11835": [
+          "jb_completion"
+        ],
+        "L10:F219": [
+          "jb_completion"
+        ],
+        "L15:F446": [
+          "jb_cognitive_reframe"
+        ],
+        "L11:F1729": [
+          "ctrl_roleplay",
+          "jb_roleplay"
+        ],
+        "L13:F3426": [
+          "jb_roleplay"
+        ],
+        "L14:F2590": [
+          "jb_cognitive_reframe",
+          "jb_roleplay"
+        ],
+        "L15:F107": [
+          "jb_cognitive_reframe"
+        ],
+        "L10:F2285": [
+          "jb_roleplay"
+        ],
+        "L15:F13085": [
+          "jb_roleplay"
+        ],
+        "L3:F12301": [
+          "jb_roleplay"
+        ],
+        "L15:F2349": [
+          "jb_fiction"
+        ],
+        "L11:F7318": [
+          "jb_fiction"
+        ],
+        "L14:F1054": [
+          "jb_fiction"
+        ],
+        "L1:F82": [
+          "ctrl_analytical"
+        ],
+        "L11:F6224": [
+          "ctrl_analytical"
+        ],
+        "L10:F596": [
+          "ctrl_analytical"
+        ],
+        "L3:F6335": [
+          "jb_cognitive_reframe"
+        ],
+        "L1:F266": [
+          "jb_cognitive_reframe"
+        ],
+        "L6:F779": [
+          "jb_cognitive_reframe"
+        ],
+        "L14:F1664": [
+          "jb_roleplay"
+        ],
+        "L14:F917": [
+          "jb_analytical"
+        ],
+        "L15:F132": [
+          "jb_analytical"
+        ],
+        "L14:F171": [
+          "jb_completion"
+        ],
+        "L15:F14405": [
+          "jb_cognitive_reframe"
+        ],
+        "L15:F74": [
+          "jb_cognitive_reframe"
+        ],
+        "L10:F131": [
+          "ctrl_cognitive_reframe"
+        ],
+        "L15:F3403": [
+          "jb_roleplay"
+        ],
+        "L14:F3687": [
+          "jb_fiction"
+        ],
+        "L14:F773": [
+          "jb_fiction"
+        ],
+        "L12:F876": [
+          "jb_fiction"
+        ],
+        "L6:F3511": [
+          "jb_fiction"
+        ],
+        "L13:F443": [
+          "jb_fiction"
+        ],
+        "L14:F73": [
+          "ctrl_fiction"
+        ],
+        "L14:F311": [
+          "jb_analytical"
+        ],
+        "L14:F4720": [
+          "ctrl_analytical"
+        ],
+        "L13:F6636": [
+          "ctrl_analytical"
+        ],
+        "L12:F3463": [
+          "jb_completion"
+        ],
+        "L11:F1757": [
+          "ctrl_completion"
+        ]
+      }
+    }
+  },
+  "combined": {
+    "total": 315,
+    "features": {
+      "L13:F970": [
+        "ctrl_fiction",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L13:F2106": [
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L14:F178": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L14:F64": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L12:F491": [
+        "ctrl_analytical",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L14:F984": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe"
+      ],
+      "L2:F542": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_fiction"
+      ],
+      "L12:F8023": [
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L0:F3997": [
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L12:F39": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L11:F507": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_roleplay",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L10:F439": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L8:F199": [
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L9:F1060": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L9:F9095": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "jb_completion"
+      ],
+      "L8:F221": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L11:F828": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L11:F41": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L0:F77": [
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_roleplay"
+      ],
+      "L10:F234": [
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L10:F13320": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe"
+      ],
+      "L11:F5067": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L13:F14283": [
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L9:F15783": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_fiction"
+      ],
+      "L11:F15969": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L4:F189": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L6:F10": [
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_roleplay"
+      ],
+      "L12:F257": [
+        "jb_cognitive_reframe",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L13:F1163": [
+        "jb_analytical"
+      ],
+      "L10:F7930": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L9:F137": [
+        "jb_cognitive_reframe",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L14:F487": [
+        "ctrl_fiction",
+        "jb_roleplay"
+      ],
+      "L7:F383": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "jb_analytical",
+        "jb_roleplay"
+      ],
+      "L12:F66": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L0:F11240": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion"
+      ],
+      "L6:F3300": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "ctrl_roleplay"
+      ],
+      "L0:F182": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L13:F407": [
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L6:F553": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "jb_completion"
+      ],
+      "L11:F155": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "jb_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L15:F187": [
+        "jb_analytical",
+        "jb_roleplay"
+      ],
+      "L11:F3610": [
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_fiction"
+      ],
+      "L12:F688": [
+        "jb_analytical",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L0:F3486": [
+        "ctrl_fiction",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L15:F16371": [
+        "jb_roleplay"
+      ],
+      "L11:F150": [
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L10:F2172": [
+        "jb_fiction"
+      ],
+      "L14:F1779": [
+        "ctrl_cognitive_reframe",
+        "jb_cognitive_reframe",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L0:F363": [
+        "jb_analytical",
+        "jb_cognitive_reframe"
+      ],
+      "L13:F653": [
+        "ctrl_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L8:F179": [
+        "jb_roleplay"
+      ],
+      "L13:F1001": [
+        "ctrl_roleplay",
+        "jb_cognitive_reframe"
+      ],
+      "L6:F5150": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "ctrl_roleplay"
+      ],
+      "L3:F525": [
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_fiction"
+      ],
+      "L13:F6636": [
+        "ctrl_analytical",
+        "jb_cognitive_reframe"
+      ],
+      "L13:F2673": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L13:F3329": [
+        "jb_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L11:F14872": [
+        "ctrl_cognitive_reframe",
+        "ctrl_roleplay"
+      ],
+      "L12:F2560": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "ctrl_roleplay",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L9:F422": [
+        "ctrl_completion",
+        "jb_fiction"
+      ],
+      "L9:F2203": [
+        "jb_analytical"
+      ],
+      "L11:F6990": [
+        "ctrl_analytical",
+        "ctrl_completion"
+      ],
+      "L14:F7968": [
+        "jb_completion"
+      ],
+      "L14:F187": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L14:F6951": [
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L11:F3352": [
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L11:F1085": [
+        "ctrl_cognitive_reframe",
+        "jb_cognitive_reframe"
+      ],
+      "L10:F428": [
+        "jb_cognitive_reframe"
+      ],
+      "L14:F277": [
+        "jb_cognitive_reframe",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L14:F8186": [
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L13:F529": [
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L10:F270": [
+        "ctrl_fiction",
+        "jb_completion"
+      ],
+      "L9:F414": [
+        "ctrl_completion",
+        "ctrl_fiction"
+      ],
+      "L10:F252": [
+        "ctrl_analytical",
+        "ctrl_completion"
+      ],
+      "L9:F15682": [
+        "ctrl_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L15:F2277": [
+        "jb_completion"
+      ],
+      "L12:F4314": [
+        "ctrl_cognitive_reframe",
+        "ctrl_completion"
+      ],
+      "L14:F12817": [
+        "ctrl_cognitive_reframe",
+        "jb_cognitive_reframe"
+      ],
+      "L11:F10422": [
+        "jb_cognitive_reframe"
+      ],
+      "L0:F59": [
+        "ctrl_roleplay",
+        "jb_roleplay"
+      ],
+      "L14:F389": [
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L15:F1537": [
+        "ctrl_completion",
+        "ctrl_fiction"
+      ],
+      "L13:F6712": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L14:F3115": [
+        "ctrl_fiction",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L14:F2421": [
+        "ctrl_analytical",
+        "ctrl_completion"
+      ],
+      "L14:F7655": [
+        "jb_roleplay"
+      ],
+      "L8:F13589": [
+        "jb_roleplay"
+      ],
+      "L13:F844": [
+        "jb_roleplay"
+      ],
+      "L10:F649": [
+        "jb_roleplay"
+      ],
+      "L11:F1286": [
+        "jb_roleplay"
+      ],
+      "L12:F575": [
+        "jb_roleplay"
+      ],
+      "L11:F46": [
+        "ctrl_roleplay",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L10:F1806": [
+        "ctrl_roleplay"
+      ],
+      "L13:F3523": [
+        "ctrl_roleplay"
+      ],
+      "L14:F497": [
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_fiction"
+      ],
+      "L15:F372": [
+        "jb_fiction"
+      ],
+      "L13:F315": [
+        "ctrl_completion",
+        "jb_fiction"
+      ],
+      "L12:F381": [
+        "jb_fiction"
+      ],
+      "L13:F5261": [
+        "jb_fiction"
+      ],
+      "L3:F39": [
+        "jb_fiction"
+      ],
+      "L11:F4977": [
+        "ctrl_fiction",
+        "jb_roleplay"
+      ],
+      "L9:F143": [
+        "ctrl_analytical",
+        "jb_analytical",
+        "jb_roleplay"
+      ],
+      "L15:F1739": [
+        "jb_analytical"
+      ],
+      "L14:F1305": [
+        "jb_analytical"
+      ],
+      "L12:F11067": [
+        "ctrl_analytical"
+      ],
+      "L14:F602": [
+        "jb_completion"
+      ],
+      "L13:F511": [
+        "ctrl_completion"
+      ],
+      "L13:F841": [
+        "jb_cognitive_reframe"
+      ],
+      "L0:F14516": [
+        "jb_cognitive_reframe"
+      ],
+      "L14:F1093": [
+        "jb_cognitive_reframe"
+      ],
+      "L7:F349": [
+        "jb_roleplay"
+      ],
+      "L7:F1775": [
+        "jb_roleplay"
+      ],
+      "L8:F247": [
+        "jb_roleplay"
+      ],
+      "L14:F1440": [
+        "jb_roleplay"
+      ],
+      "L11:F15620": [
+        "jb_roleplay"
+      ],
+      "L13:F517": [
+        "jb_roleplay"
+      ],
+      "L6:F248": [
+        "ctrl_roleplay"
+      ],
+      "L11:F7318": [
+        "jb_fiction"
+      ],
+      "L6:F1418": [
+        "jb_fiction"
+      ],
+      "L14:F524": [
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L12:F4": [
+        "jb_fiction"
+      ],
+      "L13:F13727": [
+        "jb_fiction"
+      ],
+      "L6:F304": [
+        "ctrl_fiction"
+      ],
+      "L6:F4137": [
+        "ctrl_analytical"
+      ],
+      "L14:F4933": [
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L15:F369": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L11:F101": [
+        "jb_completion"
+      ],
+      "L6:F10338": [
+        "jb_cognitive_reframe"
+      ],
+      "L14:F171": [
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L14:F541": [
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L11:F112": [
+        "jb_roleplay"
+      ],
+      "L13:F599": [
+        "jb_roleplay"
+      ],
+      "L14:F2062": [
+        "jb_roleplay"
+      ],
+      "L9:F12819": [
+        "jb_roleplay"
+      ],
+      "L10:F131": [
+        "ctrl_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L10:F637": [
+        "jb_roleplay"
+      ],
+      "L12:F250": [
+        "ctrl_roleplay"
+      ],
+      "L14:F406": [
+        "jb_analytical",
+        "jb_fiction"
+      ],
+      "L12:F12602": [
+        "jb_fiction"
+      ],
+      "L8:F220": [
+        "ctrl_fiction"
+      ],
+      "L9:F970": [
+        "ctrl_fiction"
+      ],
+      "L11:F399": [
+        "jb_analytical",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L11:F9587": [
+        "jb_analytical",
+        "jb_completion"
+      ],
+      "L14:F107": [
+        "jb_analytical"
+      ],
+      "L12:F851": [
+        "ctrl_analytical"
+      ],
+      "L13:F500": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L14:F12272": [
+        "jb_completion"
+      ],
+      "L11:F1757": [
+        "ctrl_completion",
+        "jb_completion"
+      ],
+      "L13:F2820": [
+        "jb_completion"
+      ],
+      "L12:F490": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe"
+      ],
+      "L13:F608": [
+        "ctrl_fiction",
+        "jb_cognitive_reframe",
+        "jb_fiction"
+      ],
+      "L15:F38": [
+        "jb_cognitive_reframe"
+      ],
+      "L14:F8737": [
+        "jb_cognitive_reframe"
+      ],
+      "L11:F11067": [
+        "ctrl_cognitive_reframe"
+      ],
+      "L2:F343": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L9:F11573": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L7:F361": [
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L9:F1080": [
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_fiction"
+      ],
+      "L15:F383": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L3:F4750": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L11:F315": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L3:F29": [
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L13:F427": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L14:F566": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L0:F6994": [
+        "jb_analytical",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L11:F9217": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L9:F341": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L13:F132": [
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L13:F419": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "jb_analytical",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L8:F2746": [
+        "ctrl_fiction",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L3:F15048": [
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L11:F8241": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L6:F9460": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "jb_cognitive_reframe"
+      ],
+      "L8:F452": [
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L0:F338": [
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L11:F6739": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L10:F422": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L8:F360": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "jb_analytical",
+        "jb_completion"
+      ],
+      "L14:F619": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L14:F189": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_fiction"
+      ],
+      "L15:F413": [
+        "jb_analytical"
+      ],
+      "L10:F259": [
+        "ctrl_analytical",
+        "jb_analytical",
+        "jb_cognitive_reframe"
+      ],
+      "L1:F665": [
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_roleplay"
+      ],
+      "L15:F110": [
+        "jb_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L15:F4114": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "ctrl_roleplay",
+        "jb_roleplay"
+      ],
+      "L15:F427": [
+        "ctrl_analytical",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_completion"
+      ],
+      "L9:F349": [
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L8:F1148": [
+        "jb_analytical",
+        "jb_fiction"
+      ],
+      "L9:F500": [
+        "jb_cognitive_reframe",
+        "jb_fiction"
+      ],
+      "L3:F2450": [
+        "jb_roleplay"
+      ],
+      "L6:F325": [
+        "jb_roleplay"
+      ],
+      "L11:F56": [
+        "jb_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L2:F658": [
+        "jb_completion"
+      ],
+      "L10:F111": [
+        "jb_completion"
+      ],
+      "L2:F148": [
+        "jb_cognitive_reframe"
+      ],
+      "L5:F19": [
+        "jb_roleplay"
+      ],
+      "L0:F7361": [
+        "ctrl_fiction",
+        "jb_roleplay"
+      ],
+      "L3:F4825": [
+        "ctrl_roleplay",
+        "jb_analytical"
+      ],
+      "L12:F318": [
+        "jb_analytical",
+        "jb_completion"
+      ],
+      "L3:F2906": [
+        "ctrl_completion",
+        "jb_cognitive_reframe"
+      ],
+      "L7:F437": [
+        "ctrl_fiction",
+        "jb_roleplay"
+      ],
+      "L9:F256": [
+        "ctrl_roleplay",
+        "jb_analytical"
+      ],
+      "L0:F10600": [
+        "jb_analytical",
+        "jb_cognitive_reframe"
+      ],
+      "L3:F500": [
+        "jb_roleplay"
+      ],
+      "L7:F220": [
+        "jb_roleplay"
+      ],
+      "L12:F2839": [
+        "jb_analytical"
+      ],
+      "L9:F574": [
+        "jb_analytical"
+      ],
+      "L0:F492": [
+        "jb_completion"
+      ],
+      "L3:F5646": [
+        "jb_completion"
+      ],
+      "L0:F37": [
+        "jb_completion"
+      ],
+      "L14:F916": [
+        "ctrl_completion"
+      ],
+      "L8:F503": [
+        "jb_cognitive_reframe"
+      ],
+      "L8:F125": [
+        "jb_cognitive_reframe"
+      ],
+      "L8:F187": [
+        "jb_roleplay"
+      ],
+      "L8:F287": [
+        "jb_roleplay"
+      ],
+      "L0:F9760": [
+        "ctrl_fiction"
+      ],
+      "L14:F684": [
+        "jb_analytical"
+      ],
+      "L15:F7232": [
+        "jb_analytical"
+      ],
+      "L13:F383": [
+        "jb_analytical"
+      ],
+      "L13:F6605": [
+        "jb_completion"
+      ],
+      "L14:F765": [
+        "jb_cognitive_reframe"
+      ],
+      "L14:F464": [
+        "jb_cognitive_reframe"
+      ],
+      "L3:F494": [
+        "jb_roleplay"
+      ],
+      "L13:F79": [
+        "jb_roleplay"
+      ],
+      "L12:F572": [
+        "jb_fiction"
+      ],
+      "L2:F322": [
+        "jb_fiction"
+      ],
+      "L0:F454": [
+        "ctrl_fiction"
+      ],
+      "L1:F16382": [
+        "jb_analytical"
+      ],
+      "L3:F1030": [
+        "jb_analytical"
+      ],
+      "L3:F5467": [
+        "jb_analytical"
+      ],
+      "L15:F1440": [
+        "ctrl_analytical"
+      ],
+      "L13:F14656": [
+        "jb_completion"
+      ],
+      "L13:F406": [
+        "ctrl_completion"
+      ],
+      "L12:F79": [
+        "jb_cognitive_reframe"
+      ],
+      "L14:F1208": [
+        "jb_cognitive_reframe"
+      ],
+      "L15:F1541": [
+        "jb_cognitive_reframe"
+      ],
+      "L13:F51": [
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L13:F140": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L13:F471": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L15:F1341": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L0:F460": [
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L14:F426": [
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L14:F42": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L15:F476": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_completion"
+      ],
+      "L10:F7901": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L0:F369": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L14:F480": [
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_roleplay"
+      ],
+      "L15:F24": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L14:F3327": [
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_analytical",
+        "jb_fiction"
+      ],
+      "L8:F9866": [
+        "jb_analytical",
+        "jb_completion"
+      ],
+      "L14:F1402": [
+        "ctrl_cognitive_reframe",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L14:F738": [
+        "ctrl_completion",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe",
+        "jb_completion",
+        "jb_fiction"
+      ],
+      "L11:F762": [
+        "jb_completion",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L15:F10909": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion",
+        "jb_analytical"
+      ],
+      "L14:F167": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L12:F10313": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "jb_cognitive_reframe"
+      ],
+      "L12:F1017": [
+        "jb_analytical"
+      ],
+      "L10:F9866": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L0:F45": [
+        "jb_roleplay"
+      ],
+      "L2:F1247": [
+        "ctrl_roleplay",
+        "jb_roleplay"
+      ],
+      "L12:F586": [
+        "ctrl_cognitive_reframe",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe"
+      ],
+      "L11:F99": [
+        "jb_cognitive_reframe",
+        "jb_fiction"
+      ],
+      "L13:F43": [
+        "jb_analytical",
+        "jb_cognitive_reframe",
+        "jb_completion"
+      ],
+      "L14:F496": [
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "ctrl_roleplay",
+        "jb_cognitive_reframe"
+      ],
+      "L11:F9817": [
+        "ctrl_cognitive_reframe",
+        "ctrl_fiction",
+        "jb_roleplay"
+      ],
+      "L7:F562": [
+        "jb_fiction"
+      ],
+      "L6:F587": [
+        "jb_fiction"
+      ],
+      "L8:F4586": [
+        "jb_fiction"
+      ],
+      "L3:F11868": [
+        "ctrl_completion",
+        "jb_analytical"
+      ],
+      "L3:F13491": [
+        "jb_completion"
+      ],
+      "L10:F335": [
+        "ctrl_analytical",
+        "ctrl_completion"
+      ],
+      "L15:F429": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe",
+        "ctrl_completion"
+      ],
+      "L12:F292": [
+        "jb_fiction"
+      ],
+      "L0:F66": [
+        "ctrl_analytical",
+        "ctrl_completion",
+        "ctrl_fiction"
+      ],
+      "L4:F5196": [
+        "jb_roleplay"
+      ],
+      "L14:F11061": [
+        "jb_fiction"
+      ],
+      "L12:F1085": [
+        "jb_completion"
+      ],
+      "L14:F598": [
+        "jb_cognitive_reframe"
+      ],
+      "L11:F295": [
+        "jb_roleplay"
+      ],
+      "L13:F2546": [
+        "jb_fiction",
+        "jb_roleplay"
+      ],
+      "L10:F100": [
+        "ctrl_analytical",
+        "ctrl_fiction"
+      ],
+      "L13:F1254": [
+        "ctrl_analytical",
+        "ctrl_cognitive_reframe"
+      ],
+      "L9:F11835": [
+        "jb_completion"
+      ],
+      "L10:F219": [
+        "jb_completion"
+      ],
+      "L15:F446": [
+        "jb_cognitive_reframe"
+      ],
+      "L11:F1729": [
+        "ctrl_roleplay",
+        "jb_roleplay"
+      ],
+      "L13:F3426": [
+        "jb_roleplay"
+      ],
+      "L14:F2590": [
+        "jb_cognitive_reframe",
+        "jb_roleplay"
+      ],
+      "L15:F107": [
+        "jb_cognitive_reframe"
+      ],
+      "L10:F2285": [
+        "jb_roleplay"
+      ],
+      "L15:F13085": [
+        "jb_roleplay"
+      ],
+      "L3:F12301": [
+        "jb_roleplay"
+      ],
+      "L15:F2349": [
+        "jb_fiction"
+      ],
+      "L14:F1054": [
+        "jb_fiction"
+      ],
+      "L1:F82": [
+        "ctrl_analytical"
+      ],
+      "L11:F6224": [
+        "ctrl_analytical"
+      ],
+      "L10:F596": [
+        "ctrl_analytical"
+      ],
+      "L3:F6335": [
+        "jb_cognitive_reframe"
+      ],
+      "L1:F266": [
+        "jb_cognitive_reframe"
+      ],
+      "L6:F779": [
+        "jb_cognitive_reframe"
+      ],
+      "L14:F1664": [
+        "jb_roleplay"
+      ],
+      "L14:F917": [
+        "jb_analytical"
+      ],
+      "L15:F132": [
+        "jb_analytical"
+      ],
+      "L15:F14405": [
+        "jb_cognitive_reframe"
+      ],
+      "L15:F74": [
+        "jb_cognitive_reframe"
+      ],
+      "L15:F3403": [
+        "jb_roleplay"
+      ],
+      "L14:F3687": [
+        "jb_fiction"
+      ],
+      "L14:F773": [
+        "jb_fiction"
+      ],
+      "L12:F876": [
+        "jb_fiction"
+      ],
+      "L6:F3511": [
+        "jb_fiction"
+      ],
+      "L13:F443": [
+        "jb_fiction"
+      ],
+      "L14:F73": [
+        "ctrl_fiction"
+      ],
+      "L14:F311": [
+        "jb_analytical"
+      ],
+      "L14:F4720": [
+        "ctrl_analytical"
+      ],
+      "L12:F3463": [
+        "jb_completion"
+      ]
+    }
+  },
+  "per_condition_top50": {
+    "bare": [
+      "L0:F10",
+      "L0:F144",
+      "L0:F338",
+      "L0:F45",
+      "L0:F460",
+      "L0:F66",
+      "L0:F7361",
+      "L0:F92",
+      "L0:F9760",
+      "L10:F111",
+      "L10:F234",
+      "L10:F24",
+      "L11:F315",
+      "L11:F6739",
+      "L11:F9217",
+      "L12:F1",
+      "L12:F1017",
+      "L12:F1504",
+      "L12:F572",
+      "L13:F1001",
+      "L13:F140",
+      "L13:F419",
+      "L13:F471",
+      "L13:F500",
+      "L13:F51",
+      "L13:F6712",
+      "L14:F1208",
+      "L14:F178",
+      "L14:F42",
+      "L14:F426",
+      "L14:F480",
+      "L14:F496",
+      "L14:F524",
+      "L14:F619",
+      "L14:F73",
+      "L15:F107",
+      "L15:F110",
+      "L15:F13085",
+      "L15:F383",
+      "L15:F4114",
+      "L15:F413",
+      "L15:F427",
+      "L15:F506",
+      "L1:F2598",
+      "L1:F266",
+      "L1:F338",
+      "L1:F6047",
+      "L2:F343",
+      "L2:F467",
+      "L3:F15048",
+      "L3:F198",
+      "L3:F2022",
+      "L3:F44",
+      "L3:F4750",
+      "L3:F9180",
+      "L5:F19",
+      "L5:F282",
+      "L5:F673",
+      "L6:F779",
+      "L7:F265",
+      "L7:F361",
+      "L7:F384",
+      "L8:F154",
+      "L8:F37",
+      "L8:F394",
+      "L8:F9866",
+      "L9:F1080",
+      "L9:F11573",
+      "L9:F254",
+      "L9:F256",
+      "L9:F497",
+      "L9:F84"
+    ],
+    "ctrl_analytical": [
+      "L0:F10",
+      "L0:F144",
+      "L0:F338",
+      "L0:F369",
+      "L0:F45",
+      "L0:F460",
+      "L0:F66",
+      "L0:F6994",
+      "L0:F92",
+      "L10:F111",
+      "L10:F234",
+      "L10:F24",
+      "L11:F2536",
+      "L11:F315",
+      "L11:F99",
+      "L12:F1",
+      "L12:F1017",
+      "L12:F1504",
+      "L12:F216",
+      "L12:F572",
+      "L12:F86",
+      "L13:F140",
+      "L13:F427",
+      "L13:F43",
+      "L13:F471",
+      "L13:F500",
+      "L13:F51",
+      "L14:F1208",
+      "L14:F178",
+      "L14:F189",
+      "L14:F311",
+      "L14:F42",
+      "L14:F426",
+      "L14:F480",
+      "L14:F496",
+      "L14:F566",
+      "L14:F619",
+      "L14:F73",
+      "L15:F107",
+      "L15:F13085",
+      "L15:F132",
+      "L15:F1341",
+      "L15:F1541",
+      "L15:F383",
+      "L15:F413",
+      "L15:F442",
+      "L15:F446",
+      "L15:F506",
+      "L1:F266",
+      "L1:F338",
+      "L2:F343",
+      "L3:F13491",
+      "L3:F15048",
+      "L3:F198",
+      "L3:F2022",
+      "L3:F2906",
+      "L3:F44",
+      "L3:F4750",
+      "L3:F546",
+      "L3:F5957",
+      "L3:F6908",
+      "L5:F282",
+      "L5:F673",
+      "L6:F1779",
+      "L6:F779",
+      "L7:F265",
+      "L7:F384",
+      "L8:F154",
+      "L8:F37",
+      "L8:F394",
+      "L9:F254",
+      "L9:F497",
+      "L9:F5767",
+      "L9:F84"
+    ],
+    "ctrl_cognitive_reframe": [
+      "L0:F10",
+      "L0:F144",
+      "L0:F338",
+      "L0:F348",
+      "L0:F45",
+      "L0:F460",
+      "L0:F66",
+      "L0:F92",
+      "L10:F111",
+      "L10:F219",
+      "L10:F24",
+      "L10:F422",
+      "L11:F315",
+      "L11:F99",
+      "L12:F1",
+      "L12:F1017",
+      "L12:F572",
+      "L12:F86",
+      "L13:F140",
+      "L13:F427",
+      "L13:F43",
+      "L13:F471",
+      "L13:F500",
+      "L13:F51",
+      "L14:F189",
+      "L14:F311",
+      "L14:F42",
+      "L14:F426",
+      "L14:F480",
+      "L14:F496",
+      "L14:F566",
+      "L14:F619",
+      "L14:F73",
+      "L14:F85",
+      "L15:F107",
+      "L15:F110",
+      "L15:F1341",
+      "L15:F383",
+      "L15:F413",
+      "L15:F442",
+      "L15:F446",
+      "L15:F506",
+      "L15:F74",
+      "L1:F2598",
+      "L1:F266",
+      "L1:F338",
+      "L3:F13491",
+      "L3:F198",
+      "L3:F2022",
+      "L3:F2906",
+      "L3:F44",
+      "L5:F282",
+      "L5:F408",
+      "L5:F673",
+      "L6:F1779",
+      "L6:F29",
+      "L6:F779",
+      "L7:F141",
+      "L7:F265",
+      "L7:F384",
+      "L8:F154",
+      "L8:F219",
+      "L8:F37",
+      "L8:F386",
+      "L8:F394",
+      "L8:F553",
+      "L8:F9866",
+      "L9:F237",
+      "L9:F254",
+      "L9:F497",
+      "L9:F500",
+      "L9:F84"
+    ],
+    "ctrl_completion": [
+      "L0:F10",
+      "L0:F144",
+      "L0:F338",
+      "L0:F45",
+      "L0:F460",
+      "L0:F66",
+      "L0:F6994",
+      "L0:F92",
+      "L10:F111",
+      "L10:F198",
+      "L10:F219",
+      "L10:F234",
+      "L10:F24",
+      "L11:F2536",
+      "L11:F315",
+      "L11:F99",
+      "L12:F1",
+      "L12:F1017",
+      "L12:F10313",
+      "L12:F216",
+      "L12:F2560",
+      "L12:F572",
+      "L12:F86",
+      "L13:F140",
+      "L13:F427",
+      "L13:F43",
+      "L13:F471",
+      "L13:F500",
+      "L13:F51",
+      "L14:F1208",
+      "L14:F178",
+      "L14:F189",
+      "L14:F311",
+      "L14:F42",
+      "L14:F426",
+      "L14:F480",
+      "L14:F496",
+      "L14:F566",
+      "L14:F619",
+      "L14:F73",
+      "L15:F107",
+      "L15:F13085",
+      "L15:F132",
+      "L15:F1341",
+      "L15:F383",
+      "L15:F413",
+      "L15:F442",
+      "L15:F446",
+      "L15:F506",
+      "L1:F266",
+      "L1:F338",
+      "L2:F343",
+      "L3:F198",
+      "L3:F2022",
+      "L3:F2906",
+      "L3:F44",
+      "L3:F494",
+      "L5:F282",
+      "L5:F408",
+      "L5:F673",
+      "L6:F1779",
+      "L6:F29",
+      "L6:F779",
+      "L7:F141",
+      "L7:F265",
+      "L7:F384",
+      "L8:F154",
+      "L8:F219",
+      "L8:F37",
+      "L8:F386",
+      "L8:F394",
+      "L8:F9866",
+      "L9:F237",
+      "L9:F254",
+      "L9:F5767",
+      "L9:F84"
+    ],
+    "ctrl_fiction": [
+      "L0:F10",
+      "L0:F144",
+      "L0:F338",
+      "L0:F369",
+      "L0:F45",
+      "L0:F460",
+      "L0:F66",
+      "L0:F92",
+      "L10:F111",
+      "L10:F219",
+      "L10:F24",
+      "L11:F2536",
+      "L11:F315",
+      "L11:F46",
+      "L11:F99",
+      "L12:F1",
+      "L12:F1017",
+      "L12:F216",
+      "L12:F86",
+      "L13:F140",
+      "L13:F419",
+      "L13:F427",
+      "L13:F43",
+      "L13:F471",
+      "L13:F500",
+      "L13:F51",
+      "L14:F1208",
+      "L14:F178",
+      "L14:F189",
+      "L14:F311",
+      "L14:F42",
+      "L14:F426",
+      "L14:F480",
+      "L14:F4933",
+      "L14:F496",
+      "L14:F524",
+      "L14:F566",
+      "L14:F73",
+      "L15:F107",
+      "L15:F132",
+      "L15:F1341",
+      "L15:F1541",
+      "L15:F383",
+      "L15:F413",
+      "L15:F442",
+      "L15:F446",
+      "L15:F506",
+      "L15:F672",
+      "L15:F74",
+      "L1:F266",
+      "L1:F338",
+      "L3:F198",
+      "L3:F2906",
+      "L3:F44",
+      "L3:F9041",
+      "L5:F282",
+      "L5:F408",
+      "L5:F673",
+      "L6:F29",
+      "L6:F779",
+      "L7:F141",
+      "L7:F265",
+      "L7:F384",
+      "L8:F154",
+      "L8:F219",
+      "L8:F37",
+      "L8:F386",
+      "L8:F394",
+      "L9:F237",
+      "L9:F254",
+      "L9:F500",
+      "L9:F84"
+    ],
+    "ctrl_roleplay": [
+      "L0:F10",
+      "L0:F144",
+      "L0:F338",
+      "L0:F348",
+      "L0:F369",
+      "L0:F45",
+      "L0:F454",
+      "L0:F460",
+      "L0:F66",
+      "L0:F92",
+      "L10:F111",
+      "L10:F219",
+      "L10:F234",
+      "L10:F24",
+      "L11:F315",
+      "L11:F99",
+      "L12:F1",
+      "L12:F1017",
+      "L12:F216",
+      "L12:F86",
+      "L13:F140",
+      "L13:F419",
+      "L13:F427",
+      "L13:F43",
+      "L13:F471",
+      "L13:F500",
+      "L13:F51",
+      "L14:F1208",
+      "L14:F178",
+      "L14:F189",
+      "L14:F311",
+      "L14:F42",
+      "L14:F426",
+      "L14:F480",
+      "L14:F496",
+      "L14:F524",
+      "L14:F566",
+      "L14:F73",
+      "L15:F107",
+      "L15:F110",
+      "L15:F132",
+      "L15:F1341",
+      "L15:F383",
+      "L15:F413",
+      "L15:F442",
+      "L15:F446",
+      "L15:F506",
+      "L15:F74",
+      "L1:F266",
+      "L1:F338",
+      "L3:F198",
+      "L3:F2022",
+      "L3:F2906",
+      "L3:F44",
+      "L3:F9041",
+      "L5:F282",
+      "L5:F673",
+      "L6:F29",
+      "L6:F779",
+      "L7:F141",
+      "L7:F220",
+      "L7:F265",
+      "L7:F384",
+      "L8:F154",
+      "L8:F219",
+      "L8:F37",
+      "L8:F386",
+      "L8:F394",
+      "L8:F9866",
+      "L9:F237",
+      "L9:F254",
+      "L9:F497",
+      "L9:F500",
+      "L9:F5767",
+      "L9:F84"
+    ],
+    "jb_analytical": [
+      "L0:F10",
+      "L0:F144",
+      "L0:F208",
+      "L0:F338",
+      "L0:F45",
+      "L0:F460",
+      "L0:F66",
+      "L0:F92",
+      "L10:F111",
+      "L10:F219",
+      "L10:F24",
+      "L11:F258",
+      "L11:F315",
+      "L11:F99",
+      "L12:F1",
+      "L12:F1017",
+      "L12:F86",
+      "L13:F140",
+      "L13:F419",
+      "L13:F427",
+      "L13:F43",
+      "L13:F471",
+      "L13:F500",
+      "L13:F51",
+      "L14:F187",
+      "L14:F257",
+      "L14:F311",
+      "L14:F365",
+      "L14:F42",
+      "L14:F426",
+      "L14:F464",
+      "L14:F480",
+      "L14:F496",
+      "L14:F566",
+      "L14:F669",
+      "L14:F73",
+      "L15:F107",
+      "L15:F110",
+      "L15:F132",
+      "L15:F1341",
+      "L15:F383",
+      "L15:F442",
+      "L15:F446",
+      "L15:F506",
+      "L1:F266",
+      "L1:F338",
+      "L3:F198",
+      "L3:F2906",
+      "L3:F44",
+      "L5:F282",
+      "L5:F408",
+      "L5:F673",
+      "L6:F29",
+      "L6:F779",
+      "L7:F141",
+      "L7:F265",
+      "L7:F384",
+      "L8:F154",
+      "L8:F219",
+      "L8:F37",
+      "L8:F386",
+      "L8:F394",
+      "L8:F9866",
+      "L9:F237",
+      "L9:F254",
+      "L9:F497",
+      "L9:F500",
+      "L9:F84"
+    ],
+    "jb_cognitive_reframe": [
+      "L0:F144",
+      "L0:F290",
+      "L0:F338",
+      "L0:F369",
+      "L0:F45",
+      "L0:F460",
+      "L0:F491",
+      "L0:F492",
+      "L0:F66",
+      "L0:F92",
+      "L10:F111",
+      "L10:F198",
+      "L10:F219",
+      "L10:F24",
+      "L11:F315",
+      "L11:F99",
+      "L12:F1",
+      "L12:F10313",
+      "L12:F318",
+      "L12:F86",
+      "L13:F140",
+      "L13:F419",
+      "L13:F427",
+      "L13:F43",
+      "L13:F471",
+      "L13:F500",
+      "L13:F51",
+      "L14:F1208",
+      "L14:F167",
+      "L14:F187",
+      "L14:F311",
+      "L14:F42",
+      "L14:F426",
+      "L14:F480",
+      "L14:F496",
+      "L14:F524",
+      "L14:F598",
+      "L14:F73",
+      "L15:F107",
+      "L15:F110",
+      "L15:F132",
+      "L15:F1341",
+      "L15:F383",
+      "L15:F442",
+      "L15:F446",
+      "L15:F506",
+      "L15:F74",
+      "L1:F2598",
+      "L1:F266",
+      "L1:F338",
+      "L2:F343",
+      "L3:F198",
+      "L3:F2906",
+      "L3:F44",
+      "L5:F282",
+      "L5:F673",
+      "L6:F779",
+      "L7:F141",
+      "L7:F265",
+      "L7:F384",
+      "L8:F154",
+      "L8:F219",
+      "L8:F37",
+      "L8:F386",
+      "L8:F394",
+      "L8:F9866",
+      "L9:F237",
+      "L9:F254",
+      "L9:F5767",
+      "L9:F84"
+    ],
+    "jb_completion": [
+      "L0:F144",
+      "L0:F338",
+      "L0:F45",
+      "L0:F460",
+      "L0:F491",
+      "L0:F66",
+      "L0:F92",
+      "L10:F111",
+      "L10:F219",
+      "L10:F24",
+      "L11:F2536",
+      "L11:F315",
+      "L11:F99",
+      "L12:F1017",
+      "L12:F318",
+      "L13:F140",
+      "L13:F419",
+      "L13:F427",
+      "L13:F43",
+      "L13:F471",
+      "L13:F51",
+      "L14:F1208",
+      "L14:F178",
+      "L14:F189",
+      "L14:F311",
+      "L14:F42",
+      "L14:F480",
+      "L14:F496",
+      "L14:F566",
+      "L14:F73",
+      "L14:F85",
+      "L15:F107",
+      "L15:F110",
+      "L15:F132",
+      "L15:F1341",
+      "L15:F180",
+      "L15:F383",
+      "L15:F413",
+      "L15:F442",
+      "L15:F446",
+      "L15:F476",
+      "L15:F506",
+      "L1:F2598",
+      "L1:F266",
+      "L1:F338",
+      "L2:F343",
+      "L3:F13491",
+      "L3:F198",
+      "L3:F2906",
+      "L3:F44",
+      "L3:F494",
+      "L3:F546",
+      "L5:F282",
+      "L5:F408",
+      "L5:F673",
+      "L6:F29",
+      "L6:F779",
+      "L7:F141",
+      "L7:F265",
+      "L7:F384",
+      "L8:F154",
+      "L8:F199",
+      "L8:F219",
+      "L8:F386",
+      "L8:F394",
+      "L8:F553",
+      "L8:F9866",
+      "L9:F237",
+      "L9:F254",
+      "L9:F500",
+      "L9:F84"
+    ],
+    "jb_fiction": [
+      "L0:F144",
+      "L0:F45",
+      "L0:F460",
+      "L0:F66",
+      "L0:F92",
+      "L10:F111",
+      "L10:F219",
+      "L10:F24",
+      "L11:F2536",
+      "L11:F315",
+      "L11:F4093",
+      "L11:F99",
+      "L12:F1",
+      "L12:F86",
+      "L13:F140",
+      "L13:F427",
+      "L13:F43",
+      "L13:F471",
+      "L13:F500",
+      "L13:F51",
+      "L14:F1208",
+      "L14:F167",
+      "L14:F178",
+      "L14:F187",
+      "L14:F311",
+      "L14:F42",
+      "L14:F426",
+      "L14:F467",
+      "L14:F480",
+      "L14:F496",
+      "L14:F541",
+      "L14:F73",
+      "L15:F107",
+      "L15:F132",
+      "L15:F234",
+      "L15:F24",
+      "L15:F410",
+      "L15:F413",
+      "L15:F442",
+      "L15:F446",
+      "L15:F499",
+      "L15:F506",
+      "L1:F266",
+      "L1:F338",
+      "L2:F295",
+      "L3:F1218",
+      "L3:F198",
+      "L3:F2906",
+      "L3:F428",
+      "L3:F44",
+      "L5:F19",
+      "L5:F282",
+      "L5:F408",
+      "L5:F673",
+      "L6:F29",
+      "L6:F779",
+      "L7:F141",
+      "L7:F265",
+      "L7:F384",
+      "L8:F154",
+      "L8:F199",
+      "L8:F219",
+      "L8:F394",
+      "L9:F237",
+      "L9:F254",
+      "L9:F84"
+    ],
+    "jb_roleplay": [
+      "L0:F10",
+      "L0:F144",
+      "L0:F338",
+      "L0:F369",
+      "L0:F45",
+      "L0:F454",
+      "L0:F460",
+      "L0:F66",
+      "L0:F92",
+      "L10:F111",
+      "L10:F219",
+      "L10:F24",
+      "L11:F315",
+      "L11:F99",
+      "L12:F86",
+      "L13:F140",
+      "L13:F419",
+      "L13:F427",
+      "L13:F43",
+      "L13:F471",
+      "L13:F500",
+      "L13:F51",
+      "L14:F1208",
+      "L14:F178",
+      "L14:F187",
+      "L14:F189",
+      "L14:F311",
+      "L14:F42",
+      "L14:F426",
+      "L14:F480",
+      "L14:F496",
+      "L14:F524",
+      "L14:F73",
+      "L15:F107",
+      "L15:F110",
+      "L15:F13085",
+      "L15:F369",
+      "L15:F383",
+      "L15:F413",
+      "L15:F442",
+      "L15:F446",
+      "L15:F506",
+      "L15:F74",
+      "L1:F266",
+      "L1:F338",
+      "L1:F5158",
+      "L1:F516",
+      "L3:F198",
+      "L3:F2906",
+      "L3:F44",
+      "L3:F494",
+      "L3:F9041",
+      "L3:F9180",
+      "L5:F19",
+      "L5:F282",
+      "L5:F408",
+      "L5:F673",
+      "L6:F779",
+      "L7:F141",
+      "L7:F265",
+      "L7:F384",
+      "L8:F154",
+      "L8:F219",
+      "L8:F37",
+      "L8:F386",
+      "L8:F394",
+      "L8:F553",
+      "L9:F1080",
+      "L9:F237",
+      "L9:F254",
+      "L9:F349",
+      "L9:F500",
+      "L9:F5767",
+      "L9:F84"
+    ]
+  }
+}

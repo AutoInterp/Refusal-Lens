@@ -156,16 +156,38 @@ def validate_stage(stage_id: str, run_dir: Path) -> list[str]:
                 elif stats[cls].get("wilcoxon_pval") is None:                                                                                             
                     issues.append(f"No Wilcoxon p-value for {cls}")
                                                                                                                                                         
-    elif stage_id == "03":             
-        d = run_dir / "03_verification"                                                                                                                   
+    elif stage_id == "03":
+        d = run_dir / "03_verification"
         if not (d / "verification_results.json").exists():
-            issues.append("Missing verification_results.json")                                                                                            
+            issues.append("Missing verification_results.json")
         else:
-            vr = json.loads((d / "verification_results.json").read_text())                                                                                
+            vr = json.loads((d / "verification_results.json").read_text())
             summary = vr.get("summary", {})
-            mlp_pct = summary.get("mlp_pct_mean", 0)                                                                                                      
-            if not (0.01 < mlp_pct < 5.0):                                                                                                                
-                issues.append(f"MLP ratio out of expected range: {mlp_pct}%")                                                                             
+            hook = summary.get("measurement_hook", "default")
+            if hook == "hook_resid_post":
+                # Identity check: Σ edges + baseline ≈ direct_dot. The baseline
+                # at L15 hook_resid_post is non-zero (~+20k from accumulated
+                # b_dec) but constant across prompts; we just sanity-check
+                # both means are non-trivial and ratio is positive.
+                ratio = summary.get("attr_to_dot_ratio_mean", 0.0)
+                dot = summary.get("dot_product_mean", 0.0)
+                if abs(dot) < 100:
+                    issues.append(f"direct_dot suspiciously small: {dot:.2f}")
+                if not (0.5 < ratio < 5.0):
+                    issues.append(
+                        f"attr/dot ratio out of plausible range "
+                        f"for hook_resid_post: {ratio:.3f} (expected ~1-2)"
+                    )
+            else:
+                # Legacy / default-hook path (post-RMSNorm pre-MLP).
+                ratio = summary.get(
+                    "attr_to_dot_ratio_mean", summary.get("mlp_ratio_mean", 0.0)
+                )
+                if not (0.01 < ratio * 100 < 5.0):
+                    issues.append(
+                        f"MLP ratio out of expected range "
+                        f"for legacy hook: {ratio*100:.3f}%"
+                    )
                                                                                                                                                         
     elif stage_id == "04":             
         d = run_dir / "04_labels"                                                                                                                         

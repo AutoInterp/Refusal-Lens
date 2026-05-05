@@ -1,9 +1,29 @@
 /* Overlap-bucket coloring for attribution-graph nodes.
    The vendored frontend renders each node as <text class="node"> (the label)
    plus an adjacent <circle> (hover hit-target), NOT <g class="node">.
-   We tag both with data-overlap via overlap-annotate.js. */
+   We tag both with data-overlap via overlap-annotate.js.
 
-/* Shared with bare — the canonical refusal circuit present in both conditions */
+   Palette (Apr 22 — 3-way bare/ctrl/jb):
+     shared_with_bare_and_ctrl  dark green   most-stable refusal core (in all 3)
+     shared_with_bare           teal         in bare + jb, not ctrl  (JB + harmful baseline)
+     shared_with_ctrl           yellow/gold  in ctrl + jb, NOT bare  (PREFIX-INDUCED)
+     jb_unique                  orange/red   TRUE JB-semantic signal
+     bare                       slate        bare-graph baseline
+     ctrl                       blue-grey    ctrl-graph baseline
+     ctrl_unique                purple       benign-prefix-only (rare)
+*/
+
+/* Shared-with-bare-and-ctrl: present in all three graphs — most stable */
+.link-graph text.node[data-overlap="shared_with_bare_and_ctrl"],
+.link-graph circle[data-overlap="shared_with_bare_and_ctrl"] {
+    fill: #1b5e20 !important;
+    stroke: #0d3f15 !important;
+}
+.link-graph text.node[data-overlap="shared_with_bare_and_ctrl"] {
+    font-weight: 700;
+}
+
+/* Shared with bare — in bare + jb, not ctrl (canonical JB+harmful share) */
 .link-graph text.node[data-overlap="shared_with_bare"],
 .link-graph circle[data-overlap="shared_with_bare"] {
     fill: #2e7d32 !important;
@@ -12,7 +32,19 @@
     font-weight: 600;
 }
 
-/* JB-unique — the jailbreak subcircuit (Georg's research focus) */
+/* Shared with ctrl — the PREFIX-INDUCED bucket: in ctrl + jb but NOT bare.
+   These features are triggered by the matched benign prefix — NOT a genuine
+   JB-semantic signal. Critical to see them visually distinct from jb_unique. */
+.link-graph text.node[data-overlap="shared_with_ctrl"],
+.link-graph circle[data-overlap="shared_with_ctrl"] {
+    fill: #f9a825 !important;
+    stroke: #c79100 !important;
+}
+.link-graph text.node[data-overlap="shared_with_ctrl"] {
+    font-weight: 600;
+}
+
+/* JB-unique — the true JB-semantic subcircuit (Georg's research focus) */
 .link-graph text.node[data-overlap="jb_unique"],
 .link-graph circle[data-overlap="jb_unique"] {
     fill: #e65100 !important;
@@ -28,6 +60,22 @@
     fill: #37474f !important;
 }
 
+/* Ctrl-graph baseline features */
+.link-graph text.node[data-overlap="ctrl"],
+.link-graph circle[data-overlap="ctrl"] {
+    fill: #546e7a !important;
+}
+
+/* Ctrl-unique — features only in ctrl graph (benign-prefix-induced) */
+.link-graph text.node[data-overlap="ctrl_unique"],
+.link-graph circle[data-overlap="ctrl_unique"] {
+    fill: #8e24aa !important;
+    stroke: #6a1b9a !important;
+}
+.link-graph text.node[data-overlap="ctrl_unique"] {
+    font-weight: 600;
+}
+
 /* Legend panel */
 .overlap-legend {
     position: fixed;
@@ -41,6 +89,7 @@
     font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
     line-height: 1.6;
+    max-width: 320px;
 }
 .overlap-legend b {
     display: block;
@@ -57,4 +106,11 @@
     border-radius: 2px;
     margin-right: 6px;
     vertical-align: middle;
+}
+.overlap-legend .note {
+    display: block;
+    font-size: 10.5px;
+    color: #555;
+    margin-top: 4px;
+    line-height: 1.35;
 }
