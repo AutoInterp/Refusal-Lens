@@ -7,6 +7,12 @@ the Stage 05 frontend cart can POST to for a live ablation demo.
 Singleton: loads `ReplacementModel` once at startup (~60-120s) and reuses
 across requests. CORS is opened for localhost:8000 (the frontend dev server).
 
+Backend defaults to `transformerlens` (matches `config.BACKEND` and the user's
+working ablation-experiment setup on Georg's measurement_hook patch). The
+nnsight backend is still selectable via `--backend nnsight` for parity with
+older code paths. Both backends expose `feature_intervention_generate` with
+identical signatures since vendor/circuit-tracer's unified ReplacementModel.
+
 Endpoints:
   POST /ablate   — run one (baseline, ablated) pair for a given feature set
   GET  /health   — liveness probe
@@ -27,11 +33,17 @@ Response schema:
   }
 
 Usage:
+    # GPU host (real-time ablation; ~60-120 s model load, ~5-30 s/request):
     PYTHONPATH=src python3 scripts/pipeline/ablation_server.py \\
         --host 127.0.0.1 --port 8080
 
+    # Wiring-test on a CPU/Mac (model load skipped until first /ablate call):
+    PYTHONPATH=src python3 scripts/pipeline/ablation_server.py --lazy-model
+
 Then from the frontend (served at localhost:8000) the cart's "Run ablation"
-button will POST to localhost:8080/ablate.
+button will POST to localhost:8080/ablate. Without a GPU the first request
+will fail or take many minutes — use --lazy-model only to validate that the
+HTTP wiring + frontend cart work end-to-end before deploying on a GPU host.
 """
 from __future__ import annotations
 
@@ -81,12 +93,15 @@ class ModelHolder:
     model = None
     tokenizer = None
     dtype_str = "bfloat16"
+    backend = config.BACKEND
 
     @classmethod
-    def load(cls, dtype_str: str = "bfloat16"):
+    def load(cls, dtype_str: str = "bfloat16", backend: str | None = None):
         if cls.model is not None:
             return
-        print(f"[ablation_server] loading ReplacementModel ({config.MODEL_NAME}, {dtype_str})…")
+        backend = backend or cls.backend
+        print(f"[ablation_server] loading ReplacementModel "
+              f"({config.MODEL_NAME}, {dtype_str}, backend={backend})…")
         import torch
         from circuit_tracer import ReplacementModel
 
@@ -95,11 +110,12 @@ class ModelHolder:
             config.MODEL_NAME,
             config.TRANSCODER_PATH,
             dtype=dtype_map[dtype_str],
-            backend="nnsight",
+            backend=backend,
             lazy_encoder=False,
         )
         cls.tokenizer = cls.model.tokenizer
         cls.dtype_str = dtype_str
+        cls.backend = backend
         print("[ablation_server] model ready.")
 
 
@@ -156,6 +172,7 @@ def build_app():
             "status": "ok" if ModelHolder.model is not None else "loading",
             "model": config.MODEL_NAME,
             "dtype": ModelHolder.dtype_str,
+            "backend": ModelHolder.backend,
         }
 
     @app.post("/ablate", response_model=AblateResponse)
@@ -205,16 +222,25 @@ def main():
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8080)
     p.add_argument("--dtype", choices=["float32", "bfloat16", "float16"], default="bfloat16")
+    p.add_argument("--backend", choices=["transformerlens", "nnsight"],
+                   default=config.BACKEND,
+                   help=f"ReplacementModel backend (default: {config.BACKEND}). "
+                        "TransformerLens matches Georg's measurement_hook patch and the user's "
+                        "ablation-experiment setup; nnsight is the legacy alternative.")
     p.add_argument("--lazy-model", action="store_true",
-                   help="Delay model load until the first /ablate call (faster startup for testing)")
+                   help="Delay model load until the first /ablate call. Lets you smoke-test the "
+                        "FastAPI wiring + frontend cart on a CPU box; the first POST /ablate will "
+                        "block on the load (and likely OOM without a real GPU).")
     args = p.parse_args()
 
     app = build_app()
     if not args.lazy_model:
-        ModelHolder.load(args.dtype)
+        ModelHolder.load(args.dtype, backend=args.backend)
     else:
         ModelHolder.dtype_str = args.dtype
-        print("[ablation_server] --lazy-model: model will load on first /ablate call")
+        ModelHolder.backend = args.backend
+        print(f"[ablation_server] --lazy-model: model will load on first /ablate call "
+              f"(backend={args.backend}, dtype={args.dtype})")
 
     import uvicorn
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")

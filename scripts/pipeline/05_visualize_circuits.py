@@ -14,9 +14,13 @@ and produces a browsable, annotated frontend tree with:
 
 Inputs:
   --run-dir <run>              Run directory containing 02_attribution/graphs/*.pt
-  --subcircuits-run <run>      (optional) Different run to pull 07_subcircuits/subcircuits.json
+  --subcircuits-run <run>      (optional) Different run to pull 07_subcircuits/<file>
                                 from; defaults to --run-dir. Useful when annotating a small
                                 local run with subcircuits derived from a 50-prompt RunPod run.
+  --subcircuits-file <name>    (optional) Filename inside 07_subcircuits/ to load.
+                                Default: subcircuits.json. Use subcircuits_k50_f50.json or
+                                subcircuits_k100_f20.json to annotate with the per-prompt
+                                sweep configs (Stage 07 P4). Mirrors Stage 08's flag.
   --prompts 0,1,2              (optional) Subset of prompt indices
   --classes bare,fiction       (optional) Subset of conditions (default: all 6)
   --out-dir <path>             (optional) Frontend output (default: <run_dir>/05_frontend)
@@ -80,8 +84,12 @@ def parse_args():
     p = argparse.ArgumentParser(description="Stage 05: build annotated attribution-graph frontend")
     p.add_argument("--run-dir", type=Path, required=True)
     p.add_argument("--subcircuits-run", type=Path, default=None,
-                   help="Run directory to pull 07_subcircuits/subcircuits.json from "
+                   help="Run directory to pull 07_subcircuits/<file> from "
                         "(default: --run-dir)")
+    p.add_argument("--subcircuits-file", type=str, default="subcircuits.json",
+                   help="Filename inside 07_subcircuits/ to load. Default: subcircuits.json. "
+                        "Use subcircuits_k50_f50.json or subcircuits_k100_f20.json to annotate "
+                        "with the per-prompt sweep configs from Stage 07 (P4).")
     p.add_argument("--prompts", type=str, default=None,
                    help="Comma-separated prompt indices (default: all)")
     p.add_argument("--classes", type=str, default=None,
@@ -194,7 +202,7 @@ def main():
 
     # Source paths
     graphs_pt_dir = run_dir / "02_attribution" / "graphs"
-    subcircuits_json = sc_run_dir / "07_subcircuits" / "subcircuits.json"
+    subcircuits_json = sc_run_dir / "07_subcircuits" / args.subcircuits_file
 
     # Staging: convert outputs go into <out_dir>/graph_data/ directly.
     # stage_frontend() will copy vendor + patches around it.
