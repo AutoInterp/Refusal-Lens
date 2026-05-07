@@ -23,6 +23,7 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 6px;
+    gap: 8px;
 }
 .subcircuit-panel h3 {
     margin: 0;
@@ -31,6 +32,12 @@
     text-transform: uppercase;
     color: #333;
     font-weight: 700;
+}
+.subcircuit-panel .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
 }
 .subcircuit-panel .toggle-all {
     background: white;
@@ -43,6 +50,51 @@
 }
 .subcircuit-panel .toggle-all:hover {
     background: #f3f3f3;
+}
+.subcircuit-panel .collapse-toggle {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    font-size: 16px;
+    line-height: 18px;
+    cursor: pointer;
+    font-family: inherit;
+    color: #555;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.subcircuit-panel .collapse-toggle:hover {
+    background: #f3f3f3;
+    color: #000;
+}
+
+/* Collapsed: hide everything except the header strip; panel becomes a small
+   click-to-expand pill. The whole pill is the expand affordance — click
+   anywhere on it. The collapse-toggle button continues to work for collapsing
+   from the expanded state. */
+.subcircuit-panel.collapsed {
+    cursor: pointer;
+    padding: 6px 10px;
+    width: auto;
+    max-height: none;
+    overflow: visible;
+}
+.subcircuit-panel.collapsed:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: #888;
+}
+.subcircuit-panel.collapsed > header {
+    margin-bottom: 0;
+}
+.subcircuit-panel.collapsed > :not(header) {
+    display: none;
+}
+.subcircuit-panel.collapsed .toggle-all {
+    display: none;
 }
 .subcircuit-panel ul {
     list-style: none;

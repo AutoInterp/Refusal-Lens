@@ -24,31 +24,51 @@
         shared_with_bare_and_ctrl: {
             color: '#1b5e20',
             label: 'Shared: bare ∩ ctrl ∩ jb',
+            short: 'b∩c∩j',
             note: 'most-stable refusal core',
         },
         shared_with_bare: {
             color: '#2e7d32',
             label: 'Shared with bare',
+            short: 'b∩j',
             note: null,
         },
         shared_with_ctrl: {
             color: '#f9a825',
             label: 'Shared with ctrl',
+            short: 'c∩j',
             note: 'PREFIX-induced (not JB-semantic)',
         },
         jb_unique: {
             color: '#e65100',
             label: 'JB unique',
+            short: 'jb',
             note: 'true JB-semantic signal',
         },
-        bare: { color: '#37474f', label: 'Bare', note: null },
-        ctrl: { color: '#546e7a', label: 'Ctrl', note: null },
+        bare: { color: '#37474f', label: 'Bare', short: 'bare', note: null },
+        ctrl: { color: '#546e7a', label: 'Ctrl', short: 'ctrl', note: null },
         ctrl_unique: {
             color: '#8e24aa',
             label: 'Ctrl unique',
+            short: 'ctrl-only',
             note: 'benign-prefix-only',
         },
     };
+
+    // Vendor nav layout (built by index.html ~L59-125):
+    //   .nav  (flex, justify space-between)
+    //     ├─ .controls-container   (graph select + .slider-container)
+    //     └─ .save-button
+    // We insert the legend between controls-container and save-button.
+    function findInsertionAnchor() {
+        const saveBtn = document.querySelector('.nav .save-button');
+        if (saveBtn && saveBtn.parentNode) {
+            return { parent: saveBtn.parentNode, before: saveBtn };
+        }
+        const nav = document.querySelector('.nav');
+        if (nav) return { parent: nav, before: null };
+        return null;
+    }
 
     function annotate() {
         if (typeof d3 === 'undefined') return 0;
@@ -79,23 +99,61 @@
     function rebuildLegend() {
         const counts = computeCounts();
         const present = ALL_BUCKETS.filter(b => counts[b] > 0);
+        const anchor = findInsertionAnchor();
         let legend = document.querySelector('.overlap-legend');
+
+        // Re-place the legend if the vendor nav re-rendered and orphaned it,
+        // or if the legend was previously in body-fallback mode and the nav has
+        // since appeared.
+        if (legend && anchor && legend.parentNode !== anchor.parent) {
+            legend.remove();
+            legend = null;
+        }
+
         if (!legend) {
             legend = document.createElement('div');
             legend.className = 'overlap-legend';
-            document.body.appendChild(legend);
+            if (anchor) {
+                legend.classList.add('overlap-legend-inline');
+                if (anchor.before) anchor.parent.insertBefore(legend, anchor.before);
+                else anchor.parent.appendChild(legend);
+            } else {
+                // Fallback: nav not yet built. Park at top-right floating.
+                document.body.appendChild(legend);
+            }
         }
+
+        const inline = legend.classList.contains('overlap-legend-inline');
+
         if (present.length === 0) {
-            legend.innerHTML = '<b>Overlap</b><div style="color:#888">(no annotated features)</div>';
+            // Inline: keep silent (no clutter in the top bar). Floating fallback:
+            // surface the "no annotations" hint so user knows the panel is alive.
+            legend.innerHTML = inline
+                ? ''
+                : '<b>Overlap</b><div style="color:#888">(no annotated features)</div>';
             return;
         }
-        const rows = present.map(b => {
-            const m = BUCKET_META[b];
-            const note = m.note ? `<span class="note">${m.note}</span>` : '';
-            return `<div><span class="sw" style="background:${m.color}"></span>`
-                + `${m.label} <span class="count">${counts[b]}</span>${note}</div>`;
-        });
-        legend.innerHTML = '<b>Overlap (feature counts)</b>' + rows.join('');
+
+        if (inline) {
+            const items = present.map(b => {
+                const m = BUCKET_META[b];
+                const tip = m.note ? `${m.label} — ${m.note}` : m.label;
+                return `<span class="legend-item" title="${tip}">`
+                    + `<span class="sw" style="background:${m.color}"></span>`
+                    + `<span class="lab">${m.short}</span>`
+                    + `<span class="cnt">${counts[b]}</span>`
+                    + `</span>`;
+            });
+            legend.innerHTML = '<span class="legend-label">Overlap</span>' + items.join('');
+        } else {
+            const rows = present.map(b => {
+                const m = BUCKET_META[b];
+                const note = m.note ? `<span class="note">${m.note}</span>` : '';
+                return `<div><span class="sw" style="background:${m.color}"></span>`
+                    + `${m.label} <span class="count">${counts[b]}</span>${note}</div>`;
+            });
+            legend.innerHTML = '<b>Overlap (feature counts)</b>' + rows.join('');
+        }
     }
 
     function tick() {

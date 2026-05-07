@@ -76,7 +76,8 @@
     font-weight: 600;
 }
 
-/* Legend panel */
+/* Legend panel — fallback floating mode (nav not yet built or absent on a page).
+   Inline-in-nav mode is below and overrides positioning. */
 .overlap-legend {
     position: fixed;
     top: 48px;
@@ -113,4 +114,61 @@
     color: #555;
     margin-top: 4px;
     line-height: 1.35;
+}
+
+/* Inline-in-nav mode: laid out horizontally between the pruning slider and the
+   Save button. Overrides the floating-fallback box styling above. */
+.overlap-legend.overlap-legend-inline {
+    position: static;
+    top: auto;
+    right: auto;
+    z-index: auto;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    max-width: none;
+    line-height: 1;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #222;
+}
+.overlap-legend.overlap-legend-inline .legend-label {
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #555;
+    font-weight: 700;
+}
+.overlap-legend.overlap-legend-inline .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: help;
+}
+.overlap-legend.overlap-legend-inline .legend-item .sw {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin: 0;
+    vertical-align: middle;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+.overlap-legend.overlap-legend-inline .legend-item .lab {
+    font-size: 11px;
+    color: #444;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+}
+.overlap-legend.overlap-legend-inline .legend-item .cnt {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 11px;
+    color: #111;
+    min-width: 18px;
+    text-align: right;
 }

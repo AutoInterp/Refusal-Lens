@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -441,24 +442,50 @@ def stage_frontend(
             if patch.is_dir() or patch.name == "__pycache__":
                 continue
             shutil.copy2(patch, frontend_out / patch.name)
-        # Inject <link> + <script> into index.html
+        # Inject <link> + <script> into index.html. Each href/src carries a
+        # ?v=<mtime> cache-buster so iterating on JS/CSS in the patches dir
+        # doesn't get masked by a stale browser cache after re-running stage 05.
         index_path = frontend_out / "index.html"
         html = index_path.read_text()
+        def _v(name: str) -> str:
+            f = frontend_out / name
+            return f"?v={int(f.stat().st_mtime)}" if f.exists() else ""
         gzip_flag = '<script>window.REFUSAL_LENS_USE_GZIP = true;</script>\n' if use_gzip else ''
         injection = (
             gzip_flag
-            + '<link rel="stylesheet" href="./overlap-colors.css">\n'
-            '<link rel="stylesheet" href="./subcircuit-panel.css">\n'
-            '<link rel="stylesheet" href="./feature-cart.css">\n'
-            '<script src="./fetch-override.js" defer></script>\n'
-            '<script src="./gzip-fetch.js" defer></script>\n'
-            '<script src="./overlap-annotate.js" defer></script>\n'
-            '<script src="./subcircuit-panel.js" defer></script>\n'
-            '<script src="./feature-cart.js" defer></script>\n'
+            + f'<link rel="stylesheet" href="./overlap-colors.css{_v("overlap-colors.css")}">\n'
+            f'<link rel="stylesheet" href="./subcircuit-panel.css{_v("subcircuit-panel.css")}">\n'
+            f'<link rel="stylesheet" href="./feature-cart.css{_v("feature-cart.css")}">\n'
+            f'<script src="./fetch-override.js{_v("fetch-override.js")}" defer></script>\n'
+            f'<script src="./gzip-fetch.js{_v("gzip-fetch.js")}" defer></script>\n'
+            f'<script src="./overlap-annotate.js{_v("overlap-annotate.js")}" defer></script>\n'
+            f'<script src="./subcircuit-panel.js{_v("subcircuit-panel.js")}" defer></script>\n'
+            f'<script src="./feature-cart.js{_v("feature-cart.js")}" defer></script>\n'
         )
         marker = "<script src='./util.js'></script>"
-        if marker in html and injection not in html:
+        # Re-inject if the marker is present and an existing injection (any
+        # version) is not. Detect a prior injection by looking for the unique
+        # subcircuit-panel.css href (with or without the ?v= suffix).
+        already_injected = re.search(
+            r'<link rel="stylesheet" href="\./subcircuit-panel\.css(\?v=\d+)?">', html,
+        )
+        if marker in html and not already_injected:
             html = html.replace(marker, injection + marker)
+            index_path.write_text(html)
+        elif already_injected:
+            # Refresh the cache-busters on every rerun so iterations on the patch
+            # files always invalidate the browser cache, even when the injection
+            # itself is already in place.
+            for name in (
+                "overlap-colors.css", "subcircuit-panel.css", "feature-cart.css",
+                "fetch-override.js", "gzip-fetch.js", "overlap-annotate.js",
+                "subcircuit-panel.js", "feature-cart.js",
+            ):
+                v = _v(name)
+                if not v:
+                    continue
+                pat = re.compile(r'\./' + re.escape(name) + r'(\?v=\d+)?')
+                html = pat.sub(f"./{name}{v}", html)
             index_path.write_text(html)
 
     # Move graph-metadata.json to data/ (different directory — always copy)

@@ -14,37 +14,61 @@
     const PANEL_ID = 'subcircuit-panel';
     const BODY_FILTER = 'sc-filter-active';
     const BODY_HOVER = 'sc-hover-active';
+    const COLLAPSED_KEY = 'refusal-lens.subcircuit-panel.collapsed';
 
     // Per-subcircuit color. Keep synchronized with README §9 narrative:
-    //   universal=green, canonical=orange, sign-flip=red, dampening=blue,
-    //   anti-amp=purple, late-wave=grey, class-exclusives get distinct hues.
+    //   Group 1 (cross-condition core): universal=green, canonical=orange
+    //   Group 2 (ctrl-aware, P4): ctrl-shared=olive, ctrl-only=slate
+    //   Group 3 (per-class JB vs matched ctrl, P4 — rigorous class subcircuits):
+    //       lighter shade of the matching class color
+    //   Group 4 (orthogonal axes): sign-flip=red, dampening=blue, anti-amp=purple,
+    //       late-wave=grey
+    //   Group 5 (per-class exclusive, corpus-aggregated): saturated class hue
     const COLORS = {
         universal_refusal_core: '#2e7d32',
         canonical_pro_refusal: '#e65100',
+        ctrl_shared_refusal: '#827717',
+        ctrl_only: '#37474f',
+        jb_analytical_specific_vs_ctrl: '#a1887f',
+        jb_cognitive_reframe_specific_vs_ctrl: '#26a69a',
+        jb_completion_specific_vs_ctrl: '#f48fb1',
+        jb_fiction_specific_vs_ctrl: '#ba68c8',
+        jb_roleplay_specific_vs_ctrl: '#ffb74d',
         sign_flip_convergent: '#c62828',
         dampening_specialists: '#1565c0',
         anti_refusal_amplifiers: '#6a1b9a',
         late_wave_layer24_32: '#616161',
-        roleplay_exclusive: '#f57c00',
-        fiction_exclusive: '#7b1fa2',
+        analytical_exclusive: '#8b4513',
         cognitive_reframe_exclusive: '#006064',
         completion_exclusive: '#e91e63',
-        analytical_exclusive: '#8b4513',
+        fiction_exclusive: '#7b1fa2',
+        roleplay_exclusive: '#f57c00',
     };
 
-    // Canonical display order — research-load-bearing first, class-exclusives last
+    // Canonical display order. Groups: cross-condition core, ctrl-aware (P4),
+    // per-class JB-vs-ctrl (P4), orthogonal axes, per-class exclusive (legacy).
+    // Per-class JB-vs-ctrl sits ABOVE the legacy *_exclusive list because it's
+    // the rigorous variant that drives the dissociation findings on the
+    // k50_f50 / k100_f20 sweeps.
     const ORDER = [
         'universal_refusal_core',
         'canonical_pro_refusal',
+        'ctrl_shared_refusal',
+        'ctrl_only',
+        'jb_analytical_specific_vs_ctrl',
+        'jb_cognitive_reframe_specific_vs_ctrl',
+        'jb_completion_specific_vs_ctrl',
+        'jb_fiction_specific_vs_ctrl',
+        'jb_roleplay_specific_vs_ctrl',
         'sign_flip_convergent',
         'dampening_specialists',
         'anti_refusal_amplifiers',
         'late_wave_layer24_32',
-        'roleplay_exclusive',
-        'fiction_exclusive',
+        'analytical_exclusive',
         'cognitive_reframe_exclusive',
         'completion_exclusive',
-        'analytical_exclusive',
+        'fiction_exclusive',
+        'roleplay_exclusive',
     ];
 
     const pinned = new Set();
@@ -108,6 +132,27 @@
         // themselves tell the user that (rather than the control vanishing).
     }
 
+    function setCollapsed(panel, collapsed) {
+        panel.classList.toggle('collapsed', collapsed);
+        const tog = panel.querySelector('.collapse-toggle');
+        if (tog) {
+            tog.textContent = collapsed ? '+' : '–';
+            tog.title = collapsed ? 'Expand' : 'Collapse';
+            tog.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        }
+        try { localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) {}
+    }
+
+    function readCollapsedDefault() {
+        // Default collapsed so the attribution graph is unobstructed on first load.
+        try {
+            const v = localStorage.getItem(COLLAPSED_KEY);
+            if (v === '0') return false;
+            if (v === '1') return true;
+        } catch (e) {}
+        return true;
+    }
+
     function buildPanel() {
         if (document.getElementById(PANEL_ID)) return;
         const panel = document.createElement('div');
@@ -117,6 +162,10 @@
         const header = document.createElement('header');
         const title = document.createElement('h3');
         title.textContent = 'Subcircuits · Stage 07';
+
+        const headerActions = document.createElement('div');
+        headerActions.className = 'header-actions';
+
         const clearBtn = document.createElement('button');
         clearBtn.className = 'toggle-all';
         clearBtn.type = 'button';
@@ -132,9 +181,30 @@
             });
             paintPinned();
         });
+
+        const collapseBtn = document.createElement('button');
+        collapseBtn.className = 'collapse-toggle';
+        collapseBtn.type = 'button';
+        collapseBtn.setAttribute('aria-controls', PANEL_ID);
+        collapseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setCollapsed(panel, !panel.classList.contains('collapsed'));
+        });
+
+        headerActions.appendChild(clearBtn);
+        headerActions.appendChild(collapseBtn);
         header.appendChild(title);
-        header.appendChild(clearBtn);
+        header.appendChild(headerActions);
         panel.appendChild(header);
+
+        // Click anywhere on a collapsed panel to expand. The toggle button uses
+        // stopPropagation, and this no-ops when already expanded, so internal
+        // controls (checkboxes, Clear) keep working when the panel is open.
+        panel.addEventListener('click', () => {
+            if (panel.classList.contains('collapsed')) {
+                setCollapsed(panel, false);
+            }
+        });
 
         const ul = document.createElement('ul');
         for (const name of ORDER) {
@@ -189,6 +259,7 @@
         panel.appendChild(hint);
 
         document.body.appendChild(panel);
+        setCollapsed(panel, readCollapsedDefault());
     }
 
     function tick() {

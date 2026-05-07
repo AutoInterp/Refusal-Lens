@@ -20,6 +20,7 @@
     'use strict';
     const PANEL_ID = 'feature-cart-panel';
     const SERVER_URL = 'http://localhost:8080/ablate';
+    const COLLAPSED_KEY = 'refusal-lens.feature-cart-panel.collapsed';
 
     // feature-key → {layer, feat_idx, label, value}
     const cart = new Map();
@@ -206,6 +207,27 @@
         el.classList.toggle('error', !!isError);
     }
 
+    function setCollapsed(panel, collapsed) {
+        panel.classList.toggle('collapsed', collapsed);
+        const tog = panel.querySelector('.collapse-toggle');
+        if (tog) {
+            tog.textContent = collapsed ? '+' : '–';
+            tog.title = collapsed ? 'Expand' : 'Collapse';
+            tog.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        }
+        try { localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) {}
+    }
+
+    function readCollapsedDefault() {
+        // Default collapsed so the attribution graph is unobstructed on first load.
+        try {
+            const v = localStorage.getItem(COLLAPSED_KEY);
+            if (v === '0') return false;
+            if (v === '1') return true;
+        } catch (e) {}
+        return true;
+    }
+
     function buildPanel() {
         if (document.getElementById(PANEL_ID)) return;
         const panel = document.createElement('div');
@@ -215,12 +237,37 @@
         const header = document.createElement('header');
         const title = document.createElement('h3');
         title.textContent = 'Ablation Cart · Stage 08';
+
+        const headerActions = document.createElement('div');
+        headerActions.className = 'header-actions';
+
         const count = document.createElement('span');
         count.className = 'cart-count';
         count.textContent = '0 selected';
+
+        const collapseBtn = document.createElement('button');
+        collapseBtn.className = 'collapse-toggle';
+        collapseBtn.type = 'button';
+        collapseBtn.setAttribute('aria-controls', PANEL_ID);
+        collapseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setCollapsed(panel, !panel.classList.contains('collapsed'));
+        });
+
+        headerActions.appendChild(count);
+        headerActions.appendChild(collapseBtn);
         header.appendChild(title);
-        header.appendChild(count);
+        header.appendChild(headerActions);
         panel.appendChild(header);
+
+        // Click anywhere on a collapsed panel to expand. The toggle button
+        // stopsPropagation, and this no-ops while expanded, so internal controls
+        // (cart row buttons, action buttons) keep working when the panel is open.
+        panel.addEventListener('click', () => {
+            if (panel.classList.contains('collapsed')) {
+                setCollapsed(panel, false);
+            }
+        });
 
         const ul = document.createElement('ul');
         panel.appendChild(ul);
@@ -275,6 +322,7 @@
         panel.appendChild(hint);
 
         document.body.appendChild(panel);
+        setCollapsed(panel, readCollapsedDefault());
     }
 
     function bindClickHandlers() {
