@@ -178,12 +178,13 @@ def fig5_recovery_vs_features(rows: list[dict], direction_rate: float = 1.0) -> 
             return "orig"
         return "corpus_union"
 
-    fig, ax = plt.subplots(figsize=(9, 6))
+    fig, ax = plt.subplots(figsize=(13, 7.5))
     # Direction line
     ax.axhline(y=direction_rate, color=cat_colors["direction"], linestyle="--", linewidth=2,
                label=f"Direction intervention ({direction_rate*100:.0f}%)", zorder=10)
 
-    # Points
+    # Collect plottable points first
+    pts = []  # list of (x, y, lo, hi, cat, color, name)
     for r in rows:
         if r["position_mode"] != "all":
             continue
@@ -191,21 +192,45 @@ def fig5_recovery_vs_features(rows: list[dict], direction_rate: float = 1.0) -> 
             continue
         cat = categorize(r)
         color = cat_colors.get(cat, "#666666")
-        x = r["n_features"]
-        y = r["jb_recovery_rate"]
-        # Vertical CI bars
-        lo = r["jb_ci_lo"]
-        hi = r["jb_ci_hi"]
+        pts.append((r["n_features"], r["jb_recovery_rate"], r["jb_ci_lo"], r["jb_ci_hi"],
+                    cat, color, r["ablation"]))
+
+    # Draw error bars
+    for x, y, lo, hi, cat, color, name in pts:
         ax.errorbar([x], [y], yerr=[[y - lo], [hi - y]], fmt="o", color=color,
                     capsize=3, alpha=0.85, markersize=8)
-        # Annotate Pareto pts
-        ax.annotate(r["ablation"][:18], (x, y), fontsize=7, alpha=0.6,
-                    xytext=(5, 3), textcoords="offset points")
+
+    # Pareto frontier: maximize y for any n <= x. Only annotate frontier + a few extremes.
+    sorted_pts = sorted(pts, key=lambda p: (p[0], -p[1]))
+    frontier = []
+    best_y = -1.0
+    for p in sorted_pts:
+        if p[1] > best_y:
+            frontier.append(p)
+            best_y = p[1]
+    # Also force-label the highest-y point overall and the largest-n point
+    must_label = set(id(p) for p in frontier)
+    if pts:
+        must_label.add(id(max(pts, key=lambda p: p[1])))
+        must_label.add(id(max(pts, key=lambda p: p[0])))
+        must_label.add(id(min(pts, key=lambda p: p[0])))
+
+    # Place labels with leader lines, alternating above/below to reduce overlap
+    label_pts = [p for p in pts if id(p) in must_label]
+    label_pts.sort(key=lambda p: p[0])
+    for i, (x, y, lo, hi, cat, color, name) in enumerate(label_pts):
+        # Alternate vertical placement so neighbors don't stack
+        dy = 18 if (i % 2 == 0) else -22
+        dx = 6 if (i % 2 == 0) else -6
+        ha = "left" if dx > 0 else "right"
+        ax.annotate(name, xy=(x, y), xytext=(dx, dy), textcoords="offset points",
+                    fontsize=8, alpha=0.85, ha=ha,
+                    bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=color, lw=0.6, alpha=0.85),
+                    arrowprops=dict(arrowstyle="-", color=color, lw=0.6, alpha=0.6))
 
     # Legend
     seen_cats = set()
-    for r in rows:
-        cat = categorize(r)
+    for _, _, _, _, cat, _, _ in pts:
         if cat in seen_cats:
             continue
         seen_cats.add(cat)
@@ -214,11 +239,11 @@ def fig5_recovery_vs_features(rows: list[dict], direction_rate: float = 1.0) -> 
     ax.set_xscale("log")
     ax.set_xlabel("n features ablated (log scale)", fontsize=12)
     ax.set_ylabel("JB-comply → REFUSE recovery rate (weighted)", fontsize=12)
-    ax.set_ylim(0, 1.05)
+    ax.set_ylim(-0.05, 1.10)
     ax.set_title("Recovery-vs-features Pareto: ablations plateau far below direction-level potency",
                  fontsize=13)
     ax.grid(True, alpha=0.3)
-    ax.legend(loc="center right", fontsize=10)
+    ax.legend(loc="center left", fontsize=10, framealpha=0.9)
 
     out = FIG_DIR / "F5_recovery_vs_features_pareto.png"
     fig.tight_layout()
@@ -313,30 +338,45 @@ def fig6_construction_rule_robustness(rows: list[dict]) -> None:
         print("[skip] no rows for F6")
         return
 
-    fig, ax = plt.subplots(figsize=(11, 7))
+    fig, ax = plt.subplots(figsize=(12, 7.5))
     sub_y = {s: i for i, s in enumerate(reversed(keep_subs))}
     cfg_x = {c: i for i, c in enumerate(config_order)}
 
+    # Cap marker size so big-n cells don't swallow neighbours; use sqrt scaling.
+    import math as _math
+    sc = None
     for (sub, cfg), rate in grid.items():
         x = cfg_x[cfg]
         y = sub_y[sub]
         n = n_grid[(sub, cfg)]
         if n is None or n <= 0:
             continue
-        size = max(40, min(400, (n or 0) * 4))
+        size = max(60, min(260, 30 * _math.sqrt(n)))
         sc = ax.scatter(x, y, s=size, c=[rate], cmap="RdYlGn", vmin=0, vmax=0.5,
-                        edgecolors="black", alpha=0.85)
-        ax.text(x, y, f"{rate*100:.0f}%\nn={n}", ha="center", va="center", fontsize=8)
+                        edgecolors="black", linewidths=0.6, alpha=0.9, zorder=3)
+        # Two-line label placed above the marker so it never clashes with the disk.
+        ax.annotate(
+            f"{rate*100:.0f}%  (n={n})",
+            xy=(x, y), xytext=(0, 14), textcoords="offset points",
+            ha="center", va="bottom", fontsize=8.5, zorder=4,
+            bbox=dict(boxstyle="round,pad=0.18", fc="white", ec="#888888",
+                      lw=0.4, alpha=0.85),
+        )
 
+    # Add some breathing room around the grid
+    ax.set_xlim(-0.6, len(config_order) - 0.4)
+    ax.set_ylim(-0.6, len(keep_subs) - 0.4)
     ax.set_xticks(list(cfg_x.values()))
-    ax.set_xticklabels([config_label[c] for c in config_order], rotation=30, ha="right")
+    ax.set_xticklabels([config_label[c] for c in config_order], rotation=25, ha="right",
+                       fontsize=10)
     ax.set_yticks(list(sub_y.values()))
-    ax.set_yticklabels([s.replace("_", " ") for s in reversed(keep_subs)])
+    ax.set_yticklabels([s.replace("_", " ") for s in reversed(keep_subs)], fontsize=10)
     ax.set_title("JB recovery rate across (subcircuit × construction rule)\n"
-                 "Marker size = n_features; color = recovery rate",
+                 "Marker size ∝ √n_features; colour = recovery rate; label shows %  (n=…)",
                  fontsize=12)
-    plt.colorbar(sc, ax=ax, label="JB recovery rate")
-    ax.grid(True, alpha=0.3)
+    if sc is not None:
+        plt.colorbar(sc, ax=ax, label="JB recovery rate", pad=0.02)
+    ax.grid(True, alpha=0.25, zorder=1)
 
     out = FIG_DIR / "F6_construction_rule_robustness.png"
     fig.tight_layout()
