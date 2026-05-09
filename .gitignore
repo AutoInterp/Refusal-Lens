@@ -1,8 +1,13 @@
 
-# Raw attribution graph pickles (archived to HF dataset, not committed)
+# Raw attribution graph pickles (large; not committed; pull from HF if needed)
 data/results/pipeline_runs/**/02_attribution/graphs/
+data/results/pipeline_runs/**/raw_graphs/
 
-# Rendered frontend bundle — regenerable from HF via fetch_graph_data.py
+# Pre-rendered frontend graph bundle (downloadable from the HF dataset
+# via scripts/anon_hf_download.py; ~465 MB, not committed)
+data/results/pipeline_runs/**/graph_data/
+
+# Rendered frontend bundle — regenerable from HF
 data/results/pipeline_runs/**/05_frontend/
 
 # Byte-compiled / optimized / DLL files

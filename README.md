@@ -170,11 +170,17 @@ committed; an anonymous Hugging Face dataset hosts the full artefact bundle
 and can be pulled with the helper script:
 
 ```bash
-python3 scripts/anon_hf_download.py --hf-repo <anonymous-org>/refusal-lens-icml2026-data
+python3 scripts/anon_hf_download.py --hf-repo refusal-lens/ICML2026-submission
 ```
 
-The repository identifier and download instructions are listed in the
-paper's reproducibility appendix.
+The dataset is public at
+<https://huggingface.co/datasets/refusal-lens/ICML2026-submission>; no
+HuggingFace token is required to download. The pre-rendered frontend
+graph bundle (`runs/<canonical>/graph_data/*.json.gz`, ≈ 465 MB) is
+included in the dataset; the raw attribution `.pt` graphs (≈ 355 GB,
+needed only for re-pruning at custom thresholds or rendering the
+interactive circuit visualizer) are not currently mirrored — please
+contact us during the rebuttal window if a reviewer needs them.
 
 ## Citation
 
