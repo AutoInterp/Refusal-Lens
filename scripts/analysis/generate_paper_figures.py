@@ -1,18 +1,25 @@
 """
-Generate paper figures for Outline E from existing Stage 08 sweep results.
-==========================================================================
-Pulls renormalized (Stage 06 baseline-aligned) ablation summaries from:
+Generate paper figures from Stage 02b geometry + Stage 08 ablation sweep results.
+================================================================================
+F1 (geometry, ICML v2 narrative) reads:
+  - run_20260430_023247/02b_stats/residuals_L15_per_cond.pt
+  - run_20260430_023247/01_direction/refusal_direction.pt
+  - run_20260430_023247/02b_stats/direction_alignment.json
+
+F3-F6 (ablation sweep, supplementary) read renormalised (Stage 06 baseline-aligned)
+ablation summaries from:
   - run_20260430_023247                            (orig 5 ablations, renormed)
   - run_20260430_023247_canonical_{legacy, k100f20, k50f50}  (canonical sweep, renormed)
   - run_20260430_023247_full_{k100f20, k50f50}     (Tier 2: 8 subcircuits × 2 configs)
   - run_20260430_023247_topN                       (Tier 1: per-prompt top-N + random)
   - run_20260430_023247/06_causal/causal_summary.json  (direction intervention 100/98/100)
 
-Outputs to ./figures/:
-  F3_per_prompt_vs_corpus_union.png  — Pillar 2: 6 vs 88 vs 1 across constructions
-  F4_L13_F427_spotlight.png          — Pillar 4: single-feature spotlight
-  F5_recovery_vs_features_pareto.png — Pillar 3: the Pareto curve (the headline)
-  F6_construction_rule_robustness.png — Pillar 2 robustness across all subcircuits
+Outputs to ./figures/ (PDF + PNG for each):
+  F1_per_class_geometry              — ICML v2 lead figure: per-class JB displacement
+  F3_per_prompt_vs_corpus_union.png  — supplementary Pillar 2: 6 vs 88 vs 1 across constructions
+  F4_L13_F427_spotlight.png          — supplementary Pillar 4: single-feature spotlight
+  F5_recovery_vs_features_pareto.png — supplementary Pillar 3: the Pareto curve
+  F6_construction_rule_robustness.png — supplementary Pillar 2 robustness across subcircuits
 
   recovery_table.csv                  — every ablation × config × headline numbers
   recovery_with_ci.json               — Wilson 95% CIs on every recovery rate
@@ -30,6 +37,26 @@ REPO = Path(__file__).resolve().parents[2]
 RESULTS = REPO / "data" / "results" / "pipeline_runs"
 FIG_DIR = REPO / "figures"
 FIG_DIR.mkdir(exist_ok=True)
+
+# ICML v2 paper canonical run (geometry + causal data come from here).
+GEOMETRY_RUN = "run_20260430_023247"
+
+# Per-class palette used by F1 (and any future per-class figure).
+JB_CLASSES = ["fiction", "roleplay", "analytical", "completion", "cognitive_reframe"]
+JB_CLASS_COLORS = {
+    "fiction":           "#D62728",  # red
+    "roleplay":          "#FF7F0E",  # orange
+    "analytical":        "#2CA02C",  # green
+    "completion":        "#9467BD",  # purple
+    "cognitive_reframe": "#1F77B4",  # blue
+}
+JB_CLASS_LABEL = {
+    "fiction": "fiction",
+    "roleplay": "roleplay",
+    "analytical": "analytical",
+    "completion": "completion",
+    "cognitive_reframe": "cog. reframe",
+}
 
 
 def load_summary(run_dir: Path, prefer_renorm: bool = True) -> dict | None:
@@ -439,8 +466,320 @@ def fig4_l13_f427_spotlight(rows: list[dict]) -> None:
     print(f"[wrote] {out}")
 
 
+# ==========================================================================
+# F1 — Per-class jailbreak displacement geometry (ICML v2 lead figure)
+# ==========================================================================
+
+def fig1_per_class_geometry(run_dir: Path) -> None:
+    """F1: 2D projection of per-class JB displacement at L15, pos -2.
+
+    Plot plane:
+        x = projection on r̂  (refusal direction; harmful at 0, harmless at -1)
+        y = projection on PC1 of orthogonal residuals across the 5 jb classes
+    All quantities normalised to ‖r̂‖ for unitless axes.
+
+    Layers (back-to-front):
+        1. dashed grey reference axis  bare → harmless
+        2. faint per-prompt clouds for each jb_class (50 prompts each, alpha 0.18)
+           — visually addresses the "single direction per class" concern
+        3. ctrl-class centroids as hollow markers (should sit near bare)
+        4. jb-class arrows + bold centroids with cosine + magnitude annotations
+        5. bare and harmless reference centroids (large X markers)
+
+    Outputs PDF (vector, for paper inclusion) + PNG (for previews).
+    """
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import torch
+    except ImportError:
+        print("[skip] F1: matplotlib/numpy/torch unavailable")
+        return
+
+    res_path = run_dir / "02b_stats" / "residuals_L15_per_cond.pt"
+    dir_path = run_dir / "01_direction" / "refusal_direction.pt"
+    align_path = run_dir / "02b_stats" / "direction_alignment.json"
+    for p in (res_path, dir_path, align_path):
+        if not p.exists():
+            print(f"[skip] F1: missing input {p}")
+            return
+
+    residuals = torch.load(res_path, map_location="cpu", weights_only=False)
+    direction_data = torch.load(dir_path, map_location="cpu", weights_only=False)
+    align = json.load(open(align_path))
+
+    # residuals tensors are stored as (n_prompts=50, n_positions=3, d_model=2560)
+    # with positions in target order [-5, -3, -2]. Decision token = pos -2 = index 2.
+    POS_IDX = 2
+    target_positions = align.get("metadata", {}).get("target_positions")
+    if target_positions and target_positions[POS_IDX] != -2:
+        print(f"[skip] F1: unexpected position layout {target_positions}; "
+              "expected pos -2 at index 2")
+        return
+
+    r_hat = direction_data["direction_pos-2_layer15"].numpy().astype(np.float64)
+    r_hat_norm = float(align["metadata"]["r_hat_norm"])
+
+    # Per-prompt activations & per-class centroids at pos -2.
+    per_prompt = {cond: residuals[cond][:, POS_IDX, :].numpy().astype(np.float64)
+                  for cond in residuals}
+    centroids = {cond: per_prompt[cond].mean(0) for cond in per_prompt}
+    c_bare = centroids["bare"]
+
+    # Build the orthogonal axis: PC1 of *centered* {jb_class_centroid − bare_centroid}_⊥r̂.
+    # Centering before SVD removes the shared orthogonal component (which projects all 5
+    # classes to the same y); the resulting PC1 is the direction of *maximal between-class
+    # spread*, so each class lands at a distinct y-coord.
+    disp_jb = np.stack([centroids[f"jb_{c}"] - c_bare for c in JB_CLASSES])  # (5, d)
+    proj_r = disp_jb @ r_hat                                                  # (5,)
+    orth = disp_jb - proj_r[:, None] * r_hat[None, :]                         # (5, d)
+    orth_centered = orth - orth.mean(axis=0, keepdims=True)
+    _, _, vt = np.linalg.svd(orth_centered, full_matrices=False)
+    v_orth = vt[0]
+    # Sanity: v_orth must be orthogonal to r_hat by construction.
+    assert abs(float(v_orth @ r_hat)) < 1e-6, "v_orth not orthogonal to r_hat"
+    # Sign convention: orient so 'fiction' is in the upper half — purely visual.
+    if (disp_jb[JB_CLASSES.index("fiction")] @ v_orth) < 0:
+        v_orth = -v_orth
+
+    def to_2d(arr: "np.ndarray") -> tuple["np.ndarray", "np.ndarray"]:
+        """Project (..., d) array of activations into (x, y) in r̂-units, relative to bare.
+
+        x is projection onto the *harmless* direction (-r̂), so jailbreak displacements
+        and the harmless centroid both have x > 0 (rightward = away from refusal).
+        """
+        d = arr - c_bare
+        x = -(d @ r_hat) / r_hat_norm   # projection on -r̂; harmless = +1
+        y = (d @ v_orth) / r_hat_norm
+        return x, y
+
+    # ---- Plot --------------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(10.0, 5.6))
+
+    # 1) Reference axis  bare(0,0) → harmless(1,0) along -r̂.
+    # Annotation is *above* the dashed line with a white bbox so it stays legible even
+    # when JB clouds / arrows pass over it.
+    ax.plot([0, 1], [0, 0], ls="--", color="#888888", lw=1.2, alpha=0.75, zorder=1)
+    ax.annotate(
+        r"$-\hat{r}$  axis (harmful $\to$ harmless)",
+        xy=(0.5, 0), xytext=(0, 8), textcoords="offset points",
+        ha="center", va="bottom", fontsize=8.5, color="#555555", style="italic",
+        bbox=dict(boxstyle="round,pad=0.22", fc="white", ec="none", alpha=0.85),
+        zorder=4,
+    )
+
+    # 2) Per-prompt clouds for jb conditions (50 dots / class — shows within-class spread)
+    for c in JB_CLASSES:
+        color = JB_CLASS_COLORS[c]
+        xs, ys = to_2d(per_prompt[f"jb_{c}"])
+        ax.scatter(xs, ys, c=color, s=22, alpha=0.30, zorder=2,
+                   edgecolors="none", rasterized=True)
+
+    # 3) Ctrl centroids as hollow markers (should sit close to bare, validating that
+    #    length-matched benign prefixes don't move the residual along -r̂).
+    for c in JB_CLASSES:
+        color = JB_CLASS_COLORS[c]
+        xc, yc = to_2d(centroids[f"ctrl_{c}"][None, :])
+        ax.scatter(float(xc[0]), float(yc[0]), s=70, facecolors="white",
+                   edgecolors=color, linewidth=1.4, alpha=0.85, marker="o",
+                   zorder=3)
+
+    # 4) JB arrows + bold centroids
+    jb_pts = {}
+    for c in JB_CLASSES:
+        color = JB_CLASS_COLORS[c]
+        xc, yc = to_2d(centroids[f"jb_{c}"][None, :])
+        xc, yc = float(xc[0]), float(yc[0])
+        jb_pts[c] = (xc, yc)
+        ax.annotate(
+            "", xy=(xc, yc), xytext=(0, 0),
+            arrowprops=dict(arrowstyle="-|>", color=color, lw=2.0, alpha=0.95,
+                            mutation_scale=16, shrinkA=4, shrinkB=2),
+            zorder=4,
+        )
+        ax.scatter([xc], [yc], s=140, c=color, edgecolors="white",
+                   linewidth=1.5, zorder=5)
+
+    # 5) Reference centroids: bare(0,0) and synthesised harmless(1,0)
+    ax.scatter([0], [0], s=180, c="#1A1A1A", edgecolors="white",
+               linewidth=1.5, marker="X", zorder=6)
+    ax.annotate("Harmful\n(bare)", xy=(0, 0), xytext=(-10, -2),
+                textcoords="offset points", fontsize=10, fontweight="bold",
+                ha="right", va="center")
+    ax.scatter([1], [0], s=180, c="#1F8A5C", edgecolors="white",
+               linewidth=1.5, marker="X", zorder=6)
+    ax.annotate("Harmless\ncentroid", xy=(1, 0), xytext=(10, -2),
+                textcoords="offset points", fontsize=10, fontweight="bold",
+                ha="left", va="center")
+
+    # Per-class label placement: stacked callout column on the right.
+    # No leader lines — colour coding alone matches each label box to its arrow / cloud.
+    # Labels are tightened (y_top/y_bot ±0.32) so the column fits inside the plot bounds.
+    xs_centroids = [jb_pts[c][0] for c in JB_CLASSES]
+    ys_centroids = [jb_pts[c][1] for c in JB_CLASSES]
+    plot_xmax = max(xs_centroids + [1.0]) + 0.20  # right edge of plot data
+    label_x = plot_xmax + 0.30                     # callout column x in data coords
+    sorted_cls = sorted(JB_CLASSES, key=lambda c: -jb_pts[c][1])
+    y_top, y_bot = 0.32, -0.32
+    n = len(sorted_cls)
+    for i, c in enumerate(sorted_cls):
+        meta = align["per_class"][c]["pos_minus_2"]
+        cos_v = float(meta["cos_neg_r_hat_r_jb"])
+        mag_v = float(meta["mag_ratio_r_jb"])
+        label = (f"{JB_CLASS_LABEL[c]}\n"
+                 f"cos={cos_v:.2f},  $\\|r_{{jb}}\\|/\\|\\hat r\\|$={mag_v:.2f}")
+        ly = y_top - i * (y_top - y_bot) / (n - 1)
+        ax.text(
+            label_x, ly, label,
+            fontsize=9, color=JB_CLASS_COLORS[c], fontweight="bold",
+            ha="left", va="center",
+            bbox=dict(boxstyle="round,pad=0.30", fc="white",
+                      ec=JB_CLASS_COLORS[c], lw=0.9, alpha=0.95),
+            zorder=7,
+        )
+
+    # Legend (placed below the plot to avoid overlapping with classes)
+    ctrl_handle = plt.Line2D([], [], marker="o", color="white", linestyle="",
+                             markerfacecolor="white", markeredgecolor="#444444",
+                             markersize=8, markeredgewidth=1.4,
+                             label="ctrl centroids (length-matched, no JB semantic)")
+    cloud_handle = plt.Line2D([], [], marker="o", color="white", linestyle="",
+                              markerfacecolor="#888888", markeredgecolor="none",
+                              markersize=5, alpha=0.55,
+                              label="individual JB prompts (50 / class)")
+    ax.legend(handles=[ctrl_handle, cloud_handle], loc="lower left",
+              fontsize=8.5, framealpha=0.92, handletextpad=0.6, borderpad=0.6,
+              bbox_to_anchor=(0.0, 0.0))
+
+    # Axes & limits — extend xlim to include the callout column.
+    ax.axhline(y=0, color="gray", alpha=0.18, lw=0.5)
+    ax.axvline(x=0, color="gray", alpha=0.18, lw=0.5)
+    ax.set_xlim(-0.30, label_x + 0.55)
+    ax.set_ylim(min(ys_centroids + [-0.05]) - 0.25,
+                max(ys_centroids + [+0.05]) + 0.30)
+    ax.set_xlabel(r"Projection on $-\hat{r}$  (units of $\|\hat{r}\|$;  harmless direction $\to$)",
+                  fontsize=11)
+    ax.set_ylabel(r"Class-separating orthogonal axis  ($\|\hat{r}\|$ units)",
+                  fontsize=11)
+    ax.set_title(
+        r"Per-class jailbreak displacement at $\ell=15$, position $-2$",
+        fontsize=12, pad=8,
+    )
+    ax.grid(True, alpha=0.18)
+    # Use auto aspect — cosines / magnitudes are reported in the labels themselves, so
+    # geometric exactness in the rendering is not required and gives us more chart area.
+    ax.set_aspect("auto")
+
+    fig.tight_layout()
+    out_pdf = FIG_DIR / "F1_per_class_geometry.pdf"
+    out_png = FIG_DIR / "F1_per_class_geometry.png"
+    fig.savefig(out_pdf)
+    fig.savefig(out_png, dpi=200)
+    plt.close(fig)
+    print(f"[wrote] {out_pdf}")
+    print(f"[wrote] {out_png}")
+
+
+# ==========================================================================
+# F1B — Appendix: raw vs semantic per-class cosines (controlled-dataset payoff)
+# ==========================================================================
+
+def fig1b_raw_vs_semantic_cosines(run_dir: Path) -> None:
+    """F1B (appendix): cos(-r̂, r_jb) raw vs semantic per class.
+
+    Raw direction:      r_jb       = mean(h_jb_c)  − mean(h_bare)        (Ball convention)
+    Semantic direction: r_jb_sem   = mean(h_jb_c)  − mean(h_ctrl_c)     (controlled)
+
+    The raw direction conflates the jailbreak semantic with the prefix-length
+    effect (any prefix shifts residuals slightly even without JB semantic).
+    The controlled dataset's signature contribution is the ability to disentangle
+    these two via the matched ctrl prefixes. Plotting both side-by-side surfaces
+    the asymmetry (some classes' apparent harmless-shift is largely prefix-driven).
+    """
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+    except ImportError:
+        print("[skip] F1B: matplotlib/numpy unavailable")
+        return
+
+    align_path = run_dir / "02b_stats" / "direction_alignment.json"
+    if not align_path.exists():
+        print(f"[skip] F1B: missing {align_path}")
+        return
+    align = json.load(open(align_path))
+
+    raw_cos = []
+    sem_cos = []
+    for c in JB_CLASSES:
+        meta = align["per_class"][c]["pos_minus_2"]
+        raw_cos.append(float(meta["cos_neg_r_hat_r_jb"]))
+        sem_cos.append(float(meta["cos_neg_r_hat_r_jb_sem"]))
+
+    x = np.arange(len(JB_CLASSES))
+    w = 0.38
+
+    fig, ax = plt.subplots(figsize=(8.4, 4.6))
+
+    raw_bars = ax.bar(x - w/2, raw_cos, w,
+                      color=[JB_CLASS_COLORS[c] for c in JB_CLASSES],
+                      edgecolor="black", linewidth=0.5,
+                      label=r"raw  $r_{jb} = h_{jb} - h_{\mathrm{bare}}$")
+    sem_bars = ax.bar(x + w/2, sem_cos, w,
+                      color=[JB_CLASS_COLORS[c] for c in JB_CLASSES],
+                      edgecolor="black", linewidth=0.5, hatch="///",
+                      alpha=0.85,
+                      label=r"semantic  $r_{jb}^{\mathrm{sem}} = h_{jb} - h_{\mathrm{ctrl}}$")
+
+    # Bar value labels
+    for b, v in zip(raw_bars, raw_cos):
+        ax.annotate(f"{v:+.2f}", xy=(b.get_x() + b.get_width()/2, v),
+                    xytext=(0, 3 if v >= 0 else -10), textcoords="offset points",
+                    ha="center", fontsize=8.5, fontweight="bold")
+    for b, v in zip(sem_bars, sem_cos):
+        ax.annotate(f"{v:+.2f}", xy=(b.get_x() + b.get_width()/2, v),
+                    xytext=(0, 3 if v >= 0 else -10), textcoords="offset points",
+                    ha="center", fontsize=8.5)
+
+    ax.axhline(y=0, color="black", lw=0.6)
+    ax.axhline(y=1, color="#1F8A5C", lw=0.8, ls=":", alpha=0.6,
+               label=r"perfect alignment with $-\hat r$ (=1)")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([JB_CLASS_LABEL[c] for c in JB_CLASSES], fontsize=10)
+    ax.set_ylabel(r"$\cos(-\hat r,\ r_{jb})$", fontsize=11)
+    ax.set_ylim(-0.95, 1.10)
+    ax.set_title(
+        r"Raw vs semantic per-class jailbreak alignment with $-\hat r$"
+        "  (L15, pos $-2$)\n"
+        r"Semantic = controlled for prefix-length effect via the matched ctrl prompts",
+        fontsize=10.5, pad=8,
+    )
+    ax.legend(loc="lower left", fontsize=9, framealpha=0.92)
+    ax.grid(True, alpha=0.20, axis="y")
+
+    fig.tight_layout()
+    out_pdf = FIG_DIR / "F1B_raw_vs_semantic_cosines.pdf"
+    out_png = FIG_DIR / "F1B_raw_vs_semantic_cosines.png"
+    fig.savefig(out_pdf)
+    fig.savefig(out_png, dpi=200)
+    plt.close(fig)
+    print(f"[wrote] {out_pdf}")
+    print(f"[wrote] {out_png}")
+
+
 def main():
     print("[generate_paper_figures] collecting data...")
+
+    # F1 — geometry figure (the v2 ICML lead figure). Independent of the ablation rows.
+    fig1_per_class_geometry(RESULTS / GEOMETRY_RUN)
+    # F1B — appendix: raw vs semantic cosines, surfacing the controlled-dataset payoff.
+    fig1b_raw_vs_semantic_cosines(RESULTS / GEOMETRY_RUN)
+
     rows = collect_all_ablations()
     print(f"[generate_paper_figures] {len(rows)} (ablation × config) rows total")
 
@@ -448,7 +787,7 @@ def main():
     write_ci_json(rows)
 
     # Direction intervention rate (Stage 06 weighted) — load from causal_summary if available
-    causal = load_causal_summary(RESULTS / "run_20260430_023247")
+    causal = load_causal_summary(RESULTS / GEOMETRY_RUN)
     direction_rate = 1.0
     if causal:
         # Stage 06 schema: summary has L15_pro_refusal_add → flip_rate, etc.
