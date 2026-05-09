@@ -37,8 +37,8 @@ WIDE_LAYERS: list[int] = [16, 18]
 # refusal direction comp
 REFUSAL_LAYERS: list[int] = list(range(0, 34))  # Gemma-3-4B has 34 layers (0-33)
 REFUSAL_POSITION = "last_k"
-BEST_REFUSAL_POSITION: int = -2  # Tejas finding: position -2 (model token) gives best separation
-MEASUREMENT_LAYER = 32  # Tejas finding: layer 32 gives best separation for Gemma-3-4B-IT
+BEST_REFUSAL_POSITION: int = -2  # Position -2 (model token) gives best separation
+MEASUREMENT_LAYER = 32  # Layer 32 gives best separation for Gemma-3-4B-IT
 DIRECTION_DTYPE = "float64"  # float64 accumulation prevents precision loss (was bfloat16)
 
 # dataset splits

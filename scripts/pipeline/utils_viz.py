@@ -224,7 +224,7 @@ def annotate_ctrl(
 # `universal_refusal_core` at the corpus level (present in bare + all 5 JB
 # top-50 pools) yet still appear in a single JB graph's pruned output as
 # `jb_unique` — the feature survived pruning on that JB side but not on the
-# matched bare side for this particular prompt. Georg asked that the frontend
+# matched bare side for this particular prompt. We require the frontend
 # only display memberships that are consistent with each graph's own
 # `overlap_bucket`, so the UI does not paint a jb_unique node as "universal".
 

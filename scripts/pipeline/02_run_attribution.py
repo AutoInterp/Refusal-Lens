@@ -4,11 +4,11 @@ Stage 02: Run CLT Attribution Graphs
 For each prompt × condition, compute circuit-tracer attribution graphs
 targeting the refusal direction at a specified (layer, position).
 
-Default target: L15 @ pos=-2 (the causally effective layer; Tejas causal
+Default target: L15 @ pos=-2 (the causally effective layer; causal
 experiments flip 95/95 JB prompts at L15, 0/10 at L32 despite L32 having
 ~7x stronger separation).
 
-Dataset: Tejas's controlled dataset (refusal_lens_controlled_dataset.json)
+Dataset: the controlled dataset (refusal_lens_controlled_dataset.json)
 yields 11 conditions per prompt — bare + {jb,ctrl}_<class> for 5 classes.
 The ctrl arm is length-matched to JB so bare↔ctrl isolates prefix-token
 confounds from JB semantics (ctrl↔JB is the cleanest "JB effect" delta).
@@ -96,7 +96,7 @@ def parse_args():
         "--single-position-target", type=int,
         default=config.TARGET_POSITIONS_SINGLE[0],
         help="Position for the single-target baseline graph (default: -2). "
-             "Tejas validated this as the causal L15 target (95/95 JB flip).",
+             "We validated L15 as the causal target (95/95 JB flip).",
     )
     parser.add_argument(
         "--skip-multi-graph", action="store_true",
@@ -133,7 +133,7 @@ def parse_args():
     return parser.parse_args()
 
 
-# JB classes in Tejas's controlled dataset — used to enumerate the 11
+# JB classes in the controlled dataset — used to enumerate the 11
 # conditions per prompt and to construct feature-comparison pairs.
 CONTROLLED_CLASSES = ("roleplay", "fiction", "analytical", "completion", "cognitive_reframe")
 
@@ -525,7 +525,7 @@ def main():
     )
     print("  Ready.")
 
-    # Load dataset — prefer Tejas's controlled dataset (11 conditions/prompt).
+    # Load dataset — prefer the controlled dataset (11 conditions/prompt).
     if args.legacy_dataset:
         prompts = load_experiment_dataset(
             n_prompts=args.n_prompts, dataset_path=args.dataset,

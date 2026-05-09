@@ -15,7 +15,7 @@ D_MODEL = 2560
 # Attribution targets L15 (the causally effective layer) at pos=-2. L32 has
 # ~7x stronger separation but is too late in the network to drive the refusal
 # decision — intervention at L15 flips 95/95 jailbroken prompts, L32 flips
-# 0/10 (Tejas causal experiments on cleaned dataset). We attribute against
+# 0/10 (causal experiments on the cleaned dataset). We attribute against
 # the layer we can actually intervene on.
 MEASUREMENT_LAYER = 15
 MEASUREMENT_POSITION = -2 # "model" token in Gemma-3 chat template
@@ -34,7 +34,7 @@ MEASUREMENT_HOOK = "hook_resid_post"
 # "transformerlens" backend is the verified-bulletproof path: cache match
 # with the same model is bit-exact, and Gemma-3-4b-it is supported.
 BACKEND = "transformerlens"
-CAUSAL_LAYER = 15         # Best causal effectiveness (Tejas Script 16)
+CAUSAL_LAYER = 15         # Best causal effectiveness (bulletproof methodology)
 
 # ============================================================
 # Transcoders
@@ -49,7 +49,7 @@ DIRECTION_POSITION = -2
 DIRECTION_DTYPE = "float64"  # Accumulation precision
 
 # ============================================================
-# Direction computation — per-layer (Tejas's fix)
+# Direction computation — per-layer
 # ============================================================
 # Directions must be computed at EVERY layer, not just L32.
 # The direction rotates across layers (L15-L32 cosine sim = 0.938).
@@ -61,9 +61,9 @@ BEST_CAUSAL_LAYER = 15       # Highest causal effectiveness (for intervention)
 # ============================================================
 # Direction computation — per-position at the causal layer
 # ============================================================
-# Georg asked for multi-position attribution targeting the L15 refusal
+# We use multi-position attribution targeting the L15 refusal
 # direction at every context position with meaningful separation. The
-# direction rotates across positions within a layer (Tejas finding:
+# direction rotates across positions within a layer (finding:
 # cos(L15-pos=-2, L15-pos=-5) = -0.80 — anti-correlated). Stage 01 computes
 # a per-position direction at L15 for positions in PER_POSITION_POSITIONS,
 # and Stage 02 builds a multi-target attribution call with the subset of
@@ -75,7 +75,7 @@ PER_POSITION_POSITIONS = list(range(-15, 0))  # -15, -14, ..., -1 (default: all 
 # These three tokens are prompt-length-invariant:
 #   pos=-5: <end_of_turn>     sep ≈ 4500 at L15
 #   pos=-3: <start_of_turn>   sep ≈ 3600 at L15
-#   pos=-2: model             sep ≈ 3100 at L15 — causally verified by Tejas
+#   pos=-2: model             sep ≈ 3100 at L15 — causally verified by the bulletproof methodology
 #                                                 (95/95 JB flip, 10/10 control flip)
 # Content positions (-15..-6) had higher nominal separations in Stage 01, but
 # those averages are over 64 semantically different tokens per position
@@ -142,7 +142,7 @@ STAGE_08_FIRST_TOKEN_MASK = slice(0, 4)
 # ============================================================
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DATASET_DIR = REPO_ROOT / "dataset" / "refusal_direction_dataset" / "splits"
-# Tejas's controlled dataset: 50 harmful-base prompts × 5 JB classes × 2 prefix
+# Controlled dataset: 50 harmful-base prompts × 5 JB classes × 2 prefix
 # variants (JB + length-matched neutral ctrl). Verified: 50/50 bare refuse,
 # 216/225 (96%) ctrl refuse, 95/95 JB flipped at L15 under Arditi intervention.
 CONTROLLED_DATASET_PATH = REPO_ROOT / "dataset" / "refusal_lens_controlled_dataset.json"

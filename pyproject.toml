@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "refusal-lens"
 version = "0.1.0"
 authors = [
-  { name = "Ruqiya", email = "rbinsafi@gmail.com" },
+  { name = "Anonymous Authors" },
 ]
 description = "A great package for refusal-lens"
 readme = "README.md"
@@ -49,10 +49,10 @@ steering = [
 ]
 
 circuit-tracer = [
-    "circuit-tracer @ git+https://github.com/AutoInterp/circuit-tracer.git@refusal-lens-measurement-patch",
+    # Vendored as `vendor/circuit-tracer.tar.gz`; extract and `pip install -e vendor/circuit-tracer/`.
 ]
 
-runpod = [
+gpu = [
   "torch >= 2.0",
   "transformers == 4.57.3",
   "huggingface-hub == 0.36.2",
@@ -62,14 +62,7 @@ runpod = [
   "matplotlib",
   "safetensors",
   "einops",
-  "circuit-tracer @ git+https://github.com/AutoInterp/circuit-tracer.git@refusal-lens-measurement-patch",
 ]
-
-[project.urls]
-Homepage = "https://github.com/AutoInterp/refusal-lens"
-"Bug Tracker" = "https://github.com/AutoInterp/refusal-lens/issues"
-Discussions = "https://github.com/AutoInterp/refusal-lens/discussions"
-Changelog = "https://github.com/AutoInterp/refusal-lens/releases"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

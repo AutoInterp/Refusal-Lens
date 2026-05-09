@@ -44,7 +44,7 @@ import config  # noqa: F401
 from utils import save_json, load_json, get_stage_dir
 
 
-# Class set under Tejas's controlled dataset. Matches Stage 02.
+# Class set under the controlled dataset. Matches Stage 02.
 CONTROLLED_CLASSES = ("roleplay", "fiction", "analytical", "completion", "cognitive_reframe")
 
 # Graph modes. "multi" is the headline (template-anchored 3-position target);
@@ -671,7 +671,7 @@ def _build_report(
         f"- **Target**: L{config.MEASUREMENT_LAYER} (causal). Two graph modes:",
         f"  - **multi** — targets the template anchors [-5, -3, -2] "
         f"(`<end_of_turn>`, `<start_of_turn>`, `model`)",
-        f"  - **single** — target pos=-2 only (Tejas-verified causal position)",
+        f"  - **single** — target pos=-2 only (verified causal position)",
         f"",
         f"Comparisons are run for each mode:",
         f"- `vs_bare`: bare ↔ jb_<class> — legacy JB-effect delta",

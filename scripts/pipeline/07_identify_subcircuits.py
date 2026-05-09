@@ -35,7 +35,7 @@ Ctrl-aware (new Apr 22 — require feature_class_sets.per_condition_top50 from T
 ctrl_shared_refusal               in bare AND all 5 ctrl_*_top50 but NOT in all 5 jb_*_top50
 ctrl_only                         in all 5 ctrl_*_top50 but not bare or any jb_*_top50
 jb_{cls}_specific_vs_ctrl (×5)    in jb_{cls}_top50 but NOT in ctrl_{cls}_top50
-                                  ("the cleanest JB-semantic subcircuit" per Georg)
+                                  ("the cleanest JB-semantic subcircuit")
 """
 from __future__ import annotations
 
@@ -389,7 +389,7 @@ def build_jb_specific_vs_ctrl(class_sets: dict) -> dict[str, list[str]]:
 
 
 def compute_jb_vs_ctrl_contrast(class_sets: dict) -> dict[str, dict]:
-    """Per-class recruitment contrast — the headline novel metric for Georg.
+    """Per-class recruitment contrast — the headline novel metric.
 
     For each jailbreak class, quantify how much of the feature recruitment is
     genuinely JB-semantic vs. a prefix-inflation artifact. Old L32 data couldn't

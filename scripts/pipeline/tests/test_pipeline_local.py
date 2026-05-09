@@ -2,12 +2,12 @@
 Local Pipeline Validation Tests
 ================================
 Validates pipeline stages 01 and 03 against known results from
-previous experiments (Tejas's Script 16 results, Mahmoud's scaled experiments).
+previous experiments (the bulletproof methodology results, prior scaled experiments).
 
 Tests:
   T1: Stage 01 — compute_mean_activations produces correct shapes
   T2: Stage 01 — per-layer directions have unit norm (normalized) and correct magnitude (unnormalized)
-  T3: Stage 01 — cosine similarity between layers matches Tejas's findings (~0.938 for L15-L32)
+  T3: Stage 01 — cosine similarity between layers matches the bulletproof findings (~0.938 for L15-L32)
   T4: Stage 01 — full end-to-end run with 2 layers, 4 samples produces all expected output files
   T5: Stage 01 — separation at L32 >> L15 (expected: L32 ~20k, L15 ~3k)
   T6: Stage 03 — fallback to existing scaled experiment results works
@@ -309,7 +309,7 @@ def test_utils_viz():
         gpath.unlink()
         spath.unlink()
 
-    # T-V3: annotate_subcircuits filter rules (Georg's UI bug fix).
+    # T-V3: annotate_subcircuits filter rules.
     # Corpus-level memberships must be filtered against per-graph overlap_bucket
     # so the UI never paints a jb_unique node as "universal_refusal_core" etc.
     from utils_viz import _subcircuit_allowed
@@ -966,14 +966,14 @@ def test_stage_01():
     cos_sim = torch.nn.functional.cosine_similarity(
         r_hat_15.unsqueeze(0), r_hat_32.unsqueeze(0),
     ).item()
-    # Tejas found ~0.938 with 64 samples. With 4 samples the direction
+    # The bulletproof methodology measured ~0.938 with 64 samples. With 4 samples the direction
     # estimate is extremely noisy — this test only checks the computation
     # runs without error and returns a valid cosine similarity in [-1, 1].
     # The actual value is unreliable at n=4 (expected to converge at n>=32).
     log_test(
         "T3: L15-L32 cosine similarity is valid float in [-1, 1]",
         -1.0 <= cos_sim <= 1.0,
-        f"cos_sim={cos_sim:.4f} (Tejas found 0.938 with n=64; noisy at n=4)",
+        f"cos_sim={cos_sim:.4f} (reference: 0.938 with n=64; noisy at n=4)",
     )
 
     # T4: End-to-end run produces all expected output files

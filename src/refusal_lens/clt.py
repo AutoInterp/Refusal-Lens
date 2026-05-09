@@ -27,7 +27,8 @@ def _require_circuit_tracer() -> None:
     if not HAS_CIRCUIT_TRACER:
         raise ImportError(
             "circuit-tracer is required for attribution. "
-            "Install via: pip install git+https://github.com/AutoInterp/circuit-tracer.git@refusal-lens-measurement-patch"
+            "Extract `vendor/circuit-tracer.tar.gz -C vendor/` and run "
+            "`pip install -e vendor/circuit-tracer/`."
         )
 
 

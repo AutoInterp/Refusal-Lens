@@ -36,7 +36,7 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-REPO = Path("/mnt/c/Users/Mahmoud Shabana/Documents/algoverse/Refusal-Lens")
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "scripts" / "pipeline"))
 from utils import (  # noqa: E402
     classify_response,

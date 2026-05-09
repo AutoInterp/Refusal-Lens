@@ -1,6 +1,6 @@
 """
 Shared utilities for the Refusal-Lens pipeline.
-Consolidates duplicated code from Mahmoud's and Tejas's scripts.
+Consolidates duplicated code from the prior experiment scripts.
 """
 from __future__ import annotations
 
@@ -135,7 +135,7 @@ def load_controlled_dataset(
     dataset_path: Path | None = None,
     n_prompts: int | None = None,
 ) -> list[dict]:
-    """Load Tejas's refusal_lens_controlled_dataset.json.
+    """Load the refusal_lens_controlled_dataset.json.
 
     Each returned row has shape:
         {
@@ -151,7 +151,7 @@ def load_controlled_dataset(
           },
         }
 
-    The conditions dict flattens Tejas's nested `pairs` so downstream stages
+    The conditions dict flattens the nested `pairs` so downstream stages
     can iterate a simple (cond_name → text/prefix) map instead of
     reconstructing it each time.
     """
@@ -192,7 +192,7 @@ def load_controlled_dataset(
 
 
 # ====================================================================
-# Stage 06 causal-intervention helpers (Task 9, ported from Tejas Script 20)
+# Stage 06 causal-intervention helpers (bulletproof port)
 # ====================================================================
 
 def load_unnormalized_r(direction_dir: Path, layers):
@@ -225,7 +225,7 @@ def load_unnormalized_r(direction_dir: Path, layers):
 def make_intervention_hook(r, sign: str = "add"):
     """Return a PyTorch forward_hook that adds (or subtracts) `r` at every position.
 
-    Matches Tejas Script 20's Arditi intervention: `h[:, :, :] ± r_bf16`.
+    Matches the bulletproof Arditi intervention: `h[:, :, :] ± r_bf16`.
     The hook handles both tensor and tuple-wrapped module outputs (Gemma
     decoder layers return a tuple). The `r` tensor is cast to the hook-time
     output dtype so we don't force fp32 math inside a bf16 model.
@@ -268,7 +268,7 @@ def generate_with_hook(model, tokenizer, prompt: str, layer: int,
     input_ids = tokenizer(formatted, return_tensors="pt")["input_ids"].to(model.device)
 
     # Path into the decoder layer list on Gemma-3 (post-LM-head wrapper).
-    # This matches Tejas Script 20: `model.model.language_model.layers[LAYER]`.
+    # This matches the bulletproof pipeline: `model.model.language_model.layers[LAYER]`.
     target = model.model.language_model.layers[layer]
     handle = target.register_forward_hook(hook_fn)
     try:

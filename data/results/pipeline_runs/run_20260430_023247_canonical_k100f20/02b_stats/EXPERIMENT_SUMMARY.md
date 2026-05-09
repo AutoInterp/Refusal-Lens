@@ -4,7 +4,7 @@
 - **Model**: google/gemma-3-4b-it
 - **Target**: L15 (causal). Two graph modes:
   - **multi** — targets the template anchors [-5, -3, -2] (`<end_of_turn>`, `<start_of_turn>`, `model`)
-  - **single** — target pos=-2 only (Tejas-verified causal position)
+  - **single** — target pos=-2 only (verified causal position)
 
 Comparisons are run for each mode:
 - `vs_bare`: bare ↔ jb_<class> — legacy JB-effect delta

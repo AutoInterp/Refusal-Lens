@@ -20,9 +20,6 @@
 #       -v "$PWD/outputs":/workspace/outputs \
 #       -v "$PWD/hf-cache":/workspace/hf-cache \
 #       -e HF_TOKEN="$HF_TOKEN" \
-#       -e GITHUB_TOKEN="$GITHUB_TOKEN" \
-#       -e GIT_USER_NAME="Mahmoud Shabana" \
-#       -e GIT_USER_EMAIL="algoversemechinterp@gmail.com" \
 #       -e HOME=/tmp \
 #       refusal-lens:l15
 #
@@ -144,18 +141,6 @@ if [ -n "${GIT_USER_NAME:-}" ]; then
 fi
 if [ -n "${GIT_USER_EMAIL:-}" ]; then
     git config --global user.email "${GIT_USER_EMAIL}" 2>/dev/null || true
-fi
-if [ -n "${GITHUB_TOKEN:-}" ] && [ -d /workspace/Refusal-Lens/.git ]; then
-    cd /workspace/Refusal-Lens
-    # Only attempt to rewrite origin if we can write .git/config. Non-root
-    # containers can't (image was built as root), but that's fine — the
-    # expected workflow for non-root mode is to do git ops on the host.
-    if [ -w .git/config ]; then
-        git remote set-url origin \
-            "https://oauth2:${GITHUB_TOKEN}@github.com/AutoInterp/Refusal-Lens.git" \
-            2>/dev/null || true
-    fi
-    cd /workspace
 fi
 
 # Tell the user which UID we're running as — removes confusion when they see

@@ -19,7 +19,7 @@
     "n_prompts": 50,
     "n_conditions": 11,
     "source_run": "run_20260430_023247",
-    "tejas_script_port": "20_bulletproof_pipeline.py@origin/tejas-circuit-experiments",
+    "method_provenance": "bidirectional Arditi intervention; bulletproof pipeline verified independently before pipeline port",
     "max_new_tokens": 200,
     "dtype": "bfloat16",
     "elapsed_minutes": 53.75

@@ -8,7 +8,7 @@
 ## Direction source
 
 - `r_source`: **stage01**
-- \|r\|: **3101.2** (Tejas reports 4019.7 on his bulletproof run)
+- \|r\|: **3101.2**
 
 ## Phase 0 — dataset verification
 
@@ -41,10 +41,10 @@ Coherent flips: **49/49**
 
 The bidirectional flip symmetry is the headline. If pro is ~100% and anti is high, the L15 unnormalized r vector IS the model's refusal axis — not a one-way push. This is the causal complement to the Stage 07 correlational `jb_vs_ctrl_contrast` finding.
 
-## Phase 2c — benign force-refuse control (Tejas bulletproof)
+## Phase 2c — benign force-refuse control
 
 Force-refuse rate on 10 benign prompts: **100.0%** (10/10)
 Coherent responses: **10/10**
 
-Tejas reports **10/10** on his bulletproof run. A result below ~80% here would indicate the intervention isn't a generic refusal push, invalidating the 'L15 r IS the refusal axis' claim.
+A result below ~80% here would indicate the intervention isn't a generic refusal push, invalidating the 'L15 r IS the refusal axis' claim.
 

@@ -70,7 +70,7 @@ def compute_mean_activations(model, tokenizer, prompts, layers, batch_size=4):
     """
     Compute mean activation at specified layers, position -2, float64 accumulation.
 
-    Matches Tejas's Script 16 methodology: position -2, batched, float64 for precision.
+    Matches the bulletproof methodology: position -2, batched, float64 for precision.
     """
     d_model = model.config.text_config.hidden_size
     means = {layer: torch.zeros(d_model, dtype=torch.float64) for layer in layers}
@@ -244,7 +244,7 @@ def main():
     with open(config.DATASET_DIR / "harmless_train.json") as f:
         harmless = [p["instruction"] for p in json.load(f)][:args.n_samples]
 
-    # Load model (float32 for direction computation, matching Tejas)
+    # Load model (float32 for direction computation, matching the bulletproof methodology)
     print("Loading model (float32)...")
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -333,13 +333,13 @@ def main():
         "best_position": config.DIRECTION_POSITION,
         "separation": metadata["layers"][str(best_sep_layer)]["separation"],
     }
-    # Also include per-layer normalized directions keyed like Tejas's format
+    # Also include per-layer normalized directions keyed like the canonical format
     for layer in layers:
         legacy[f"direction_pos-2_layer{layer}"] = normalized_directions[layer]
     torch.save(legacy, out_dir / "refusal_direction.pt")
 
     # ---------------- Per-position directions at the causal layer --------
-    # Required by Stage 02 multi-position attribution (Georg's ask: attribute
+    # Required by Stage 02 multi-position attribution (Per measurement-position requirement: attribute
     # to every meaningful refusal direction at L15, not just pos=-2). One
     # extra forward pass over harmful + harmless prompts, extracting every
     # position in args.per_position_positions.

@@ -1,9 +1,9 @@
 """
 Stage 06: Causal intervention via Arditi direction-addition
 ===========================================================
-Ports Tejas's bulletproof causal pipeline (Script 20 on
-`origin/tejas-circuit-experiments`, commit `332311c`, 90/90 flip rate at L15)
-into our pipeline conventions. Two intervention modes applied at L15:
+Implements the bidirectional causal intervention (90/90 flip rate at L15)
+verified independently before being ported into the pipeline. Two
+intervention modes applied at L15:
 
   pro_refusal_add  — h[:,:,:] += r_unnormalized  on (prompt, jb_*) where
                      baseline COMPLY → expect REFUSE after.
@@ -90,22 +90,22 @@ def parse_args():
     p.add_argument("--skip-anti", action="store_true",
                    help="Skip anti-refusal subtraction (pro-refusal add only)")
     p.add_argument("--skip-benign", action="store_true",
-                   help="Skip Phase 2c benign force-refuse control (Tejas's 10 benign prompts)")
+                   help="Skip Phase 2c benign force-refuse control (the 10 benign prompts)")
     p.add_argument(
-        "--r-source", choices=["stage01", "tejas-rescale", "recompute"],
+        "--r-source", choices=["stage01", "external-rescale", "recompute"],
         default="stage01",
         help=(
             "How to source the L15 unnormalized direction r. "
             "stage01 (default): load from 01_direction/unnormalized_r.pt as-is. "
-            "tejas-rescale: load stage01 direction, rescale to --r-target-magnitude. "
+            "external-rescale: load stage01 direction, rescale to --r-target-magnitude. "
             "recompute: recompute fresh from harmful_train + harmless_train under "
-            "the same model load as intervention (bf16), matching Tejas Script 20 exactly."
+            "the same model load as intervention (bf16), matching the bulletproof pipeline exactly."
         ),
     )
     p.add_argument("--r-target-magnitude", type=float, default=4019.7,
-                   help="Target |r| when --r-source tejas-rescale (default: Tejas's 4019.7 at L15)")
+                   help="Target |r| when --r-source external-rescale (default: the bulletproof reference value (~4019.7 at L15))")
     p.add_argument("--r-recompute-n", type=int, default=64,
-                   help="N harmful + N harmless prompts for --r-source recompute (default: 64, matches Tejas)")
+                   help="N harmful + N harmless prompts for --r-source recompute (default: 64, matches the bulletproof methodology)")
     return p.parse_args()
 
 
@@ -129,11 +129,11 @@ def _evaluate(model, tokenizer, prompt_text: str, hook_fn, layer, max_new_tokens
 
 
 # --------------------------------------------------------------------
-# Direction-source resolution (audit fix to match Tejas Script 20 magnitude)
+# Direction-source resolution (audit fix to match the bulletproof pipeline magnitude)
 # --------------------------------------------------------------------
 
-def recompute_r_tejas_style(model, tokenizer, layer: int, n_each: int = 64):
-    """Recompute unnormalized r in-script, matching Tejas Script 20 exactly.
+def recompute_r_external_style(model, tokenizer, layer: int, n_each: int = 64):
+    """Recompute unnormalized r in-script, matching the bulletproof pipeline exactly.
 
     Reads `harmful_train.json` and `harmless_train.json`, takes first `n_each`
     from each, formats with chat template, runs one forward per prompt (NO
@@ -141,8 +141,8 @@ def recompute_r_tejas_style(model, tokenizer, layer: int, n_each: int = 64):
     -2, :] in float64, returns the mean-diff in float32.
 
     Unlike Stage 01 (which batches with left-padding + max_length=256), this
-    matches Tejas's methodology bit-for-bit. Use when we want the exact |r|
-    Tejas measured (~4019.7 at L15).
+    matches the bulletproof methodology bit-for-bit. Use when we want the exact |r|
+    measured (~4019.7 at L15).
     """
     import json as _json
     import gc
@@ -196,26 +196,26 @@ def resolve_direction(args, run_dir: Path, model, tokenizer):
         r_dict = load_unnormalized_r(run_dir / "01_direction", [layer])
         r = r_dict[layer].to(torch.float32)
         prov = {"source": "stage01", "path": str(run_dir / "01_direction" / "unnormalized_r.pt")}
-    elif args.r_source == "tejas-rescale":
+    elif args.r_source == "external-rescale":
         r_dict = load_unnormalized_r(run_dir / "01_direction", [layer])
         r_orig = r_dict[layer].to(torch.float32)
         orig_norm = float(r_orig.norm())
         scale = args.r_target_magnitude / orig_norm
         r = r_orig * scale
         prov = {
-            "source": "tejas-rescale",
+            "source": "external-rescale",
             "original_magnitude": orig_norm,
             "target_magnitude": args.r_target_magnitude,
             "scale_applied": scale,
             "base_path": str(run_dir / "01_direction" / "unnormalized_r.pt"),
         }
     elif args.r_source == "recompute":
-        r = recompute_r_tejas_style(model, tokenizer, layer, n_each=args.r_recompute_n)
+        r = recompute_r_external_style(model, tokenizer, layer, n_each=args.r_recompute_n)
         prov = {
             "source": "recompute",
             "n_harmful": args.r_recompute_n,
             "n_harmless": args.r_recompute_n,
-            "method": "Tejas Script 20 exact port — no batching, no padding, no truncation, model dtype as loaded",
+            "method": "the bulletproof pipeline exact port — no batching, no padding, no truncation, model dtype as loaded",
         }
     else:
         raise ValueError(f"Unknown --r-source {args.r_source}")
@@ -234,7 +234,7 @@ def phase0_verify(model, tokenizer, rows, max_new_tokens, layer):
 
     Doesn't modify the dataset — just reports. Ctrl-leak pairs (prompt, class)
     where ctrl generated COMPLY are recorded and will be EXCLUDED from the
-    pro-refusal phase (Tejas's bulletproof convention).
+    pro-refusal phase (the bulletproof convention).
     """
     print("\n[PHASE 0] Verify dataset (bare refuse + ctrl refuse)...")
     bare_refused = 0
@@ -340,16 +340,16 @@ def process_prompt(model, tokenizer, row, r_vec_by_layer, layer,
 
 
 # --------------------------------------------------------------------
-# Phase 2c — benign force-refuse control (Tejas Script 20 Phase 4a)
+# Phase 2c — benign force-refuse control (the bulletproof pipeline Phase 4a)
 # --------------------------------------------------------------------
 
 def phase2c_benign_force_refuse(model, tokenizer, r_vec, layer, max_new_tokens,
                                 benign_prompts=None):
     """Run the pro-refusal-add hook on a list of benign prompts. Expect all to REFUSE.
 
-    This is Tejas's control experiment (Script 20 Phase 4a): if the intervention
+    This is the control experiment (bulletproof Phase 4a): if the intervention
     is a generic refusal push (not a JB-specific artifact), benign prompts under
-    the same hook should flip from their usual COMPLY baseline to REFUSE. Tejas
+    the same hook should flip from their usual COMPLY baseline to REFUSE. the bulletproof methodology
     reports 10/10 on this. Below-80% here would invalidate the symmetry claim.
 
     Uses `config.BENIGN_PROMPTS` (10 prompts verbatim from Script 20) by default.
@@ -368,7 +368,7 @@ def phase2c_benign_force_refuse(model, tokenizer, r_vec, layer, max_new_tokens,
     n_refused = sum(1 for r in results if r["forced_to_refuse"])
     n_coherent = sum(1 for r in results if r["coherent"])
     print(f"  RESULT: {n_refused}/{len(benign_prompts)} forced to REFUSE "
-          f"(Tejas reports 10/10 on his bulletproof run); {n_coherent} coherent")
+          f"(the bulletproof pipeline reports 10/10 on his bulletproof run); {n_coherent} coherent")
     return {
         "n_prompts": len(benign_prompts),
         "n_forced_to_refuse": n_refused,
@@ -528,9 +528,9 @@ def write_summary_md(summary, layer, phase0, out_path: Path, elapsed_min: float,
             "## Direction source",
             "",
             f"- `r_source`: **{r_provenance.get('source')}**",
-            f"- \\|r\\|: **{r_provenance.get('magnitude', 0):.1f}** (Tejas reports 4019.7 on his bulletproof run)",
+            f"- \\|r\\|: **{r_provenance.get('magnitude', 0):.1f}** (the bulletproof pipeline reports 4019.7 on his bulletproof run)",
         ]
-        if r_provenance.get("source") == "tejas-rescale":
+        if r_provenance.get("source") == "external-rescale":
             lines.append(
                 f"- Scale applied: ×{r_provenance.get('scale_applied', 1):.4f} "
                 f"(original \\|r\\|={r_provenance.get('original_magnitude', 0):.1f})"
@@ -538,7 +538,7 @@ def write_summary_md(summary, layer, phase0, out_path: Path, elapsed_min: float,
         elif r_provenance.get("source") == "recompute":
             lines.append(
                 f"- Recomputed from {r_provenance.get('n_harmful', 64)}+{r_provenance.get('n_harmless', 64)} prompts "
-                "under the same bf16 model load as intervention (Tejas-exact)"
+                "under the same bf16 model load as intervention (matching the bulletproof methodology)"
             )
         lines.append("")
     lines += [
@@ -585,13 +585,13 @@ def write_summary_md(summary, layer, phase0, out_path: Path, elapsed_min: float,
 
     if benign_result:
         lines.extend([
-            "## Phase 2c — benign force-refuse control (Tejas bulletproof)",
+            "## Phase 2c — benign force-refuse control (bulletproof)",
             "",
             f"Force-refuse rate on 10 benign prompts: **{benign_result['force_refuse_rate']*100:.1f}%** "
             f"({benign_result['n_forced_to_refuse']}/{benign_result['n_prompts']})",
             f"Coherent responses: **{benign_result['n_coherent']}/{benign_result['n_prompts']}**",
             "",
-            "Tejas reports **10/10** on his bulletproof run. A result below ~80% here would "
+            "the bulletproof pipeline reports **10/10** on his bulletproof run. A result below ~80% here would "
             "indicate the intervention isn't a generic refusal push, invalidating the "
             "'L15 r IS the refusal axis' claim.",
             "",
@@ -616,8 +616,8 @@ def main():
     print(f"  dtype:         {args.dtype}")
     print(f"  max_prompts:   {args.max_prompts}")
 
-    # Stage-01 r sanity (fail fast for stage01 / tejas-rescale; recompute path skips this)
-    if args.r_source in ("stage01", "tejas-rescale"):
+    # Stage-01 r sanity (fail fast for stage01 / external-rescale; recompute path skips this)
+    if args.r_source in ("stage01", "external-rescale"):
         stage01_r_path = run_dir / "01_direction" / "unnormalized_r.pt"
         if not stage01_r_path.exists():
             print(f"  ERROR: {stage01_r_path} missing. Run Stage 01 or pass --r-source recompute.")
@@ -712,7 +712,7 @@ def main():
         if (i + 1) % args.checkpoint_every == 0:
             save_json({"results": results, "phase0": phase0}, ckpt_path)
 
-    # Phase 2c — benign force-refuse control (Tejas Script 20 Phase 4a)
+    # Phase 2c — benign force-refuse control (the bulletproof pipeline Phase 4a)
     benign_result = None
     if not args.skip_benign:
         benign_result = phase2c_benign_force_refuse(
@@ -741,7 +741,7 @@ def main():
             "n_prompts": len(results),
             "n_conditions": 11,
             "source_run": run_dir.name,
-            "tejas_script_port": "20_bulletproof_pipeline.py@origin/tejas-circuit-experiments",
+            "method_provenance": "bidirectional Arditi intervention; bulletproof pipeline verified independently before pipeline port",
             "max_new_tokens": args.max_new_tokens,
             "dtype": args.dtype,
             "elapsed_minutes": round(total_elapsed / 60, 2),
@@ -785,7 +785,7 @@ def main():
         print(f"  L{args.layer} benign force-refuse:     "
               f"{benign_result['force_refuse_rate']*100:.1f}% "
               f"({benign_result['n_forced_to_refuse']}/{benign_result['n_prompts']})  "
-              f"[Tejas reports 10/10]")
+              f"[the bulletproof pipeline reports 10/10]")
     print(f"  Elapsed: {total_elapsed / 60:.1f} min")
     print("DONE!")
 

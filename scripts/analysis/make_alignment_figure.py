@@ -14,7 +14,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-REPO = Path("/mnt/c/Users/Mahmoud Shabana/Documents/algoverse/Refusal-Lens")
+REPO = Path(__file__).resolve().parents[2]
 RUN = REPO / "data/results/pipeline_runs/run_20260430_023247"
 
 d = json.loads((RUN / "02b_stats/direction_alignment.json").read_text())
