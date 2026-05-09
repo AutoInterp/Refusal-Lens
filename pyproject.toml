@@ -29,6 +29,7 @@ classifiers = [
 ]
 dependencies = [
   "numpy",
+  "huggingface_hub",
 ]
 
 [project.optional-dependencies]
