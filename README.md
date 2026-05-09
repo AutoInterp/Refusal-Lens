@@ -1,8 +1,7 @@
 # Refusal-Lens — ICML 2026 Mech-Interp Workshop Code Submission
 
 Code accompanying the anonymous submission *"Jailbreaks Edit the Refusal
-Direction: Per-Class Causal Decomposition and Direction-Aligned Attribution"*
-(see `ICML2026_v2.tex`).
+Direction: Per-Class Causal Decomposition and Direction-Aligned Attribution"*.
 
 This repository reproduces the paper's numerical results on
 **Gemma-3-4B-IT** with a controlled `50 prompts × 11 conditions` suite. The
@@ -184,7 +183,7 @@ contact us during the rebuttal window if a reviewer needs them.
 
 ## Citation
 
-The paper reference appears in `ICML2026_v2.tex`. Anonymous submission;
+Anonymous submission;
 please cite as the venue requires once authorship is de-anonymised.
 
 ## License
