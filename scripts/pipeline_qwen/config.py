@@ -25,7 +25,7 @@ D_MODEL = 2560
 # (with enable_thinking=False — see utils.format_prompt). The Gemma analogue
 # was -2 ("model" token); Qwen's chat template ends differently so the
 # trailing-token semantics shift. Re-tune via Stage 01 sweep.
-MEASUREMENT_LAYER = 34     # TODO: verify via Stage 01 (Qwen has 36 layers)
+MEASUREMENT_LAYER = 18     # Causal layer (Georg requirement). Must match BEST_CAUSAL_LAYER.
 MEASUREMENT_POSITION = -1  # TODO: verify via Stage 01 position sweep
 CAUSAL_LAYER = 18          # TODO: verify via 01b_layer_sweep.py before Stage 06
 # Where in the block circuit-tracer injects the cotangent. Same TL convention

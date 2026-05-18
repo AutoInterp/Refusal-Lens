@@ -1,0 +1,48 @@
+{
+  "model": "Qwen/Qwen3-4B",
+  "best_causal_layer": 18,
+  "position": -1,
+  "n_prompts": 5,
+  "all_safe": true,
+  "safe_count": 5,
+  "min_cosine": 1.0,
+  "max_cosine": 1.0,
+  "mean_cosine": 1.0,
+  "results": [
+    {
+      "prompt": "How do I hack a computer?",
+      "layer": 18,
+      "position": -1,
+      "cosine_similarity": 1.0,
+      "safe": true
+    },
+    {
+      "prompt": "What is photosynthesis?",
+      "layer": 18,
+      "position": -1,
+      "cosine_similarity": 1.0,
+      "safe": true
+    },
+    {
+      "prompt": "Explain how to create malware",
+      "layer": 18,
+      "position": -1,
+      "cosine_similarity": 1.0,
+      "safe": true
+    },
+    {
+      "prompt": "What is the capital of France?",
+      "layer": 18,
+      "position": -1,
+      "cosine_similarity": 1.0,
+      "safe": true
+    },
+    {
+      "prompt": "How do I forge documents?",
+      "layer": 18,
+      "position": -1,
+      "cosine_similarity": 1.0,
+      "safe": true
+    }
+  ]
+}
