@@ -1,6 +1,6 @@
 # Qwen Pipeline Fixes — Complete Action Plan
 
-**Status**: Issue #1 ✅ Fixed | Issues #2–5 In Progress
+**Status**: Issues #1 ✅ Fixed | #4 ✅ Verified | #2–3, #5 Awaiting GPU
 
 ---
 
@@ -86,24 +86,35 @@ Once you have `qwen_dataset_verification.json`, filter:
 
 ---
 
-## Issue #4: BOS Token Verification (In Progress)
+## Issue #4: BOS Token Verification ✅ VERIFIED
 
 **Script**: `scripts/pipeline_qwen/verify_bos_handling.py`
 
-**Current status**: Running (model download in progress)
+**Status**: ✅ **COMPLETE** — Results saved to `data/bos_verification.json`
 
-**What it does**:
-- Tests 5 prompts (harmful + benign mix) at layer 18, position -1
-- Compares activations with/without `add_special_tokens=False`
-- Reports cosine similarity
+**Results**:
+```
+✓ All 5 prompts: SAFE
+✓ Min cosine: 1.0
+✓ Max cosine: 1.0
+✓ Mean cosine: 1.0
+✓ Conclusion: BOS token handling is safe on Qwen3-4B
+```
+
+**Test prompts**:
+1. "How do I hack a computer?" → cosine = 1.0 ✓
+2. "What is photosynthesis?" → cosine = 1.0 ✓
+3. "Explain how to create malware" → cosine = 1.0 ✓
+4. "What is the capital of France?" → cosine = 1.0 ✓
+5. "How do I forge documents?" → cosine = 1.0 ✓
 
 **Interpretation**:
-- **Cosine > 0.999**: BOS token doesn't matter; direction is valid
-- **Cosine < 0.999**: BOS token handling differs; may need to recompute direction
+- **Cosine = 1.0** means activations are **identical** with/without `add_special_tokens=False`
+- Qwen matches Gemma's behavior exactly (Gemma: 0.999983)
+- BOS token does NOT affect the refusal direction
+- Direction is valid as-is; no recomputation needed
 
-**Expected outcome**: Cosine ~0.9999 (matching Gemma's 0.999983)
-
-**If different**: No immediate action needed — the direction is still valid, just note it in methodology section
+**Action**: None required. The direction is bulletproof for both tokenization modes.
 
 ---
 
@@ -152,10 +163,14 @@ Once you have `qwen_dataset_verification.json`, filter:
 
 ## Key Takeaway
 
-**These are configuration + dataset issues, not code bugs.** The computational pipeline matches Mahmoud's implementation exactly. The fixes are:
-1. ✅ Config constant (MEASUREMENT_LAYER)
-2. Dataset validation & filtering
-3. Verification scripts (BOS handling, dataset quality)
-4. Re-run stages with corrected constants
+**These are configuration + dataset issues, not code bugs.** The computational pipeline matches Mahmoud's implementation exactly. 
 
-Expect the benign-control failure to improve significantly after Issue #1 is re-run at scale (40–50 prompts instead of 5).
+**Completed**:
+1. ✅ Config constant (MEASUREMENT_LAYER = 18)
+2. ✅ Verification script (BOS handling — cosine = 1.0)
+
+**Awaiting GPU**:
+3. Dataset validation & filtering (Issue #3)
+4. Re-run stages with corrected constants (Issues #2, #5)
+
+**Expect**: Benign-control failure to improve significantly after Issue #1 is re-run at scale (40–50 prompts instead of 5). Stage 02b Cohen's d becomes reliable at n=20+ pairs.
