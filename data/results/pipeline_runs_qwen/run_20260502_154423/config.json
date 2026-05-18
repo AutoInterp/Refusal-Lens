@@ -4,5 +4,11 @@
   "n_samples": 64,
   "n_layers": 36,
   "best_separation_layer": 34,
-  "best_separation": 260.0445
+  "best_separation": 260.0445,
+  "per_position_layer": 34,
+  "per_position_positions": [
+    -5,
+    -3,
+    -1
+  ]
 }

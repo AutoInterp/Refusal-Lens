@@ -152,11 +152,11 @@
   },
   "cosine_similarities": {
     "L15_L18": 0.3428,
-    "L15_L27": 0.0646,
-    "L15_L34": 0.041,
-    "L18_L27": 0.288,
-    "L18_L34": 0.1956,
-    "L27_L34": 0.5951
+    "L15_L25": 0.0679,
+    "L15_L32": 0.046,
+    "L18_L25": 0.3248,
+    "L18_L32": 0.2227,
+    "L25_L32": 0.5824
   },
   "cosine_matrix": [
     [
@@ -1529,5 +1529,22 @@
     ]
   ],
   "best_separation_layer": 34,
-  "best_causal_layer": 18
+  "best_causal_layer": 18,
+  "positions_L34": {
+    "-5": {
+      "separation": 150.1771,
+      "n_harmful": 64,
+      "n_harmless": 64
+    },
+    "-3": {
+      "separation": 192.0358,
+      "n_harmful": 64,
+      "n_harmless": 64
+    },
+    "-1": {
+      "separation": 260.0445,
+      "n_harmful": 64,
+      "n_harmless": 64
+    }
+  }
 }

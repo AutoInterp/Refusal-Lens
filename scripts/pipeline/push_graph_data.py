@@ -2,10 +2,18 @@
 Push a pipeline run's graph_data + metadata + subcircuits to the HuggingFace
 dataset so collaborators can pull it with fetch_graph_data.py.
 
-Upload source (local):
-    <run_dir>/05_frontend/graph_data/*.json   (staged by 05_visualize_circuits.py)
-    <run_dir>/05_frontend/data/graph-metadata.json
-    <run_dir>/07_subcircuits/subcircuits.json   (or --subcircuits-run override)
+Upload source (local). Choose with `--source`:
+    --source 05_frontend (default)
+        <run_dir>/05_frontend/graph_data/*.json   (staged by 05_visualize_circuits.py)
+        <run_dir>/05_frontend/data/graph-metadata.json
+    --source 02c
+        <run_dir>/graph_data/*.json[.gz]          (packed by 02c_pack_graphs.py)
+        <run_dir>/graph_data/graph-metadata.json
+    Either way:
+        <run_dir>/07_subcircuits/subcircuits.json  (or --subcircuits-run override,
+                                                    skipped if absent — fine for
+                                                    02c producer uploads before
+                                                    Stage 07 runs)
 
 Upload target (HF dataset, default AutoInterp/refusal-lens-graphs):
     runs/<run_name>/graph_data/*.json.gz        (gzipped in flight; ~12x smaller)
@@ -41,7 +49,11 @@ DEFAULT_DATASET_REPO = "AutoInterp/refusal-lens-graphs"
 def parse_args():
     p = argparse.ArgumentParser(description="Push graph data bundle to HF dataset")
     p.add_argument("--run-dir", type=Path, required=True,
-                   help="Local run directory (must have 05_frontend/graph_data/ staged)")
+                   help="Local run directory (must have a graph_data source staged; see --source)")
+    p.add_argument("--source", choices=["05_frontend", "02c"], default="05_frontend",
+                   help="Which local directory layout to upload from: "
+                        "'05_frontend' (Stage 05 staged, annotated) or "
+                        "'02c' (raw pack from 02c_pack_graphs.py, pre-annotation).")
     p.add_argument("--subcircuits-run", type=Path, default=None,
                    help="Different run for subcircuits.json (default: --run-dir)")
     p.add_argument("--dataset-repo", type=str, default=DEFAULT_DATASET_REPO)
@@ -110,13 +122,21 @@ def main():
     run_name = run_dir.name
     sc_run = (args.subcircuits_run or run_dir).resolve()
 
-    # Required sources
-    src_gd = run_dir / "05_frontend" / "graph_data"
-    src_md = run_dir / "05_frontend" / "data" / "graph-metadata.json"
+    # Required sources — resolved from --source choice.
+    if args.source == "05_frontend":
+        src_gd = run_dir / "05_frontend" / "graph_data"
+        src_md = run_dir / "05_frontend" / "data" / "graph-metadata.json"
+    else:  # "02c"
+        src_gd = run_dir / "graph_data"
+        src_md = run_dir / "graph_data" / "graph-metadata.json"
     sc_json = sc_run / "07_subcircuits" / "subcircuits.json"
 
     if not src_gd.exists():
-        print(f"ERROR: {src_gd} not found. Run 05_visualize_circuits.py first.")
+        if args.source == "05_frontend":
+            print(f"ERROR: {src_gd} not found. Run 05_visualize_circuits.py first, "
+                  f"or pass --source 02c to upload from the raw pack dir instead.")
+        else:
+            print(f"ERROR: {src_gd} not found. Run 02c_pack_graphs.py first.")
         sys.exit(1)
     if not src_md.exists():
         print(f"ERROR: {src_md} not found.")

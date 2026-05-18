@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config
 from utils_viz import VENDOR_FRONTEND, stage_frontend
 
-DEFAULT_DATASET_REPO = "AutoInterp/refusal-lens-graphs"
+DEFAULT_DATASET_REPO = "AutoInterp/refusal-lens-graphs-qwen"
 
 
 def check_vendor_submodule() -> None:

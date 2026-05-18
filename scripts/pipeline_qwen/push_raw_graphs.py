@@ -33,7 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config  # noqa: F401
 
-DEFAULT_DATASET_REPO = "AutoInterp/refusal-lens-graphs"
+DEFAULT_DATASET_REPO = "AutoInterp/refusal-lens-graphs-qwen"
 PT_SUBDIR = "raw_graphs"
 
 

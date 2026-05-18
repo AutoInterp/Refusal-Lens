@@ -166,3 +166,6 @@ Thumbs.db
 
 .vscode/
 .idea/
+data/results/pipeline_runs_qwen/*/02_attribution/graphs/
+data/results/pipeline_runs_qwen/*/02_attribution/attribution_checkpoint.json
+data/results/pipeline_runs_qwen/*/graph_data/
