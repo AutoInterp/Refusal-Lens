@@ -320,3 +320,88 @@ The driver produces RAW classifications. To compute flip rates with Wilson CIs v
 ---
 
 *Last updated 2026-05-19 after Batch 5 (0b-simple packaged for RunPod, awaiting GPU execution).*
+
+---
+
+## 2026-05-19 — Batch 6: 0d/0e drivers + Phase 0 GPU aggregation + unified launcher
+
+**Tasks executed**:
+- P0 Task 11 (graph_loader.extract_edge_records_to_target + 2 tests)
+- P0 Task 13 (graph_loader.extract_feature_profile + 1 test)
+- New `00_topk_sweep.py` — unified driver for 0d (features-only) and 0e (all edges) via `--mode` flag
+- New `00_aggregate_phase0_gpu.py` — unified aggregation reading 0b + 0d + 0e raw outputs against Stage 06 baselines, producing flip rates with Wilson 95% CIs + three figures (controllability bar, 0d Pareto, 0e-vs-0d overlay)
+- New `runpod_phase0_all.sh` — single tmux-persistent launcher chaining 0b → 0d → 0e
+
+**Compute**: ~5 min CPU for code + tests + sanity check. 11/11 graph_loader tests pass.
+
+**Verified on real data**: compute_delta_for_variant produces expected values; e.g., for prompt 0 bare's 164 feature edges, K=500 pos/neg/abs all collapse to the full feature_signed sum of -9038.6 (matches 0a output exactly).
+
+### Implication for GPU run design
+
+The unified launcher with `K_MODE=coarse` (3 K values instead of 7) cuts ~8 h GPU off the full sweep. For initial paper draft, coarse mode is probably sufficient to test H0-6 / H0-7; full mode can come later if the coarse Pareto shows interesting structure.
+
+---
+
+## 2026-05-19 — Batch 7: Phase 0 0f feature role clustering (CPU)
+
+**Tasks executed**:
+- P0 Task 13 (`00_feature_taxonomy.py` — hierarchical agglomerative clustering on 22-dim feature profiles)
+
+**Compute**: ~30 s CPU (550 graphs, 903 features clustered after `min_occurrences=5` filter).
+
+### Headline: H0-8 PASSES with silhouette 0.515
+
+Source: `data/results/emnlp_perm_edit/phase0_controllability/feature_taxonomy.json` + `feature_taxonomy_clusters.md` + `feature_taxonomy_figure.png`.
+
+**Discrete feature roles for refusal exist.** 903 transcoder features cluster cleanly into 6 buckets at silhouette score 0.515 (>0.5 = strong cluster structure; >0.3 was the H0-8 acceptance bar). The taxonomy structure that emerges:
+
+| Cluster | n features | Per-condition attribution | Role |
+|---|---:|---|---|
+| **C4 (pillars)** | **4** | +463 to +606 across ALL 11 conditions (freq ~1.00) | **Pillar pro-refusal**: tiny but huge-magnitude. Features: L13:F97447, L10:F7492, L7:F77020, L11:F53616. |
+| **C2 (dominant anti)** | **23** | −398 to −446 across ALL 11 conditions (freq 1.00) | **Dominant universal anti-refusal**: largest aggregate magnitude (~10k summed per condition). Active in 100% of prompts. |
+| **C1 (mid pro-refusal)** | 58 | +82 to +100 across all conditions (freq 0.68–0.94) | Mid-tier pro-refusal, near-universal but smaller per-feature |
+| **C3 (mid JB-active anti)** | 93 | −36 to −61 with JB-class bias | JB-active anti-refusal at moderate magnitudes |
+| **C5 (small JB-active anti)** | 22 | −136 to −207, JB-class bias | Smaller JB-active anti-refusal |
+| **C0 (background)** | 703 | −3 to −5 (small magnitudes), freq 0.03–0.15 | Generic context features (78% of total feature count) |
+
+### Striking observations
+
+1. **The "pillar" pro-refusal cluster has only 4 features.** L13:F97447, L10:F7492, L7:F77020, L11:F53616. These 4 features collectively contribute +463 to +606 to direct_dot on every condition, and fire on 96-100% of all prompts. **This is the load-bearing universal-refusal-core that v1's REPORT § 9.7 was groping toward with `canonical_pro_refusal` (88 features) and `k50_f50` 1-feature canonical (just L13:F427)**. Our Cluster 4 finds 4 features that may BE that core (one of them, L13:F97447, is reminiscent of the canonical's L13:F427 — same layer 13, different feature index due to schema differences; see below).
+
+2. **JB vs CTRL conditions look almost identical within every cluster.** The signed attributions across `jb_*` and `ctrl_*` rows are similar (e.g., Cluster 2: jb_cognitive_reframe -446 vs ctrl_cognitive_reframe -409). **The clustering doesn't strongly distinguish JB-semantic from prefix-only effects** — consistent with REPORT § 5.3 finding that "most of the apparent JB effect is prefix-induced." This refines H0-9: per-class perturbation signatures may show subtle differences (run 0g to find out) but the gross cluster structure is JB-vs-CTRL-agnostic.
+
+3. **The anti-refusal machinery (Clusters 2, 3, 5) carries ~99k aggregate signed magnitude** vs the pro-refusal machinery (Clusters 1, 4) carrying ~8k. The model "wants" to comply by ~12× more in attribution-magnitude than it "wants" to refuse — and yet on bare prompts the model REFUSES. The baseline_offset (+19k per Stage 03) plus the pillar features' +2.5k must collectively be the threshold that tips refusal.
+
+4. **The 78% "background" cluster (C0)** consists of features with tiny per-feature contributions (-3 to -5) but appearing in 3–15% of prompts. These are noise around zero — likely transcoder features that fire on specific prompts' content (named entities, syntactic patterns, etc.) without consistent direction-axis structure.
+
+### Caveat: Stage 04 semantic annotation not wired
+
+The packed-graph features use a different feature_idx convention from `04_labels/feature_labels.json` (packed graphs reference indices like 28679, 117841, 230854 in a flat circuit-tracer feature space; Stage 04 labels use the Gemma Scope per-layer 0-16382 convention via Neuronpedia). The cluster annotation script tried to look up `top_logits` per feature but got empty results because the IDs don't match. **The clustering itself is unaffected**; we just don't have inline semantic labels.
+
+Resolutions for paper-grade annotation:
+- Re-extract Stage 04-style labels from the packed-graph feature_idx convention
+- Or hand-annotate the top-25 features per cluster by inspecting their attribution contexts in `feature_labels.json`'s `examples` field
+- Or skip semantic annotation for the EMNLP paper and describe clusters by their attribution patterns alone
+
+This is a Phase-0 follow-up item; not a blocker for 0g (perturbation signature) which uses the cluster assignments directly.
+
+### Implication for Track A taxonomy story
+
+The 6-cluster structure provides the **mechanistic skeleton** for the v2 paper's refusal-taxonomy figure. Combined with the 0a finding (embeddings carry ~75% of total attribution magnitude), the picture is now:
+
+- **Refusal-direction control at L15 pos=−2 has three structural components:**
+  1. **Embeddings (~75% of signed magnitude)** — token-level inputs pushing the residual toward harmless-axis
+  2. **Pillar pro-refusal features (4 features, +~2k aggregate)** — small but concentrated pro-refusal voting
+  3. **Distributed anti-refusal features (Clusters 2/3/5, ~138 features, −~80k aggregate)** — distributed pushback
+
+The baseline_offset (~+19k) is what closes the gap on bare prompts (refusal wins despite features+embeddings voting comply); JBs presumably tip this balance by shifting the embedding contribution slightly more negative (per § 5.5.1) or by some interaction with the anti-refusal cluster magnitudes.
+
+### Recommended next actions
+
+- **Batch 8 (next, CPU)**: 0g perturbation signature — for each (cluster, JB class), compute Δ_sem = mean(cluster activation | jb_C) − mean(cluster activation | ctrl_C). This will reveal whether class-specific JB perturbations exist BELOW the cluster-level (within-cluster) even though they don't visibly separate clusters.
+- **0g produces the EMNLP paper's headline figure**: two-panel (per-class perturbation heatmap + correlation with `r_jb_C` decoder projection).
+- **GPU work remains queued for RunPod** (0b + 0d + 0e via `runpod_phase0_all.sh`).
+
+---
+
+*Last updated 2026-05-19 after Batch 7 feature role clustering (H0-8 PASS).*
