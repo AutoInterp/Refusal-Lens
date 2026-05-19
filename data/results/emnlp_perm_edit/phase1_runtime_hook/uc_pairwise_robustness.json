@@ -1,0 +1,52 @@
+{
+  "fiction__roleplay": {
+    "raw_cos": 0.4145832061767578,
+    "pearson_cos": 0.4146821200847626,
+    "delta": -9.891390800476074e-05
+  },
+  "fiction__analytical": {
+    "raw_cos": 0.19885484874248505,
+    "pearson_cos": 0.19871534407138824,
+    "delta": 0.00013950467109680176
+  },
+  "fiction__completion": {
+    "raw_cos": 0.4908927083015442,
+    "pearson_cos": 0.49066776037216187,
+    "delta": 0.00022494792938232422
+  },
+  "fiction__cognitive_reframe": {
+    "raw_cos": 0.25598281621932983,
+    "pearson_cos": 0.25634461641311646,
+    "delta": -0.0003618001937866211
+  },
+  "roleplay__analytical": {
+    "raw_cos": 0.6694760322570801,
+    "pearson_cos": 0.6695264577865601,
+    "delta": -5.042552947998047e-05
+  },
+  "roleplay__completion": {
+    "raw_cos": 0.748207688331604,
+    "pearson_cos": 0.748496413230896,
+    "delta": -0.0002887248992919922
+  },
+  "roleplay__cognitive_reframe": {
+    "raw_cos": 0.8924475908279419,
+    "pearson_cos": 0.8925343155860901,
+    "delta": -8.672475814819336e-05
+  },
+  "analytical__completion": {
+    "raw_cos": 0.68033766746521,
+    "pearson_cos": 0.680338978767395,
+    "delta": -1.3113021850585938e-06
+  },
+  "analytical__cognitive_reframe": {
+    "raw_cos": 0.7450227737426758,
+    "pearson_cos": 0.7453099489212036,
+    "delta": -0.00028717517852783203
+  },
+  "completion__cognitive_reframe": {
+    "raw_cos": 0.7180981040000916,
+    "pearson_cos": 0.7188280820846558,
+    "delta": -0.000729978084564209
+  }
+}

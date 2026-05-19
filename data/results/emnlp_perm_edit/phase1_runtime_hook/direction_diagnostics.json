@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "measurement_layer": 15,
+    "measurement_position": -2,
+    "r_hat_norm": 3101.1982421875,
+    "convention": "r_jb_C = mean(h_jb_C) - mean(h_bare); u_C = orthogonal-to-r_hat unit direction",
+    "construction_dataset": "run_20260430_023247 controlled 50-prompt set"
+  },
+  "per_class": {
+    "fiction": {
+      "r_jb_C_norm": 1522.577880859375,
+      "r_jb_C_norm_over_r_hat": 0.490964382781731,
+      "r_jb_C_perp_norm": 1057.6373291015625,
+      "r_jb_C_perp_norm_over_r_hat": 0.34104150928304866,
+      "u_C_norm": 1.0,
+      "cos_r_hat_u_C": -2.300366759300232e-07
+    },
+    "roleplay": {
+      "r_jb_C_norm": 2020.153564453125,
+      "r_jb_C_norm_over_r_hat": 0.6514106505581417,
+      "r_jb_C_perp_norm": 929.228271484375,
+      "r_jb_C_perp_norm_over_r_hat": 0.29963523738776626,
+      "u_C_norm": 1.0,
+      "cos_r_hat_u_C": -4.1350722312927246e-07
+    },
+    "analytical": {
+      "r_jb_C_norm": 2409.051025390625,
+      "r_jb_C_norm_over_r_hat": 0.7768129726822451,
+      "r_jb_C_perp_norm": 837.644775390625,
+      "r_jb_C_perp_norm_over_r_hat": 0.27010358899203213,
+      "u_C_norm": 0.9999999403953552,
+      "cos_r_hat_u_C": -2.2724270820617676e-07
+    },
+    "completion": {
+      "r_jb_C_norm": 1251.8699951171875,
+      "r_jb_C_norm_over_r_hat": 0.4036729990644367,
+      "r_jb_C_perp_norm": 759.14453125,
+      "r_jb_C_perp_norm_over_r_hat": 0.24479071377085532,
+      "u_C_norm": 0.9999998807907104,
+      "cos_r_hat_u_C": -2.682209014892578e-07
+    },
+    "cognitive_reframe": {
+      "r_jb_C_norm": 3434.424072265625,
+      "r_jb_C_norm_over_r_hat": 1.1074506703715519,
+      "r_jb_C_perp_norm": 1166.68359375,
+      "r_jb_C_perp_norm_over_r_hat": 0.376204132286317,
+      "u_C_norm": 1.0,
+      "cos_r_hat_u_C": -1.0915100574493408e-06
+    }
+  },
+  "pairwise_cosines": {
+    "fiction__roleplay": 0.4145832061767578,
+    "fiction__analytical": 0.19885484874248505,
+    "fiction__completion": 0.4908927083015442,
+    "fiction__cognitive_reframe": 0.25598281621932983,
+    "roleplay__analytical": 0.6694760322570801,
+    "roleplay__completion": 0.748207688331604,
+    "roleplay__cognitive_reframe": 0.8924475908279419,
+    "analytical__completion": 0.68033766746521,
+    "analytical__cognitive_reframe": 0.7450227737426758,
+    "completion__cognitive_reframe": 0.7180981040000916
+  }
+}
