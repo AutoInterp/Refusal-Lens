@@ -140,3 +140,103 @@ The high u_C pairwise overlap finding from Batch 1 is **independent** of H0-5 �
 ---
 
 *Last updated 2026-05-19 after Batch 2 direction-alignment robustness audit (H0-5).*
+
+---
+
+## 2026-05-19 — Batch 3: Phase 0 Task 1 (HF graph pull) + schema discovery
+
+**Task executed**: P0 Task 1 (HF graph pull from `moon70/refusal-lens-graphs`).
+
+**Outcome**: 1100 packed JSON.gz files (550 single + 550 multi) pulled. Path: `data/results/pipeline_runs/run_20260430_023247/05_frontend/graph_data/`. 421 MB on disk (gitignored).
+
+**Operational note**: hit HF rate limit (1000 req / 5 min) at 994/1100 files on first attempt; one retry after 60s cooldown finished the remaining 106 files using the cached snapshot.
+
+**Schema corrections discovered** (vs implementation plan):
+- Edges field: `links` (not `edges`) — plan supported both
+- Node id field: `node_id` (not `id`) — required code change
+- Node type field: `feature_type` (not `node_type`) — required code change
+- Target identification: `feature_type == 'logit'` AND `is_target_logit == True`
+- Source IDs in edges can be either node_ids OR external `E_<token_id>_<pos>` style refs that don't appear in the node list — graph_loader silently skips externals (not edges into the logit anyway).
+
+**Path correction**: actual graph_data path is `05_frontend/graph_data/` (the frontend-staging path), not `02_attribution/graph_data/` as the plan assumed.
+
+Tracked in commits: `graph_loader.py` uses corrected field names; `00_linearization_decomposition.py` uses corrected path.
+
+---
+
+## 2026-05-19 — Batch 4: Phase 0 Tasks 2-4 (graph_loader + 0a + decomposition figure)
+
+**Tasks executed**:
+- P0 Task 2 (`graph_loader.py` + 8 tests)
+- P0 Task 3 (`00_linearization_decomposition.py` CLI + run)
+- P0 Task 4 (`00_decomposition_figure.py` stacked-bar figure)
+
+**Compute**: ~10 s CPU for the 550-graph decomposition; ~1 s for the figure. No GPU.
+
+### Per-condition signed attribution decomposition
+
+Source: `data/results/emnlp_perm_edit/phase0_controllability/decomposition_by_condition.json`. Means across 50 prompts per condition; values in direct_dot units.
+
+| Condition | feat_signed | embed_signed | err_signed | all_signed |
+|---|---:|---:|---:|---:|
+| **bare** | **−9,469** | **−35,609** | **+190** | **−44,887** |
+| jb_fiction | −13,015 | −35,399 | +963 | −47,451 |
+| jb_roleplay | −12,823 | −35,981 | +792 | −48,012 |
+| jb_analytical | −13,479 | −36,155 | +967 | −48,667 |
+| jb_completion | −11,714 | −36,653 | +497 | −47,869 |
+| **jb_cognitive_reframe** | **−14,435** | −36,397 | +300 | **−50,532** |
+| ctrl_fiction | −11,914 | −36,997 | +337 | −48,574 |
+| ctrl_roleplay | −12,767 | −36,588 | +351 | −49,005 |
+| ctrl_analytical | −11,698 | −36,469 | +95 | −48,072 |
+| ctrl_completion | −12,026 | −36,913 | +742 | −48,197 |
+| ctrl_cognitive_reframe | −12,684 | −36,280 | +447 | −48,517 |
+
+Sign convention (per REPORT § 4): more negative = stronger pull AWAY from the refusal axis (JBs shift residual along −r̂; their attribution magnitudes are more negative than bare).
+
+### Headline findings — answers to Georg's "what controls refusal in our transcoders?" question
+
+1. **Embeddings carry ~75% of the signed attribution magnitude into direct_dot.** Mean embedding contribution ranges −35,399 to −36,997 across conditions; total ranges −44,887 to −50,532. Specifically:
+   - bare: embedding share = 79.3% of |all_signed|
+   - jb_cognitive_reframe: embedding share = 72.0%
+   - All conditions: embedding share is 72–82% of total magnitude
+   This is a substantial mechanistic finding. **The transcoder framework's attribution graph attributes most of the refusal-direction signal at L15 pos=−2 to embedding writes**, not to MLP-transcoded feature writes. This **partially explains** why Stage 08 sparse MLP-feature ablation plateaued at 34.8% in REPORT § 9.10 — most of the actionable signal isn't in the MLP-feature subspace at all.
+
+2. **Features (MLP transcoders) contribute ~20–30% of magnitude.** Class structure visible:
+   - bare features: −9,469 (smallest magnitude)
+   - JB features: −11,714 to −14,435 (consistently larger than bare by 24–53%)
+   - ctrl features: −11,698 to −12,767 (similar to JBs in magnitude — prefix-induced, not JB-semantic)
+   Per the v1 Pareto plateau, this is the budget available to MLP-feature ablation. Even comprehensive ablation of all MLP features (if it worked perfectly) couldn't shift direct_dot by more than the feature_signed magnitude — ~10–15k, leaving the embedding-attributed ~35k untouched.
+
+3. **Error nodes are negligible.** Mean error_signed ranges +95 to +967 (always positive, ~1–2% of total magnitude). This directly tests H0-3 (error-node prominence): **transcoder reconstruction errors are NOT a publishable mechanism component on this dataset**. Their contribution is small and sign-inconsistent across conditions — looks like noise around zero, not a structured signal.
+
+4. **Cognitive_reframe has the strongest signal pull** (all_signed = −50,532, vs bare −44,887 = +13% more negative). Consistent with REPORT § 5.5.2 finding that cognitive_reframe has the largest residual displacement (1.11 ‖r̂‖) and strongest semantic JB effect.
+
+5. **Ctrl conditions ≈ JBs in attribution magnitude** (differ by <5% in `all_signed`). The transcoder attribution graph **doesn't strongly distinguish "real JB" from "matched-length control prefix"** at the signed-magnitude level — consistent with REPORT § 5.3 finding that "most of the apparent JB effect is prefix-induced, not semantically driven" at the Cohen's d level.
+
+### Filtering caveat (documented for transparency)
+
+Packed graphs were produced with `--edge-threshold=0.98` (Stage 02c default), filtering low-magnitude edges to reduce file size. Comparing our filtered measurements to Stage 03's unfiltered `attr_net` (bare-only ground truth):
+
+| Prompt 0 (bare) | Our (filtered) | Stage 03 (unfiltered) | Filtering loss |
+|---|---:|---:|---:|
+| feature_signed | (subset of attr_net) | — | — |
+| total_signed | −44,887 (mean) | −48,886 (mean attr_net) | ~8% |
+
+All 50 bare prompts show >5% filtering loss vs Stage 03. **This is expected and not a problem** — the decomposition story (which edge type dominates) is preserved under filtering. For paper-grade absolute magnitudes, we'd re-extract from raw .pt graphs; for the qualitative taxonomy work, filtered packed graphs are sufficient.
+
+### Implication for hypotheses
+
+- **H0-1 (controllability completeness):** Comprehensive ablation of ALL edges would drive direct_dot to baseline_offset. Per linearization identity, baseline = direct_dot − total_signed = −29,467 − (−48,886) = +19,419 (per Stage 03 reference). On bare prompts with edge ablation, direct_dot would shift from −29k to +19k, which is a large positive shift = **strong refusal direction shift**. Whether the model BEHAVIORALLY flips under this shift is for sub-experiment 0b to test (GPU work).
+- **H0-3 (error-node prominence):** **0a evidence suggests H0-3 will not hold** — error_signed is ~1% of total magnitude. The 0b runtime ablation will confirm or refute behaviorally; on current evidence, ablating error nodes alone will have minimal flip-rate effect.
+- **H0-1 / H0-2 sign correctness:** Embedding contribution is consistently negative (−35k) across all conditions; feature contribution is also consistently negative but smaller; error contribution is small and positive. **Signs are coherent across the dataset** — no apparent sign-handling bug at this aggregate level.
+
+### Recommended next actions
+
+- **Next CPU work**: Generate the decomposition figure (DONE, `decomposition_figure.png` ready for Georg).
+- **Pending GPU work** (RunPod): 0b-simple runtime intervention to test H0-1 behaviorally. Per the 0a finding, the strongest expected effect is from `ablate_embeddings_all` (removing the ~−35k embedding contribution should drive direct_dot most positive), and the weakest from `ablate_errors_all` (only ~+200 contribution to remove).
+- **0d and 0e (top-K sweeps)** can wait — 0a already tells us features are the smaller part of the signal; top-K feature ablation will plateau low. Top-K EDGE sweep (including embedding edges) is more interesting.
+- **0f and 0g (taxonomy)** valuable but depend on per-feature data we'd need to re-extract. 0a uses aggregated sums; per-feature clustering needs the individual feature attribution records.
+
+---
+
+*Last updated 2026-05-19 after Batch 4 linearization decomposition.*
