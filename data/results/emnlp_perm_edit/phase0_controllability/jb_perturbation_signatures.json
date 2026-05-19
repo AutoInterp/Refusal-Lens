@@ -1,0 +1,403 @@
+{
+  "metadata": {
+    "n_clusters": 6,
+    "n_prompts": 50,
+    "n_per_cond": {
+      "bare": 50,
+      "jb_fiction": 50,
+      "jb_roleplay": 50,
+      "jb_analytical": 50,
+      "jb_completion": 50,
+      "jb_cognitive_reframe": 50,
+      "ctrl_fiction": 50,
+      "ctrl_roleplay": 50,
+      "ctrl_analytical": 50,
+      "ctrl_completion": 50,
+      "ctrl_cognitive_reframe": 50
+    }
+  },
+  "cluster_cond_mean": {
+    "0": {
+      "bare": -18.99547860330005,
+      "jb_fiction": -10.444515341095348,
+      "jb_roleplay": -15.336148558343423,
+      "jb_analytical": -18.489880533459853,
+      "jb_completion": -10.423964658647508,
+      "jb_cognitive_reframe": -17.739943181361554,
+      "ctrl_fiction": -9.068754882112572,
+      "ctrl_roleplay": -16.717134794404714,
+      "ctrl_analytical": -14.350826479661272,
+      "ctrl_completion": -15.610259768222104,
+      "ctrl_cognitive_reframe": -21.787576312960077
+    },
+    "1": {
+      "bare": 126.1302055662143,
+      "jb_fiction": 106.186965268263,
+      "jb_roleplay": 98.82987143432591,
+      "jb_analytical": 98.45173194807305,
+      "jb_completion": 101.43612755559595,
+      "jb_cognitive_reframe": 97.40513957233905,
+      "ctrl_fiction": 97.61690561606916,
+      "ctrl_roleplay": 97.63496073871379,
+      "ctrl_analytical": 98.82270897917878,
+      "ctrl_completion": 98.39165757960741,
+      "ctrl_cognitive_reframe": 96.89453309552016
+    },
+    "2": {
+      "bare": -404.1952161187333,
+      "jb_fiction": -397.84569126295014,
+      "jb_roleplay": -413.0704171620245,
+      "jb_analytical": -437.78824299687926,
+      "jb_completion": -414.21402345076854,
+      "jb_cognitive_reframe": -446.2713299693231,
+      "ctrl_fiction": -418.5754103950832,
+      "ctrl_roleplay": -419.54659632143773,
+      "ctrl_analytical": -413.5370725615128,
+      "ctrl_completion": -421.34103849991516,
+      "ctrl_cognitive_reframe": -409.42500833262574
+    },
+    "3": {
+      "bare": -69.71281610336598,
+      "jb_fiction": -64.08587267282822,
+      "jb_roleplay": -62.08393607370784,
+      "jb_analytical": -64.11400996379729,
+      "jb_completion": -61.84619681694467,
+      "jb_cognitive_reframe": -62.48652831470342,
+      "ctrl_fiction": -55.72790444365105,
+      "ctrl_roleplay": -61.03230196647661,
+      "ctrl_analytical": -59.949260539705534,
+      "ctrl_completion": -58.7285360112737,
+      "ctrl_cognitive_reframe": -62.706979687730616
+    },
+    "4": {
+      "bare": 605.7900382995606,
+      "jb_fiction": 477.5869664827983,
+      "jb_roleplay": 500.5563787841797,
+      "jb_analytical": 463.4563155619304,
+      "jb_completion": 533.9621017456054,
+      "jb_cognitive_reframe": 465.5577633666992,
+      "ctrl_fiction": 567.3268586730957,
+      "ctrl_roleplay": 543.0820169830322,
+      "ctrl_analytical": 543.1421816253662,
+      "ctrl_completion": 543.492741317749,
+      "ctrl_cognitive_reframe": 522.9695109176636
+    },
+    "5": {
+      "bare": -189.99129220477974,
+      "jb_fiction": -175.08869451489366,
+      "jb_roleplay": -179.92879714379578,
+      "jb_analytical": -206.70692994148288,
+      "jb_completion": -184.75924796813354,
+      "jb_cognitive_reframe": -205.64095912953167,
+      "ctrl_fiction": -187.02675164700798,
+      "ctrl_roleplay": -193.90481114520446,
+      "ctrl_analytical": -186.9787977999072,
+      "ctrl_completion": -192.19160096010808,
+      "ctrl_cognitive_reframe": -196.98625972041012
+    }
+  },
+  "cluster_cond_std": {
+    "0": {
+      "bare": 8.099957404121795,
+      "jb_fiction": 1.1174272510377692,
+      "jb_roleplay": 2.9635785330638,
+      "jb_analytical": 2.2262000100217167,
+      "jb_completion": 2.2336265321080684,
+      "jb_cognitive_reframe": 3.7592742427404793,
+      "ctrl_fiction": 1.7846173469133628,
+      "ctrl_roleplay": 3.2889777933179642,
+      "ctrl_analytical": 2.6573825342731063,
+      "ctrl_completion": 2.6235465310790764,
+      "ctrl_cognitive_reframe": 3.1789730877610425
+    },
+    "1": {
+      "bare": 7.126811631760772,
+      "jb_fiction": 2.860886201450404,
+      "jb_roleplay": 2.874316834302375,
+      "jb_analytical": 3.346674307323044,
+      "jb_completion": 2.2541179010557646,
+      "jb_cognitive_reframe": 2.9795811870382867,
+      "ctrl_fiction": 2.021321208905319,
+      "ctrl_roleplay": 2.8443928677660137,
+      "ctrl_analytical": 3.8063542218155746,
+      "ctrl_completion": 3.4135525794067885,
+      "ctrl_cognitive_reframe": 3.087319113051553
+    },
+    "2": {
+      "bare": 14.923951699207606,
+      "jb_fiction": 7.212227177411917,
+      "jb_roleplay": 13.811436151770895,
+      "jb_analytical": 10.892510824156354,
+      "jb_completion": 10.99331408342653,
+      "jb_cognitive_reframe": 15.73766405552048,
+      "ctrl_fiction": 13.735457120477607,
+      "ctrl_roleplay": 16.265816821946306,
+      "ctrl_analytical": 15.953694980732331,
+      "ctrl_completion": 16.577662992599603,
+      "ctrl_cognitive_reframe": 14.971398584962948
+    },
+    "3": {
+      "bare": 3.6819707021195893,
+      "jb_fiction": 1.5188244123308037,
+      "jb_roleplay": 2.022834122533848,
+      "jb_analytical": 2.7697302433472624,
+      "jb_completion": 1.9741806779968503,
+      "jb_cognitive_reframe": 2.3679201391022344,
+      "ctrl_fiction": 1.720627565890762,
+      "ctrl_roleplay": 2.117861156916535,
+      "ctrl_analytical": 2.7100533063337533,
+      "ctrl_completion": 2.2099263297403957,
+      "ctrl_cognitive_reframe": 2.2399740409795874
+    },
+    "4": {
+      "bare": 33.630371525740415,
+      "jb_fiction": 42.2508785641837,
+      "jb_roleplay": 40.952473409964206,
+      "jb_analytical": 40.53423407225989,
+      "jb_completion": 32.339133882001775,
+      "jb_cognitive_reframe": 46.946944070592224,
+      "ctrl_fiction": 44.204119832149075,
+      "ctrl_roleplay": 44.196287305413286,
+      "ctrl_analytical": 37.463579324610336,
+      "ctrl_completion": 40.08469597236451,
+      "ctrl_cognitive_reframe": 44.74484038390151
+    },
+    "5": {
+      "bare": 6.633214332404475,
+      "jb_fiction": 4.519078222708343,
+      "jb_roleplay": 8.14462217671814,
+      "jb_analytical": 5.678031462254453,
+      "jb_completion": 4.851943851015816,
+      "jb_cognitive_reframe": 8.699537587156755,
+      "ctrl_fiction": 7.205363728454243,
+      "ctrl_roleplay": 8.876915351478374,
+      "ctrl_analytical": 8.223112506463497,
+      "ctrl_completion": 9.009126624012623,
+      "ctrl_cognitive_reframe": 7.862532745334227
+    }
+  },
+  "signatures": {
+    "0": {
+      "fiction": {
+        "delta_vs_bare": 8.550963262204702,
+        "delta_sem_vs_ctrl": -1.3757604589827768,
+        "jb_mean": -10.444515341095348,
+        "bare_mean": -18.99547860330005,
+        "ctrl_mean": -9.068754882112572
+      },
+      "roleplay": {
+        "delta_vs_bare": 3.6593300449566275,
+        "delta_sem_vs_ctrl": 1.3809862360612915,
+        "jb_mean": -15.336148558343423,
+        "bare_mean": -18.99547860330005,
+        "ctrl_mean": -16.717134794404714
+      },
+      "analytical": {
+        "delta_vs_bare": 0.5055980698401967,
+        "delta_sem_vs_ctrl": -4.139054053798581,
+        "jb_mean": -18.489880533459853,
+        "bare_mean": -18.99547860330005,
+        "ctrl_mean": -14.350826479661272
+      },
+      "completion": {
+        "delta_vs_bare": 8.571513944652542,
+        "delta_sem_vs_ctrl": 5.186295109574596,
+        "jb_mean": -10.423964658647508,
+        "bare_mean": -18.99547860330005,
+        "ctrl_mean": -15.610259768222104
+      },
+      "cognitive_reframe": {
+        "delta_vs_bare": 1.2555354219384967,
+        "delta_sem_vs_ctrl": 4.0476331315985234,
+        "jb_mean": -17.739943181361554,
+        "bare_mean": -18.99547860330005,
+        "ctrl_mean": -21.787576312960077
+      }
+    },
+    "1": {
+      "fiction": {
+        "delta_vs_bare": -19.943240297951306,
+        "delta_sem_vs_ctrl": 8.570059652193834,
+        "jb_mean": 106.186965268263,
+        "bare_mean": 126.1302055662143,
+        "ctrl_mean": 97.61690561606916
+      },
+      "roleplay": {
+        "delta_vs_bare": -27.30033413188839,
+        "delta_sem_vs_ctrl": 1.1949106956121227,
+        "jb_mean": 98.82987143432591,
+        "bare_mean": 126.1302055662143,
+        "ctrl_mean": 97.63496073871379
+      },
+      "analytical": {
+        "delta_vs_bare": -27.678473618141254,
+        "delta_sem_vs_ctrl": -0.3709770311057383,
+        "jb_mean": 98.45173194807305,
+        "bare_mean": 126.1302055662143,
+        "ctrl_mean": 98.82270897917878
+      },
+      "completion": {
+        "delta_vs_bare": -24.694078010618355,
+        "delta_sem_vs_ctrl": 3.044469975988534,
+        "jb_mean": 101.43612755559595,
+        "bare_mean": 126.1302055662143,
+        "ctrl_mean": 98.39165757960741
+      },
+      "cognitive_reframe": {
+        "delta_vs_bare": -28.725065993875248,
+        "delta_sem_vs_ctrl": 0.5106064768188929,
+        "jb_mean": 97.40513957233905,
+        "bare_mean": 126.1302055662143,
+        "ctrl_mean": 96.89453309552016
+      }
+    },
+    "2": {
+      "fiction": {
+        "delta_vs_bare": 6.349524855783159,
+        "delta_sem_vs_ctrl": 20.729719132133084,
+        "jb_mean": -397.84569126295014,
+        "bare_mean": -404.1952161187333,
+        "ctrl_mean": -418.5754103950832
+      },
+      "roleplay": {
+        "delta_vs_bare": -8.875201043291213,
+        "delta_sem_vs_ctrl": 6.4761791594132205,
+        "jb_mean": -413.0704171620245,
+        "bare_mean": -404.1952161187333,
+        "ctrl_mean": -419.54659632143773
+      },
+      "analytical": {
+        "delta_vs_bare": -33.59302687814596,
+        "delta_sem_vs_ctrl": -24.251170435366475,
+        "jb_mean": -437.78824299687926,
+        "bare_mean": -404.1952161187333,
+        "ctrl_mean": -413.5370725615128
+      },
+      "completion": {
+        "delta_vs_bare": -10.018807332035237,
+        "delta_sem_vs_ctrl": 7.127015049146621,
+        "jb_mean": -414.21402345076854,
+        "bare_mean": -404.1952161187333,
+        "ctrl_mean": -421.34103849991516
+      },
+      "cognitive_reframe": {
+        "delta_vs_bare": -42.07611385058982,
+        "delta_sem_vs_ctrl": -36.84632163669738,
+        "jb_mean": -446.2713299693231,
+        "bare_mean": -404.1952161187333,
+        "ctrl_mean": -409.42500833262574
+      }
+    },
+    "3": {
+      "fiction": {
+        "delta_vs_bare": 5.626943430537764,
+        "delta_sem_vs_ctrl": -8.357968229177168,
+        "jb_mean": -64.08587267282822,
+        "bare_mean": -69.71281610336598,
+        "ctrl_mean": -55.72790444365105
+      },
+      "roleplay": {
+        "delta_vs_bare": 7.628880029658141,
+        "delta_sem_vs_ctrl": -1.05163410723123,
+        "jb_mean": -62.08393607370784,
+        "bare_mean": -69.71281610336598,
+        "ctrl_mean": -61.03230196647661
+      },
+      "analytical": {
+        "delta_vs_bare": 5.598806139568694,
+        "delta_sem_vs_ctrl": -4.164749424091752,
+        "jb_mean": -64.11400996379729,
+        "bare_mean": -69.71281610336598,
+        "ctrl_mean": -59.949260539705534
+      },
+      "completion": {
+        "delta_vs_bare": 7.866619286421312,
+        "delta_sem_vs_ctrl": -3.1176608056709725,
+        "jb_mean": -61.84619681694467,
+        "bare_mean": -69.71281610336598,
+        "ctrl_mean": -58.7285360112737
+      },
+      "cognitive_reframe": {
+        "delta_vs_bare": 7.22628778866256,
+        "delta_sem_vs_ctrl": 0.22045137302719553,
+        "jb_mean": -62.48652831470342,
+        "bare_mean": -69.71281610336598,
+        "ctrl_mean": -62.706979687730616
+      }
+    },
+    "4": {
+      "fiction": {
+        "delta_vs_bare": -128.2030718167623,
+        "delta_sem_vs_ctrl": -89.73989219029738,
+        "jb_mean": 477.5869664827983,
+        "bare_mean": 605.7900382995606,
+        "ctrl_mean": 567.3268586730957
+      },
+      "roleplay": {
+        "delta_vs_bare": -105.23365951538091,
+        "delta_sem_vs_ctrl": -42.525638198852505,
+        "jb_mean": 500.5563787841797,
+        "bare_mean": 605.7900382995606,
+        "ctrl_mean": 543.0820169830322
+      },
+      "analytical": {
+        "delta_vs_bare": -142.33372273763018,
+        "delta_sem_vs_ctrl": -79.68586606343581,
+        "jb_mean": 463.4563155619304,
+        "bare_mean": 605.7900382995606,
+        "ctrl_mean": 543.1421816253662
+      },
+      "completion": {
+        "delta_vs_bare": -71.82793655395517,
+        "delta_sem_vs_ctrl": -9.530639572143627,
+        "jb_mean": 533.9621017456054,
+        "bare_mean": 605.7900382995606,
+        "ctrl_mean": 543.492741317749
+      },
+      "cognitive_reframe": {
+        "delta_vs_bare": -140.2322749328614,
+        "delta_sem_vs_ctrl": -57.41174755096438,
+        "jb_mean": 465.5577633666992,
+        "bare_mean": 605.7900382995606,
+        "ctrl_mean": 522.9695109176636
+      }
+    },
+    "5": {
+      "fiction": {
+        "delta_vs_bare": 14.902597689886079,
+        "delta_sem_vs_ctrl": 11.938057132114324,
+        "jb_mean": -175.08869451489366,
+        "bare_mean": -189.99129220477974,
+        "ctrl_mean": -187.02675164700798
+      },
+      "roleplay": {
+        "delta_vs_bare": 10.062495060983963,
+        "delta_sem_vs_ctrl": 13.976014001408686,
+        "jb_mean": -179.92879714379578,
+        "bare_mean": -189.99129220477974,
+        "ctrl_mean": -193.90481114520446
+      },
+      "analytical": {
+        "delta_vs_bare": -16.715637736703144,
+        "delta_sem_vs_ctrl": -19.728132141575685,
+        "jb_mean": -206.70692994148288,
+        "bare_mean": -189.99129220477974,
+        "ctrl_mean": -186.9787977999072
+      },
+      "completion": {
+        "delta_vs_bare": 5.232044236646203,
+        "delta_sem_vs_ctrl": 7.43235299197454,
+        "jb_mean": -184.75924796813354,
+        "bare_mean": -189.99129220477974,
+        "ctrl_mean": -192.19160096010808
+      },
+      "cognitive_reframe": {
+        "delta_vs_bare": -15.649666924751926,
+        "delta_sem_vs_ctrl": -8.654699409121548,
+        "jb_mean": -205.64095912953167,
+        "bare_mean": -189.99129220477974,
+        "ctrl_mean": -196.98625972041012
+      }
+    }
+  }
+}
