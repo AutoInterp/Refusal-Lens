@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# RunPod launch script for ALL Phase 0 GPU sub-experiments: 0b + 0d + 0e.
+# RunPod launch script for ALL Phase 0 GPU sub-experiments: drift check + 0b + 0d + 0e.
 #
-# Runs sequentially in a single tmux session to minimize cold-start overhead.
+# Continue-on-failure semantics: if any sub-experiment crashes (OOM, transient
+# CUDA error, model-load issue), the remaining sub-experiments still run.
+# Per-step status is recorded in .PHASE0_STEP_FAILED.txt and the final summary.
+#
 # Expected total wall:
+#   - drift check: ~3 min
 #   - 0b: ~2h (H100) / ~3.5h (4090) — 7 variants × 550 prompts × 80 tokens
-#   - 0d: ~6h (H100) / ~6h+ (4090) — 3 variants × 7 K × 550 prompts × 80 tokens
-#   - 0e: ~6h (H100) / ~6h+ (4090) — same shape as 0d but all edge types
-#   Total: ~14 h on H100, ~16+ h on 4090.
+#   - 0d: ~6h (H100) — 3 variants × 7 K × 550 prompts × 80 tokens (full mode)
+#   - 0e: ~6h (H100) — same shape as 0d (full mode)
+#   Total: ~14 h H100 full / ~6 h H100 coarse / ~16+ h 4090 full
 #
-# Scope-trim option: set K_MODE=coarse to reduce K_values for 0d/0e
-# (`--k-values 5,50,500` instead of full 7-point sweep). Saves ~8 h GPU total.
+# Scope-trim option: K_MODE=coarse reduces 0d/0e K values to {5, 50, 500} (~4h instead of ~12h).
 #
-# Assumes a fresh RunPod instance (H100 SXM 80GB recommended; A100 80GB ok;
-# RTX 4090 24GB works but slower) with /workspace as the working volume.
-# Tested template: pytorch:2.x-py3.12-cuda12.x
-# Volume: 50 GB minimum.
+# RunPod template: pytorch:2.x-py3.12-cuda12.x; volume 50 GB minimum.
 #
 # Usage (from RunPod terminal at /workspace):
 #   git clone https://github.com/<your-fork>/Refusal-Lens.git
@@ -24,21 +24,29 @@
 #   bash scripts/emnlp_perm_edit/runpod_phase0_all.sh
 #   # Optional: K_MODE=coarse bash scripts/.../runpod_phase0_all.sh
 #
-# After completion, pull all 3 result JSONs back via scp/rsync. Then run
-# `00_aggregate_phase0_gpu.py` locally to produce figures + summary MD.
+# Completion signals:
+#   data/results/emnlp_perm_edit/phase0_controllability/.PHASE0_DONE     (always touched at end)
+#   data/results/emnlp_perm_edit/phase0_controllability/.PHASE0_STEP_FAILED.txt (one line per failed step)
+#
+# After completion, scripts/emnlp_perm_edit/watch_and_commit_phase0.sh
+# (run in a separate terminal) picks up the marker and pushes results to GitHub.
 
-set -euo pipefail
+set -uo pipefail   # NB: no -e so per-step failures don't kill the script
 
 SESSION="phase0_all"
 LOG="/tmp/${SESSION}_$(date +%Y%m%d_%H%M%S).log"
 ROOT="${ROOT:-$(pwd)}"
-K_MODE="${K_MODE:-full}"   # "full" | "coarse"
+K_MODE="${K_MODE:-full}"
+OUT_DIR="$ROOT/data/results/emnlp_perm_edit/phase0_controllability"
+DONE_FILE="$OUT_DIR/.PHASE0_DONE"
+FAIL_FILE="$OUT_DIR/.PHASE0_STEP_FAILED.txt"
 
 echo "============================================================"
-echo "Phase 0 0b + 0d + 0e RunPod launcher"
+echo "Phase 0 GPU launcher (continue-on-failure)"
 echo "Repo root: $ROOT"
 echo "K_MODE: $K_MODE"
 echo "Log: $LOG"
+echo "Completion marker: $DONE_FILE"
 echo "============================================================"
 
 # --- Re-launch into tmux if not already detached ---
@@ -54,6 +62,9 @@ if [[ -z "${TMUX:-}" ]] && [[ "${NO_TMUX:-0}" != "1" ]]; then
   echo "  tmux attach -t $SESSION"
   echo "Watch live log:"
   echo "  tail -f $LOG"
+  echo ""
+  echo "To auto-commit results when complete, in a SEPARATE terminal run:"
+  echo "  bash scripts/emnlp_perm_edit/watch_and_commit_phase0.sh"
   exit 0
 fi
 
@@ -63,11 +74,37 @@ if [[ ! -f "scripts/emnlp_perm_edit/00_edge_ablation_runtime.py" ]]; then
   exit 1
 fi
 
-# --- Step 1: Python env ---
+mkdir -p "$OUT_DIR"
+# Clear stale markers from previous runs
+rm -f "$DONE_FILE" "$FAIL_FILE"
+
+# Helper: run a step and record success/failure without aborting the script.
+declare -a STEP_NAMES
+declare -a STEP_RESULTS
+run_step() {
+  local name="$1"; shift
+  echo ""
+  echo "########## STEP: $name ##########"
+  local t0=$(date +%s)
+  if "$@"; then
+    local t1=$(date +%s)
+    echo "########## STEP $name OK (${t0}s wall) ##########"
+    STEP_NAMES+=("$name")
+    STEP_RESULTS+=("OK")
+  else
+    local rc=$?
+    local t1=$(date +%s)
+    echo "########## STEP $name FAILED (exit $rc) — continuing to next step ##########"
+    echo "$name (exit $rc)" >> "$FAIL_FILE"
+    STEP_NAMES+=("$name")
+    STEP_RESULTS+=("FAILED")
+  fi
+}
+
+# --- Step A: env setup ---
 echo ""
-echo "=== Step 1: Python environment ==="
+echo "=== Step A: Python environment ==="
 if [[ ! -d ".venv" ]]; then
-  echo "Creating .venv..."
   python3 -m venv .venv
 fi
 source .venv/bin/activate
@@ -75,77 +112,88 @@ source .venv/bin/activate
 pip install --upgrade pip -q
 pip install -e . -q
 pip install -e ./vendor/circuit-tracer -q
-pip install pytest -q
+pip install pytest scikit-learn matplotlib -q
 
-python3 -c "import torch; assert torch.cuda.is_available(), f'CUDA not available; torch={torch.__version__}'; print(f'torch {torch.__version__} cuda={torch.cuda.is_available()} device={torch.cuda.get_device_name(0)}')"
+# Verify CUDA torch is actually available — abort EARLY if not, since no point continuing
+python3 -c "import torch; assert torch.cuda.is_available(), f'CUDA NOT available; torch={torch.__version__}. Re-install torch with CUDA support before retrying.'; print(f'CUDA OK: torch {torch.__version__} device={torch.cuda.get_device_name(0)}')"
+if [[ $? -ne 0 ]]; then
+  echo "FATAL: CUDA torch not available. Aborting before GPU steps." | tee -a "$FAIL_FILE"
+  touch "$DONE_FILE"
+  exit 1
+fi
 
-# --- Step 2: HF graph data ---
+# --- Step B: HF graph data ---
 echo ""
-echo "=== Step 2: HF graph data ==="
+echo "=== Step B: HF graph data ==="
 if [[ ! -d "data/results/pipeline_runs/run_20260430_023247/05_frontend/graph_data" ]] || \
    [[ $(ls data/results/pipeline_runs/run_20260430_023247/05_frontend/graph_data/*_single.json.gz 2>/dev/null | wc -l) -lt 550 ]]; then
   echo "Pulling packed graphs from moon70/refusal-lens-graphs (~485 MB)..."
   PYTHONPATH=scripts/pipeline python3 scripts/pipeline/fetch_graph_data.py \
     --run run_20260430_023247 --dataset-repo moon70/refusal-lens-graphs
 else
-  echo "Graph data already present locally; skipping pull."
+  echo "Graph data already present (>=550 single-mode files); skipping pull."
 fi
 
-# --- Step 3: 0a linearization decomposition (CPU prerequisite for 0b) ---
+# --- Step C: 0a linearization decomposition (CPU prerequisite for 0b) ---
 echo ""
-echo "=== Step 3: 0a linearization decomposition (CPU prerequisite for 0b) ==="
-DECOMP_PATH="data/results/emnlp_perm_edit/phase0_controllability/linearization_decomposition.json"
+echo "=== Step C: 0a linearization decomposition (CPU prerequisite for 0b) ==="
+DECOMP_PATH="$OUT_DIR/linearization_decomposition.json"
 if [[ ! -f "$DECOMP_PATH" ]]; then
-  echo "Running 0a..."
-  PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_linearization_decomposition.py
+  PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_linearization_decomposition.py || \
+    echo "0a CLI failed — continuing but 0b will likely abort too." | tee -a "$FAIL_FILE"
 else
   echo "0a output present; skipping."
 fi
 
-# --- Step 4: drift sanity check (cheap pre-flight before 0b/0d/0e) ---
-echo ""
-echo "=== Step 4: direct_dot drift sanity check (5 prompts × 11 conds × 4 variants) ==="
-echo "Expected: ~3 min. Verifies hook math achieves the predicted delta."
-echo "If this fails, abort the long runs and investigate."
-PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_directdot_drift_verify.py
+# --- Step 1: drift sanity check ---
+run_step "drift_check" \
+  bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_directdot_drift_verify.py"
 
-# --- Step 5: 0b-simple ---
-echo ""
-echo "=== Step 5: 0b-simple (7 variants × 550 prompts × 80 tokens) ==="
-echo "Expected: ~2h H100 / ~3.5h 4090. Saves incrementally."
-PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_edge_ablation_runtime.py
+# --- Step 2: 0b-simple (7 variants × 550 prompts × 80 tokens) ---
+run_step "0b_simple" \
+  bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_edge_ablation_runtime.py"
 
-# --- Step 6: 0d top-K feature sweep ---
-echo ""
-echo "=== Step 6: 0d top-K feature sweep ==="
+# --- Step 3 + 4: top-K sweeps (features then edges) ---
 if [[ "$K_MODE" == "coarse" ]]; then
   K_FLAG="--k-values 5,50,500"
-  echo "Coarse mode: $K_FLAG (~2h on H100)"
 else
   K_FLAG=""
-  echo "Full mode: 7 K values (~6h on H100)"
 fi
-PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_topk_sweep.py --mode features $K_FLAG
 
-# --- Step 7: 0e top-K edge sweep ---
-echo ""
-echo "=== Step 7: 0e top-K edge sweep ==="
-PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_topk_sweep.py --mode edges $K_FLAG
+run_step "0d_topk_features" \
+  bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_topk_sweep.py --mode features $K_FLAG"
 
-# --- Step 8: Summary ---
+run_step "0e_topk_edges" \
+  bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_topk_sweep.py --mode edges $K_FLAG"
+
+# --- Step 5: aggregation (run even if some sweeps failed; aggregator skips missing inputs) ---
+run_step "aggregate_gpu_outputs" \
+  bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_aggregate_phase0_gpu.py"
+
+# --- Final summary ---
 echo ""
 echo "============================================================"
-echo "Phase 0 0b + 0d + 0e DONE"
+echo "PHASE 0 GPU RUN COMPLETE"
 echo "============================================================"
 echo ""
-echo "Result files:"
-ls -la data/results/emnlp_perm_edit/phase0_controllability/directdot_drift_audit.json
-ls -la data/results/emnlp_perm_edit/phase0_controllability/edge_ablation_flip_rates.json
-ls -la data/results/emnlp_perm_edit/phase0_controllability/topk_feature_sweep.json
-ls -la data/results/emnlp_perm_edit/phase0_controllability/topk_edge_sweep.json
+echo "Per-step status:"
+for i in "${!STEP_NAMES[@]}"; do
+  echo "  ${STEP_NAMES[$i]} : ${STEP_RESULTS[$i]}"
+done
 echo ""
-echo "Pull all 3 result JSONs back to laptop, then run locally:"
-echo "  PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_aggregate_phase0_gpu.py"
+if [[ -f "$FAIL_FILE" ]]; then
+  echo "Some steps failed; see $FAIL_FILE:"
+  cat "$FAIL_FILE"
+else
+  echo "All steps OK."
+fi
 echo ""
-echo "This produces controllability_audit_figure.png, topk_feature_pareto_figure.png,"
-echo "topk_edge_vs_node_figure.png, flip_rate_summary.json, and PHASE0_GPU_SUMMARY.md."
+echo "Result files in $OUT_DIR:"
+ls -la "$OUT_DIR"/ 2>/dev/null | grep -v "^total" | grep -v "^d"
+
+# Always touch the DONE marker so the watcher knows we're finished (even on partial failure)
+touch "$DONE_FILE"
+echo "Touched $DONE_FILE"
+echo ""
+echo "To auto-commit + push, run (in another terminal):"
+echo "  bash scripts/emnlp_perm_edit/watch_and_commit_phase0.sh"
