@@ -90,4 +90,53 @@ Source: same `direction_diagnostics.json` + `uc_pairwise_robustness.json`. Spec 
 
 ---
 
-*Last updated 2026-05-19 after Batch 1 dissociation-feasibility diagnostic.*
+## 2026-05-19 — Batch 2: Phase 0 Task 10 (0c direction-alignment robustness audit)
+
+**Tasks executed**:
+- P0 Task 10 (`00_direction_robustness.py` + tests) — pending commit; 5/5 tests pass.
+
+**Compute**: ~10 s CPU.
+
+**Purpose**: address Georg's 2026-05-17 cosine challenge on `cos(r_jb_C, −r̂)` (REPORT § 5.5.2 reported +0.72 to +0.94 across classes; Georg asked whether this is real geometry or a high-dim anisotropy artifact). Three diagnostics tested H0-5.
+
+### Per-class results
+
+Source: `data/results/emnlp_perm_edit/phase0_controllability/direction_robustness.json`.
+
+| Class | class-mean cos(r̂, r_jb_C) | per-prompt mean ± std | random p95 / rank | Pearson cos | H0-5 |
+|---|---:|---:|---:|---:|---|
+| fiction | −0.7194 | −0.60 ± 0.29 | 0.038 / **0/1000** | −0.7194 | ⚠️ FAIL on per-prompt (delta 0.12 > 0.10) |
+| roleplay | −0.8879 | −0.84 ± 0.15 | 0.036 / **0/1000** | −0.8879 | ✓ PASS |
+| analytical | −0.9376 | −0.92 ± 0.02 | 0.036 / **0/1000** | −0.9376 | ✓ PASS |
+| completion | −0.7952 | −0.72 ± 0.19 | 0.037 / **0/1000** | −0.7953 | ✓ PASS |
+| cognitive_reframe | −0.9405 | −0.93 ± 0.02 | 0.036 / **0/1000** | −0.9405 | ✓ PASS |
+
+**H0-5 overall: PASS (4/5 classes pass all three controls; fiction passes 2/3).**
+
+### Interpretation — three answers to Georg's three concerns
+
+1. **Random-direction baseline (concern: "could any random direction look this aligned in d=2560?"):** **Decisively answered NO.** All 5 classes have rank 0/1000 — the real `cos(r_jb_C, r̂)` magnitude is more extreme than ANY of 1000 random unit-vector cosines. The 95th-percentile of random cosines is ~0.036; real cosines are 0.72–0.94. The directional alignment is **statistically unmistakable** in this 2560-dim space.
+
+2. **Pearson cosine (concern: "could the all-ones direction be inflating the cosine?"):** **Empirically answered NO.** All 5 classes show `|raw − Pearson|` = 0 to 4 decimal places. The residual stream is sufficiently well-centered (likely by RMSnorm γ scaling) that the all-ones-direction projections of `r_jb_C` and `r̂` are negligible, so mean-subtraction doesn't change cosine. **This is the second empirical confirmation of this fact** (the u_C pairwise check from Batch 1 showed the same `|delta| ≤ 0.0007` result independently).
+
+3. **Per-prompt cosine (concern: "is the class-mean cosine masking within-class variance?"):** **Nuanced answer — mostly NO, but fiction is heterogeneous.**
+   - For roleplay/analytical/completion/cog_reframe: per-prompt mean is within 0.05–0.10 of class-mean, and per-prompt std is small (0.02–0.19). The class-mean is a tight summary.
+   - For fiction: class-mean is −0.72, per-prompt mean is −0.60 (delta 0.12, just over the 0.10 threshold), with per-prompt std 0.29. **Some fiction prompts align weakly or anti-aligned** with −r̂. This is consistent with fiction being a category-mismatch attack with diverse surface forms (different stories, different framings).
+
+### What we tell Georg
+
+> "Empirically tested all three concerns. Random-direction baseline rules out coincidence (real cosines are more extreme than ANY of 1000 random samples across all 5 classes). Pearson cosine confirms no all-ones-direction bias (delta to raw cosine is zero to 4 decimal places). Per-prompt cosine confirms class-mean for 4/5 classes; **fiction's class-mean cosine of +0.72 with −r̂ should be qualified** as 'per-prompt mean +0.60 ± std 0.29' because fiction prompts are heterogeneous. The 4 other classes have tight per-prompt distributions where the class-mean is a faithful summary."
+
+### Cross-reference to Batch 1 result
+
+The high u_C pairwise overlap finding from Batch 1 is **independent** of H0-5 — H0-5 is about `r_jb_C` vs `r̂`, while Batch 1 was about `u_C` (the orthogonal component) vs `u_C'`. Both Batch 1 and Batch 2 found Pearson cosines matching raw to 4 decimal places, which is a consistent picture: **residual-stream activations at L15 pos=−2 don't have a meaningful all-ones-direction bias**. Any cosine measurement we make on diff-of-means vectors is robust to mean-subtraction — Georg's specific framing of his concern doesn't apply, BUT the substantive concern (high geometric overlap between u_C vectors) still stands as real geometric structure.
+
+### Recommended next actions
+
+- **Run Phase 0 Task 1 (HF graph pull, ~10 min network)** — unlocks 0a, 0d, 0e, 0f, 0g.
+- **Phase 0 Tasks 2–4 (graph_loader + 0a linearization decomposition + figure)** — provides Georg's H0-1 audit data on CPU, no GPU needed.
+- The GPU runs (0b-simple, 0d, 0e) wait for RunPod or local CUDA install.
+
+---
+
+*Last updated 2026-05-19 after Batch 2 direction-alignment robustness audit (H0-5).*
