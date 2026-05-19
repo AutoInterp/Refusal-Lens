@@ -62,6 +62,9 @@ def parse_args():
                    help="Comma-separated variant names to run.")
     p.add_argument("--max-prompts", type=int, default=None,
                    help="Smoke test: limit to first N prompts.")
+    p.add_argument("--dtype", default="float32", choices=["bfloat16", "float32"],
+                   help="Model dtype. Default float32 because bf16 loses ~95%% of small "
+                        "per-element hook deltas (drift verification confirmed 2026-05-19).")
     return p.parse_args()
 
 
@@ -81,11 +84,13 @@ def main():
     per_prompt = {(r["prompt_idx"], r["condition"]): r for r in decomp["per_prompt"]}
     print(f"  {len(per_prompt)} (prompt, condition) entries")
 
-    print(f"[0b-simple] loading model {args.model}")
+    dtype_map = {"bfloat16": torch.bfloat16, "float32": torch.float32}
+    torch_dtype = dtype_map[args.dtype]
+    print(f"[0b-simple] loading model {args.model} in {args.dtype}")
     t0 = time.time()
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     model = AutoModelForCausalLM.from_pretrained(
-        args.model, torch_dtype=torch.bfloat16, device_map="cuda",
+        args.model, torch_dtype=torch_dtype, device_map="cuda",
     )
     model.eval()
     if hasattr(model.model, "language_model"):

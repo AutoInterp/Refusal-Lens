@@ -56,6 +56,11 @@ def parse_args():
     p.add_argument("--tolerance", type=float, default=50.0,
                    help="Allowed |actual_drift - predicted_drift| in direct_dot units.")
     p.add_argument("--model", default="google/gemma-3-4b-it")
+    p.add_argument("--dtype", default="float32", choices=["bfloat16", "float32"],
+                   help="Model dtype. Default float32 to avoid bf16 precision loss on small "
+                        "per-element hook deltas (per analysis 2026-05-19: bf16 ulp at typical "
+                        "residual values ~0.8 vs hook per-element change ~5e-5; bf16 loses 95%% "
+                        "of the intervention). Use bfloat16 only for speed validation.")
     return p.parse_args()
 
 
@@ -100,10 +105,12 @@ def main():
     decomp = json.loads(args.decomposition.read_text())
     per_prompt = {(r["prompt_idx"], r["condition"]): r for r in decomp["per_prompt"]}
 
-    print(f"[drift] loading model {args.model}")
+    dtype_map = {"bfloat16": torch.bfloat16, "float32": torch.float32}
+    torch_dtype = dtype_map[args.dtype]
+    print(f"[drift] loading model {args.model} in {args.dtype}")
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     model = AutoModelForCausalLM.from_pretrained(
-        args.model, torch_dtype=torch.bfloat16, device_map="cuda")
+        args.model, torch_dtype=torch_dtype, device_map="cuda")
     model.eval()
     if hasattr(model.model, "language_model"):
         layers = model.model.language_model.layers

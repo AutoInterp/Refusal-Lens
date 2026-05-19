@@ -68,6 +68,9 @@ def parse_args():
     p.add_argument("--k-values", default=None,
                    help="Default: 1,5,10,20,50,100,500 for features; 1,5,10,50,100,500,1000 for edges")
     p.add_argument("--graph-mode", default="single", choices=["single", "multi"])
+    p.add_argument("--dtype", default="float32", choices=["bfloat16", "float32"],
+                   help="Model dtype. Default float32 because bf16 loses ~95%% of small "
+                        "per-element hook deltas (drift verification confirmed 2026-05-19).")
     return p.parse_args()
 
 
@@ -107,11 +110,13 @@ def main():
     r_hat = r_dict[LAYER].float()
     print(f"  ||r_hat|| = {r_hat.norm().item():.2f}")
 
-    print(f"[0{mode_letter}] loading model {args.model}")
+    dtype_map = {"bfloat16": torch.bfloat16, "float32": torch.float32}
+    torch_dtype = dtype_map[args.dtype]
+    print(f"[0{mode_letter}] loading model {args.model} in {args.dtype}")
     t0 = time.time()
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     model = AutoModelForCausalLM.from_pretrained(
-        args.model, torch_dtype=torch.bfloat16, device_map="cuda")
+        args.model, torch_dtype=torch_dtype, device_map="cuda")
     model.eval()
     if hasattr(model.model, "language_model"):
         layers = model.model.language_model.layers
