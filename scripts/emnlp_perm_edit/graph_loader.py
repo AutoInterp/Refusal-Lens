@@ -120,3 +120,100 @@ def aggregate_edge_attributions(
     sums["total_signed"] = sum(sums[c]["signed"] for c in ("feature", "embedding", "error_node"))
     sums["n_edges_to_target"] = n_edges
     return sums
+
+
+def extract_edge_records_to_target(
+    graph: dict,
+    target_node_id: str,
+    node_type_to_category: dict[str, Category] = DEFAULT_NODE_TYPE_TO_CATEGORY,
+    filter_category: Category | None = None,
+) -> list[dict]:
+    """Return per-edge records for edges targeting `target_node_id`.
+
+    Each record:
+        {
+            "source_id": str,
+            "category": "feature" | "embedding" | "error_node",
+            "layer": int | None,
+            "feature": int | None,
+            "signed_attribution": float,
+        }
+    Sorted by `signed_attribution` descending (most positive first).
+
+    Args:
+        graph: parsed packed-graph dict.
+        target_node_id: id of the measurement target node.
+        node_type_to_category: feature_type -> category mapping.
+        filter_category: if not None, only records of this category returned.
+    """
+    node_lookup = {n["node_id"]: n for n in graph["nodes"]}
+    edges_field = "links" if "links" in graph else "edges"
+    records = []
+    for edge in graph[edges_field]:
+        if edge["target"] != target_node_id:
+            continue
+        src_node = node_lookup.get(edge["source"])
+        if src_node is None:
+            continue  # external source ID (E_*_* style)
+        src_type = src_node.get("feature_type", "")
+        if src_type == "logit":
+            continue
+        if src_type not in node_type_to_category:
+            raise ValueError(
+                f"unknown feature_type {src_type!r} on edge source {edge['source']!r}"
+            )
+        category = node_type_to_category[src_type]
+        if filter_category is not None and category != filter_category:
+            continue
+        # Layer field in packed graphs is a string ("0", "13"); coerce to int when present
+        layer_raw = src_node.get("layer")
+        layer = int(layer_raw) if layer_raw is not None and str(layer_raw).lstrip("-").isdigit() else None
+        records.append({
+            "source_id": edge["source"],
+            "category": category,
+            "layer": layer,
+            "feature": src_node.get("feature"),
+            "signed_attribution": float(edge["weight"]),
+        })
+    records.sort(key=lambda r: r["signed_attribution"], reverse=True)
+    return records
+
+
+def extract_feature_profile(
+    graph: dict, target_node_id: str,
+    node_type_to_category: dict[str, Category] = DEFAULT_NODE_TYPE_TO_CATEGORY,
+) -> dict[tuple[int, int], float]:
+    """Per-feature signed attribution to the measurement target.
+
+    Returns dict keyed by (layer, feature_id) -> signed_attribution. Used by
+    0f to build per-feature profiles across the 11-condition dataset (caller
+    iterates over conditions and aggregates).
+
+    Only `cross layer transcoder` source nodes (category 'feature') are
+    included; embedding and error_node sources have their own profile path.
+    """
+    node_lookup = {n["node_id"]: n for n in graph["nodes"]}
+    edges_field = "links" if "links" in graph else "edges"
+    profile = {}
+    for edge in graph[edges_field]:
+        if edge["target"] != target_node_id:
+            continue
+        src_node = node_lookup.get(edge["source"])
+        if src_node is None:
+            continue
+        src_type = src_node.get("feature_type", "")
+        if src_type == "logit":
+            continue
+        if src_type not in node_type_to_category:
+            raise ValueError(f"unknown feature_type {src_type!r}")
+        if node_type_to_category[src_type] != "feature":
+            continue
+        layer_raw = src_node.get("layer")
+        F = src_node.get("feature")
+        if layer_raw is None or F is None:
+            continue
+        L = int(layer_raw) if str(layer_raw).lstrip("-").isdigit() else None
+        if L is None:
+            continue
+        profile[(L, F)] = float(edge["weight"])
+    return profile

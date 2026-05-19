@@ -132,3 +132,79 @@ def test_find_measurement_target_multiple_target_logits_raises():
     }
     with pytest.raises(ValueError, match="multiple target logit"):
         find_measurement_target_node_id(graph)
+
+
+# ===== extract_edge_records_to_target =====
+
+def test_extract_edge_records_returns_signed_per_source_sorted_desc():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from graph_loader import extract_edge_records_to_target  # noqa: E402
+    graph = {
+        "nodes": [
+            {"node_id": "f1", "feature_type": "cross layer transcoder", "layer": "13", "feature": 427},
+            {"node_id": "f2", "feature_type": "cross layer transcoder", "layer": "11", "feature": 99},
+            {"node_id": "e1", "feature_type": "embedding", "layer": "0", "feature": 12345},
+            {"node_id": "target", "feature_type": "logit", "is_target_logit": True},
+        ],
+        "links": [
+            {"source": "f1", "target": "target", "weight": +1.5},
+            {"source": "f2", "target": "target", "weight": -0.5},
+            {"source": "e1", "target": "target", "weight": +0.2},
+            {"source": "f1", "target": "f2", "weight": 99.0},
+        ],
+    }
+    records = extract_edge_records_to_target(graph, target_node_id="target",
+                                             filter_category="feature")
+    assert len(records) == 2
+    # Sorted descending by signed_attribution
+    assert records[0]["source_id"] == "f1"
+    assert records[0]["signed_attribution"] == pytest.approx(1.5)
+    assert records[0]["category"] == "feature"
+    assert records[0]["layer"] == 13
+    assert records[0]["feature"] == 427
+    assert records[1]["source_id"] == "f2"
+    assert records[1]["signed_attribution"] == pytest.approx(-0.5)
+
+
+def test_extract_edge_records_no_filter_returns_all_categories():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from graph_loader import extract_edge_records_to_target  # noqa: E402
+    graph = {
+        "nodes": [
+            {"node_id": "f1", "feature_type": "cross layer transcoder", "layer": "1", "feature": 0},
+            {"node_id": "e1", "feature_type": "embedding", "layer": "0", "feature": 0},
+            {"node_id": "err1", "feature_type": "mlp reconstruction error", "layer": "15", "feature": 0},
+            {"node_id": "target", "feature_type": "logit", "is_target_logit": True},
+        ],
+        "links": [
+            {"source": "f1", "target": "target", "weight": 1.0},
+            {"source": "e1", "target": "target", "weight": 2.0},
+            {"source": "err1", "target": "target", "weight": 3.0},
+        ],
+    }
+    records = extract_edge_records_to_target(graph, target_node_id="target", filter_category=None)
+    assert len(records) == 3
+    categories = {r["category"] for r in records}
+    assert categories == {"feature", "embedding", "error_node"}
+
+
+# ===== extract_feature_profile =====
+
+def test_extract_feature_profile_returns_only_features():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from graph_loader import extract_feature_profile  # noqa: E402
+    graph = {
+        "nodes": [
+            {"node_id": "f1", "feature_type": "cross layer transcoder", "layer": "13", "feature": 427},
+            {"node_id": "e1", "feature_type": "embedding", "layer": "0", "feature": 1},
+            {"node_id": "err1", "feature_type": "mlp reconstruction error", "layer": "15", "feature": 0},
+            {"node_id": "target", "feature_type": "logit", "is_target_logit": True},
+        ],
+        "links": [
+            {"source": "f1", "target": "target", "weight": +1.5},
+            {"source": "e1", "target": "target", "weight": +0.2},
+            {"source": "err1", "target": "target", "weight": -0.1},
+        ],
+    }
+    profile = extract_feature_profile(graph, "target")
+    assert profile == {(13, 427): 1.5}
