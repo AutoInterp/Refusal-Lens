@@ -23,31 +23,31 @@
 
 | Layer | Feature | total |attr| | Top logits |
 |---|---|---:|---|
-| L13 | F1301677 | 776.3 |  |
-| L11 | F6429 | 755.7 |  |
-| L15 | F1469 | 738.5 |  |
-| L14 | F35230 | 734.1 |  |
-| L15 | F90935 | 725.0 |  |
-| L15 | F600044 | 711.3 |  |
-| L15 | F12910805 | 690.7 |  |
-| L6 | F31003868 | 689.7 |  |
-| L0 | F16470 | 686.1 |  |
-| L15 | F11460 | 665.1 |  |
-| L3 | F4235501 | 653.8 |  |
-| L14 | F3394300 | 647.3 |  |
-| L0 | F57629 | 645.8 |  |
-| L3 | F20253426 | 616.6 |  |
-| L10 | F2174644 | 612.2 |  |
-| L12 | F25412 | 610.5 |  |
-| L0 | F3569 | 595.1 |  |
-| L13 | F833972 | 584.8 |  |
-| L12 | F46652 | 584.4 |  |
-| L11 | F5253649 | 574.8 |  |
-| L11 | F11929158 | 557.7 |  |
-| L3 | F102638624 | 555.6 |  |
-| L3 | F8382461 | 553.9 |  |
-| L13 | F88817 | 544.3 |  |
-| L14 | F7488 | 542.6 |  |
+| L13 | F1599 | 776.3 | ' commemoration', ' rosso', ' tuxedo', ' ampio', ' Bür' |
+| L11 | F101 | 755.7 | ' Elect', ' various', ' Semiconductor', ' Various', ' verschillende' |
+| L15 | F38 | 738.5 | ' رح', ' penting', '伍', ' tepung', ' großer' |
+| L14 | F250 | 734.1 | 'வேண்டும்', 'ptives', ' 단순', ' যথাযথ', 'धक' |
+| L15 | F410 | 725.0 | ' Versions', ' Atau', 'പാട്', '流域', ' Sought' |
+| L15 | F1079 | 711.3 | ' implementations', 'clientHeight', ' such', ' Such', ' abstinence' |
+| L15 | F5065 | 690.7 | ' outrage', ' уни', ' wiping', ' eradic', ' extermin' |
+| L6 | F7867 | 689.7 |  |
+| L0 | F180 | 686.1 | 's', '्स', '️', 'etheless', 'sburg' |
+| L15 | F135 | 665.1 |  |
+| L3 | F2906 | 653.8 | 'Rightarrow', 'आप', '\uf07d', 'Η', 'ك' |
+| L14 | F2590 | 647.3 | ' create', ' depict', ' surviving', ' kr', 'Apart' |
+| L0 | F338 | 645.8 | 'би', 'e', ' ounce', 'ie', 'াক' |
+| L3 | F6360 | 616.6 |  |
+| L10 | F2074 | 612.2 | ' Horror', ' Haunted', ' spooky', ' horror', ' paranormal' |
+| L12 | F212 | 610.5 |  |
+| L0 | F83 | 595.1 | 'ﾞ', '𝐩', '𝐞', '𝐨', 'مة' |
+| L13 | F1277 | 584.8 |  |
+| L12 | F292 | 584.4 | 'Acetyl', 'PropertySheets', 'addPreferred', 'Ultimately', 'Với' |
+| L11 | F3229 | 574.8 | 'Jenis', 'Joined', 'Activity', 'action', 'Organization' |
+| L11 | F4872 | 557.7 | ' Mesopotamia', ' scraped', ' collided', ' answered', ' hent' |
+| L3 | F14323 | 555.6 | 'те', 'ت', '𝓉', 'ிய', 'னின்' |
+| L3 | F4090 | 553.9 | 'শস্ত্র', ' bree', 'matches', ' Panoramic', ' typedef' |
+| L13 | F407 | 544.3 | ' irresist', ' Whenever', ' abundante', ' fordi', ' tycker' |
+| L14 | F107 | 542.6 | ' excitatory', '🗝', '🔑', ' absolut', 'ṗ' |
 
 ## Cluster 1 (58 features)
 
@@ -68,31 +68,31 @@
 
 | Layer | Feature | total |attr| | Top logits |
 |---|---|---:|---|
-| L5 | F230854 | 3249.9 |  |
-| L0 | F66429 | 3138.4 |  |
-| L1 | F36044 | 3025.5 |  |
-| L0 | F2277 | 3025.2 |  |
-| L15 | F136487 | 2872.1 |  |
-| L8 | F13357 | 2618.4 |  |
-| L1 | F13201 | 2425.3 |  |
-| L0 | F4370 | 1990.9 |  |
-| L12 | F92 | 1851.5 |  |
-| L15 | F1212887 | 1584.4 |  |
-| L15 | F92219 | 1542.2 |  |
-| L14 | F748461 | 1512.4 |  |
-| L12 | F171392 | 1355.7 |  |
-| L15 | F9424295 | 1198.7 |  |
-| L14 | F201280 | 1081.1 |  |
-| L14 | F234940 | 1079.2 |  |
-| L15 | F26270360 | 1010.8 |  |
-| L13 | F14014 | 982.4 |  |
-| L2 | F60723 | 902.0 |  |
-| L11 | F42591823 | 859.2 |  |
-| L15 | F31359 | 858.1 |  |
-| L7 | F117847 | 777.5 |  |
-| L12 | F157628 | 767.7 |  |
-| L14 | F24295 | 761.6 |  |
-| L12 | F564440 | 755.8 |  |
+| L5 | F673 | 3249.9 | 'hetic', 'ந்தை', 'رو', 'الم', 'ठ' |
+| L0 | F363 | 3138.4 | 'ب', 'ע', '렀', '????????', '️' |
+| L1 | F266 | 3025.5 | 'İM', 'k', 'ił', '서', 'ні' |
+| L0 | F66 | 3025.2 | 'ে', 'יות', 'er', 'en', 'יים' |
+| L15 | F506 | 2872.1 | ' kesempatan', 'Commission', ' ಮಾರ', 'annual', 'Brook' |
+| L8 | F154 | 2618.4 | ' other', 'nominated', ' psychotic', 'bicycle', ' outras' |
+| L1 | F160 | 2425.3 | 'cellaneous', 'at', 'scribers', '\u200cನ', 'ফ' |
+| L0 | F92 | 1990.9 | 'र', '𝗴', 'ട്ര', 'ølge', 'égal' |
+| L12 | F1 | 1851.5 | '<unused2217>', 'ాము', ' Franchise', ' Mattress', 'Developer' |
+| L15 | F1541 | 1584.4 | ' conductas', ' legally', ' опас', '(!(', ' legality' |
+| L15 | F413 | 1542.2 | 'Há', ' अहम', ' Retry', 'Съ', 'Valor' |
+| L14 | F1208 | 1512.4 | ' MODKEY', ' strtoupper', 'ганда', ' autoWatch', ' فہرست' |
+| L12 | F572 | 1355.7 | ' We', ' гу', ' Techno', ' بزرگ', ' સ' |
+| L15 | F4325 | 1198.7 | ' HMRC', ' recognisable', ' fridge', ' spot', ' charity' |
+| L14 | F619 | 1081.1 | ' polymorphism', ' 많이', ' попробовать', ' ."', ' régime' |
+| L14 | F670 | 1079.2 | 'JComboBox', ' J', 'آخر', ' Angelina', ' Adriana' |
+| L15 | F7232 | 1010.8 | ' военных', '੦', 'ilitary', ' quei', 'のでしょう' |
+| L13 | F153 | 982.4 | 'Pokud', ' Pokud', ' Dacă', '<unused568>', ' Při' |
+| L2 | F345 | 902.0 |  |
+| L11 | F9217 | 859.2 | ' chronological', ' thirty', ' Thirty', ' vase', ' September' |
+| L15 | F234 | 858.1 | 'Answer', 'Diet', 'Answers', 'Dutch', 'Option' |
+| L7 | F477 | 777.5 | 'ched', ' rocked', 'acles', 'rusted', 'nd' |
+| L12 | F548 | 767.7 | 'An', 'We', 'Pearl', 'Ir', ' An' |
+| L14 | F205 | 761.6 | ' organs', ' high', ' ensuite', ' architecture', 'ollis' |
+| L12 | F1049 | 755.8 | ' vagy', 'ING', '还是很', 'ingly', '/' |
 
 ## Cluster 2 (23 features)
 
@@ -113,29 +113,29 @@
 
 | Layer | Feature | total |attr| | Top logits |
 |---|---|---:|---|
-| L3 | F1172 | 7750.8 |  |
-| L11 | F6204 | 6817.9 |  |
-| L13 | F117841 | 6438.6 |  |
-| L3 | F20499 | 5832.4 |  |
-| L13 | F1639 | 5761.4 |  |
-| L6 | F309284 | 5503.1 |  |
-| L15 | F106937 | 5342.2 |  |
-| L9 | F34970 | 5019.9 |  |
-| L15 | F7610 | 4719.4 |  |
-| L13 | F2131 | 4559.8 |  |
-| L9 | F30618 | 4486.1 |  |
-| L10 | F26554 | 4298.6 |  |
-| L14 | F122745 | 4245.8 |  |
-| L14 | F3901 | 3842.9 |  |
-| L8 | F26097 | 3813.6 |  |
-| L7 | F11167 | 3642.8 |  |
-| L9 | F4455 | 3588.8 |  |
-| L10 | F619 | 3572.1 |  |
-| L14 | F53286 | 3471.7 |  |
-| L15 | F105095 | 3386.4 |  |
-| L5 | F41610 | 3239.6 |  |
-| L7 | F37393 | 3227.2 |  |
-| L14 | F1638 | 3140.6 |  |
+| L3 | F44 | 7750.8 | ' बार', 'ப', ' ---------------', ' anteced', 'oj' |
+| L11 | F99 | 6817.9 | '📘', 'unków', 'ಿದ್ದೇನೆ', 'SuppressLint', 'Какой' |
+| L13 | F471 | 6438.6 | ' Nobel', 'Let', ' hadn', '辖', ' Let' |
+| L3 | F198 | 5832.4 | 'ها', 'ف', 't', 'هاي', 'nya' |
+| L13 | F43 | 5761.4 | 'Fol', 'Julia', ' दुर्ग', 'Already', 'Stretch' |
+| L6 | F779 | 5503.1 | 'ﺩ', 'openai', ' tarda', 'intelligent', ' frighten' |
+| L15 | F446 | 5342.2 | 'ко', 'kari', 'кции', 'ţi', 'Startup' |
+| L9 | F254 | 5019.9 | ' vaping', ' Kesehatan', '義務', '好处', ' συνε' |
+| L15 | F107 | 4719.4 | ' unspecified', 'Square', ' relevant', 'Relevant', 'Verified' |
+| L13 | F51 | 4559.8 | ' vicenda', ' señala', 'elesaian', ' və', ' veículos' |
+| L9 | F237 | 4486.1 | ' IAU', ' $(<', 'Downloading', '\u09e4', ' RMSE' |
+| L10 | F219 | 4298.6 | '迳', ' könnte', ' Tomcat', ' poderá', ' alojamiento' |
+| L14 | F480 | 4245.8 | ' محدود', ' overhauled', ' cromosoma', 'ฉ', 'เว็บไซต์' |
+| L14 | F73 | 3842.9 | ' কার্যকলাপ', ' działalności', ' OCLC', ' কথাবার', ' dissu' |
+| L8 | F219 | 3813.6 | 'Sorry', 'نے', ' встреча', 'Warning', '鐺' |
+| L7 | F141 | 3642.8 | ' niche', ' niches', '++;', 'zneim', ' broadening' |
+| L9 | F84 | 3588.8 | ' derrota', ' appalled', ' trampoline', ' fraught', ' horrified' |
+| L10 | F24 | 3572.1 | ' chatbots', ' algumas', '၄', 'ることが', ' prostit' |
+| L14 | F311 | 3471.7 | ' gemäß', 'neither', 'без', 'Neither', ' gaji' |
+| L15 | F442 | 3386.4 | ' στη', 'ដូច្នេះ', 'ക്', 'Although', 'UTS' |
+| L5 | F282 | 3239.6 | '疇', ' ונ', 'iezan', ' lengthening', ' conclusively' |
+| L7 | F265 | 3227.2 | '⏎⏎', 'get', 'name', ' veg', 'bonded' |
+| L14 | F42 | 3140.6 | '琊', ' Adolph', ' establecido', ' Dora', ' doraemon' |
 
 ## Cluster 3 (93 features)
 
@@ -156,31 +156,31 @@
 
 | Layer | Feature | total |attr| | Top logits |
 |---|---|---:|---|
-| L14 | F16638 | 1378.4 |  |
-| L15 | F20690 | 1265.6 |  |
-| L14 | F154831 | 1245.2 |  |
-| L2 | F14875 | 1227.3 |  |
-| L2 | F1433968 | 1215.6 |  |
-| L12 | F179687 | 1179.5 |  |
-| L9 | F9720 | 1166.5 |  |
-| L8 | F2692 | 1137.2 |  |
-| L5 | F63184 | 1126.1 |  |
-| L0 | F47643440 | 1122.2 |  |
-| L5 | F115434 | 1074.5 |  |
-| L15 | F121262 | 1030.5 |  |
-| L14 | F17376 | 1019.4 |  |
-| L1 | F3568 | 1005.9 |  |
-| L9 | F5384111 | 988.5 |  |
-| L12 | F316397 | 974.6 |  |
-| L15 | F151509 | 936.0 |  |
-| L11 | F47266 | 929.1 |  |
-| L11 | F699141 | 877.3 |  |
-| L15 | F125735 | 867.6 |  |
-| L13 | F5918506 | 864.9 |  |
-| L14 | F75840 | 863.8 |  |
-| L14 | F1410345 | 861.3 |  |
-| L3 | F18332 | 856.6 |  |
-| L6 | F40225958 | 845.3 |  |
+| L14 | F167 | 1378.4 | '้ง', 'DUCTION', 'ware', 'هرات', '่วง' |
+| L15 | F187 | 1265.6 | ' preschool', ' adolescent', ' Preschool', ' adolescence', ' consensual' |
+| L14 | F541 | 1245.2 | ' shun', ' skyscrapers', ' dick', ' laurel', ' lawmakers' |
+| L2 | F169 | 1227.3 | ' recta', 'how', '鍑', ' stent', 'ง' |
+| L2 | F1690 | 1215.6 | ' ∣', 'constexpr', '大部分', 'Elater', 'Lorsque' |
+| L12 | F586 | 1179.5 | ' Vì', ' Ș', ' Ю', ' Mascul', 'Chocolate' |
+| L9 | F129 | 1166.5 |  |
+| L8 | F64 | 1137.2 |  |
+| L5 | F349 | 1126.1 | ' dawned', 'های', 'هایی', ' llvm', 'ياب' |
+| L0 | F9760 | 1122.2 | 'न', 'в', ' crucifix', 'й', ' laces' |
+| L5 | F474 | 1074.5 | '្នុង', ' savoury', ' traffickers', '力的', ' domaine' |
+| L15 | F476 | 1030.5 | 'ំហ', ' pride', ' tolerancia', 'opathy', ' गिफ्ट' |
+| L14 | F171 | 1019.4 | 'impossible', ' unattainable', ' النهايات', ' irrational', ' inflexible' |
+| L1 | F82 | 1005.9 | 'o', 'aal', 'aż', 'től', 'які' |
+| L9 | F3271 | 988.5 | ' stroj', ' manifestly', ' sample', ' när', ' groceries' |
+| L12 | F782 | 974.6 |  |
+| L15 | F534 | 936.0 | ' During', ' Despite', ' Although', ' Notwithstanding', ' எந்த' |
+| L11 | F295 | 929.1 | ' fibromyalgia', ' Ancak', ' magnification', ' Undoubtedly', ' fragmentation' |
+| L11 | F1170 | 877.3 | ' plus', '்', ' denied', ' tulips', ' then' |
+| L15 | F485 | 867.6 | ' civilized', 'biotics', ' Suppose', ' ইহাতে', ' DiCaprio' |
+| L13 | F3426 | 864.9 | ' Вар', ' burning', ' remembrance', ' Cannes', ' Mandela' |
+| L14 | F374 | 863.8 |  |
+| L14 | F1664 | 861.3 | 'ڦ', 'ዛ', 'ᵍ', 'ливо', 'erland' |
+| L3 | F187 | 856.6 |  |
+| L6 | F8962 | 845.3 | '————', 'ChatGPT', 'റ്റ്', '————————', 'prompt' |
 
 ## Cluster 4 (4 features)
 
@@ -201,10 +201,10 @@
 
 | Layer | Feature | total |attr| | Top logits |
 |---|---|---:|---|
-| L13 | F97447 | 6942.9 |  |
-| L10 | F7492 | 6246.4 |  |
-| L7 | F77020 | 5155.4 |  |
-| L11 | F53616 | 4695.9 |  |
+| L13 | F427 | 6942.9 | ' amic', ' Descent', ' Company', ' Preface', ' incompatible' |
+| L10 | F111 | 6246.4 | ' Tämä', ' wielu', ' várias', ' !', ' нередко' |
+| L7 | F384 | 5155.4 | ' canlı', ' jawab', ' FYI', ' efectivamente', ' NAS' |
+| L11 | F315 | 4695.9 | '3', 'About', "'", '_', ' Re' |
 
 ## Cluster 5 (22 features)
 
@@ -225,25 +225,25 @@
 
 | Layer | Feature | total |attr| | Top logits |
 |---|---|---:|---|
-| L0 | F106490 | 2758.0 |  |
-| L1 | F57968 | 2738.6 |  |
-| L13 | F11921 | 2629.4 |  |
-| L8 | F81397 | 2622.5 |  |
-| L6 | F659 | 2390.6 |  |
-| L14 | F97446 | 2379.2 |  |
-| L12 | F4937 | 2347.7 |  |
-| L15 | F11010 | 2280.6 |  |
-| L5 | F85899 | 2143.6 |  |
-| L11 | F3247414 | 2138.9 |  |
-| L12 | F26322 | 2130.5 |  |
-| L14 | F130801 | 2124.3 |  |
-| L12 | F530952 | 1976.4 |  |
-| L3 | F9312 | 1864.5 |  |
-| L14 | F20488 | 1831.0 |  |
-| L15 | F4079 | 1829.8 |  |
-| L14 | F72375 | 1800.5 |  |
-| L8 | F1072 | 1646.4 |  |
-| L10 | F21934 | 1642.6 |  |
-| L9 | F128768 | 1633.9 |  |
-| L9 | F39611 | 1452.4 |  |
-| L14 | F47880 | 1446.4 |  |
+| L0 | F460 | 2758.0 | 'quired', 'CH', 'wg', ' ventricle', 'े' |
+| L1 | F338 | 2738.6 | 'க', 'pore', 'ע', 'pof', '𝔰' |
+| L13 | F140 | 2629.4 | 'Honestly', 'Handsome', 'Sorry', 'Incorrect', 'Funny' |
+| L8 | F394 | 2622.5 | 'powered', 'dej', 'size', ' Size', 'software' |
+| L6 | F29 | 2390.6 | 'pl', ' hadn', ' nods', ' नारा', 'underline' |
+| L14 | F426 | 2379.2 | ' huống', '!.', ' family', '顔', '的新' |
+| L12 | F86 | 2347.7 | ' আপডেট', ' reimag', ' Biden', ' ChatGPT', ' metaverse' |
+| L15 | F132 | 2280.6 | 'forEach', ' ràng', 'iprofloxacin', 'restriction', ' egyes' |
+| L5 | F408 | 2143.6 | ':', ':<', '.:', ' druhé', '：' |
+| L11 | F2536 | 2138.9 | '危険', '安全', ' ঝুঁক', ' dangerous', ' hazardous' |
+| L12 | F216 | 2130.5 | ' নর', 'Sally', ' сда', ' மன்ன', 'う' |
+| L14 | F496 | 2124.3 | ' stargazerCount', ' anuv', ' diez', ' dieci', ' caffè' |
+| L12 | F1017 | 1976.4 | 'mensaje', 'viridis', '侷', 'sounding', ' prêts' |
+| L3 | F132 | 1864.5 |  |
+| L14 | F187 | 1831.0 | ' seemingly', ' loosened', ',”', ' minimizes', ' without' |
+| L15 | F74 | 1829.8 | ' комплек', ' overview', ' комплекс', 'idy', 'insieme' |
+| L14 | F365 | 1800.5 | 'resultados', 'kelijk', 'ቬ', ' výsled', 'úly' |
+| L8 | F37 | 1646.4 | 'あの', ' सटे', ' okresie', 'InMemory', 'แต่ละ' |
+| L10 | F198 | 1642.6 | 'Tienes', 'Saturation', 'ឡិច', 'កំណត់', ' kandungan' |
+| L9 | F497 | 1633.9 | ' Longitudinal', ' epithelial', 'ানুভূতি', ' Еў', ' coldly' |
+| L9 | F271 | 1452.4 | ' modific', ' rupam', 'basan', ' guitarra', 'djang' |
+| L14 | F294 | 1446.4 | ' famiglie', 'Lato', ' denaro', ' साहित्यिक', ' proprie' |

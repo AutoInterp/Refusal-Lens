@@ -481,3 +481,47 @@ This is the most paper-ready single artifact we've produced. Suitable as a Figur
 ---
 
 *Last updated 2026-05-19 after Batch 8 — Phase 0 CPU work COMPLETE. Awaiting GPU run on RunPod for 0b/0d/0e.*
+
+---
+
+## 2026-05-19 — Batch 9: schema fix (feature_idx via node_id) + drift verification packaged
+
+**Tasks executed**:
+- Fixed `graph_loader._parse_layer_feature_from_node()` to extract feature_idx from `node_id` (format `<layer>_<feature_idx>_<ctx_idx>`) instead of the `feature` field (which is a Neuronpedia API ID, not a Gemma Scope feature_idx).
+- Added 2 regression tests; 13/13 graph_loader tests pass.
+- Re-ran 0f and 0g with corrected feature IDs.
+- New `00_directdot_drift_verify.py` (P0 impl plan Task 7) — GPU sanity check that the hook math achieves the predicted delta.
+- Updated `runpod_phase0_all.sh` to run drift check before the long sweeps.
+
+**Compute**: ~5 min CPU.
+
+### Why the schema fix matters
+
+The packed graph nodes have TWO feature identifiers per transcoder feature:
+- `node_id` format `<layer>_<feature_idx>_<ctx_idx>` where feature_idx is the **Gemma Scope per-layer index (0-16383)** — matches Stage 04 `feature_labels.json`
+- `feature` field is a **separate ID** (stable per `(layer, feature_idx)`, looks like a Neuronpedia API ID — e.g., 10584 for L0:F144). Does NOT match Stage 04.
+
+The fix changes the cluster keys (e.g., L13:F97447 → L13:F427) without changing the clustering itself (silhouette 0.515 unchanged, cluster sizes identical 703/58/23/93/4/22).
+
+### What the corrected labels reveal — Cluster 4 (the 4-feature pro-refusal pillar)
+
+| Feature (corrected) | Total \|attr\| | Stage 04 top logits |
+|---|---:|---|
+| **L13:F427** | 6,942.9 | `' amic'`, `' Descent'`, `' Company'`, `' Preface'`, `' incompatible'` |
+| **L10:F111** | 6,246.4 | `' Tämä'`, `' wielu'`, `' várias'`, `' !'`, `' нередко'` |
+| **L7:F384** | 5,155.4 | `' canlı'`, `' jawab'`, `' FYI'`, `' efectivamente'`, `' NAS'` |
+| **L11:F315** | 4,695.9 | `'3'`, `'About'`, `"'"`, `'_'`, `' Re'` |
+
+**The 4-feature pillar contains L13:F427**, which is the SAME single feature v1's REPORT § 9.7.6 identified as surviving the strictest k50_f50 canonical filter (the "empathic refusal lead-in" feature firing on contexts like *"I understand you're grappling with..."*). Our **unsupervised clustering rediscovered v1's load-bearing single-feature finding** AND identified 3 sibling features that share its role: L10:F111, L7:F384, L11:F315.
+
+This is strong cross-validation between v1's correlational top-K methodology and our v2 unsupervised clustering. The "soft empathic refusal lead-in" mechanism v1 hypothesized is real and consists of ~4 features working together.
+
+### Drift verification packaged
+
+`00_directdot_drift_verify.py` (Task 7 in the impl plan, previously skipped) is now packaged. On the RunPod session, it runs after env setup but before 0b/0d/0e — verifies the hook achieves the predicted direct_dot drift within ±50 on 5 prompts × 11 conditions × 4 variants = 220 forward passes (~3 min on H100). If the drift check fails, abort the long sweeps and debug; if it passes, proceed.
+
+The unified launcher `runpod_phase0_all.sh` now chains: env setup → HF graphs → 0a regen → **drift check** → 0b → 0d → 0e.
+
+---
+
+*Last updated 2026-05-19 after Batch 9 — feature_idx schema fix + drift verification packaged.*

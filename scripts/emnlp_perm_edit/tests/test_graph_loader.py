@@ -207,4 +207,52 @@ def test_extract_feature_profile_returns_only_features():
         ],
     }
     profile = extract_feature_profile(graph, "target")
+    # Test fixtures use simple node_ids ("f1") that don't match the parse pattern,
+    # so the loader falls back to schema fields layer=13, feature=427.
     assert profile == {(13, 427): 1.5}
+
+
+def test_extract_feature_profile_parses_real_node_id_format():
+    """In production packed graphs, node_id format is '<layer>_<feature_idx>_<ctx_idx>'.
+
+    The middle component is the Gemma Scope feature_idx (Stage-04-compatible),
+    NOT the `feature` field (which is a Neuronpedia API ID).
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from graph_loader import extract_feature_profile  # noqa: E402
+    graph = {
+        "nodes": [
+            # Real-format node: feature_idx=144 from node_id; `feature` field is the
+            # Neuronpedia API ID (10584) for the same feature. Loader must prefer node_id.
+            {"node_id": "0_144_14", "feature_type": "cross layer transcoder",
+             "layer": "0", "feature": 10584},
+            {"node_id": "35_262208_18", "feature_type": "logit", "is_target_logit": True},
+        ],
+        "links": [
+            {"source": "0_144_14", "target": "35_262208_18", "weight": +1.0},
+        ],
+    }
+    profile = extract_feature_profile(graph, "35_262208_18")
+    # Must use feature_idx=144 (from node_id), NOT feature=10584 (Neuronpedia ID)
+    assert profile == {(0, 144): 1.0}, f"got {profile}, expected (0, 144): 1.0"
+    assert (0, 10584) not in profile, "should NOT use the `feature` field (Neuronpedia ID)"
+
+
+def test_extract_edge_records_parses_real_node_id_format():
+    """Same Stage-04-compatible feature_idx parsing for edge records."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from graph_loader import extract_edge_records_to_target  # noqa: E402
+    graph = {
+        "nodes": [
+            {"node_id": "13_427_18", "feature_type": "cross layer transcoder",
+             "layer": "13", "feature": 99999},  # Neuronpedia ID different from node_id
+            {"node_id": "35_262208_18", "feature_type": "logit", "is_target_logit": True},
+        ],
+        "links": [
+            {"source": "13_427_18", "target": "35_262208_18", "weight": +1.5},
+        ],
+    }
+    records = extract_edge_records_to_target(graph, "35_262208_18", filter_category="feature")
+    assert len(records) == 1
+    assert records[0]["layer"] == 13
+    assert records[0]["feature"] == 427, f"expected 427 from node_id, got {records[0]['feature']}"

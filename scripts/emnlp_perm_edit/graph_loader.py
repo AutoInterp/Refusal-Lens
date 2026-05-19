@@ -38,6 +38,34 @@ DEFAULT_NODE_TYPE_TO_CATEGORY: dict[str, Category] = {
 }
 
 
+def _parse_layer_feature_from_node(node: dict) -> tuple[int | None, int | None]:
+    """Return (layer, feature_idx) for a packed-graph node.
+
+    The packed graph uses node_id format `<layer>_<feature_idx>_<ctx_idx>` for
+    transcoder/embedding/error nodes, where the middle component is the
+    Gemma Scope per-layer feature_idx (0-16383) — same numbering as Stage 04
+    feature_labels.json. The `feature` field is a different identifier
+    (looks like a Neuronpedia API ID for cross_layer_transcoder nodes).
+
+    Falls back to `node["layer"]` and `node["feature"]` if node_id doesn't
+    match the 3-component format (e.g., simple test fixtures).
+    """
+    nid = node.get("node_id", "")
+    parts = nid.split("_") if isinstance(nid, str) else []
+    if len(parts) == 3:
+        try:
+            return int(parts[0]), int(parts[1])
+        except ValueError:
+            pass
+    # Fallback to schema fields
+    L_raw = node.get("layer")
+    F = node.get("feature")
+    L = int(L_raw) if L_raw is not None and str(L_raw).lstrip("-").isdigit() else None
+    if isinstance(F, str) and F.lstrip("-").isdigit():
+        F = int(F)
+    return L, F
+
+
 def load_packed_graph(path: Path) -> dict:
     """Load a gzipped JSON attribution graph and return the parsed dict."""
     with gzip.open(path, "rt") as f:
@@ -165,14 +193,14 @@ def extract_edge_records_to_target(
         category = node_type_to_category[src_type]
         if filter_category is not None and category != filter_category:
             continue
-        # Layer field in packed graphs is a string ("0", "13"); coerce to int when present
-        layer_raw = src_node.get("layer")
-        layer = int(layer_raw) if layer_raw is not None and str(layer_raw).lstrip("-").isdigit() else None
+        # Parse node_id for (layer, feature_idx) — matches Stage 04's per-layer
+        # 0-16383 indexing. Falls back to schema fields for test fixtures.
+        layer, feature_idx = _parse_layer_feature_from_node(src_node)
         records.append({
             "source_id": edge["source"],
             "category": category,
             "layer": layer,
-            "feature": src_node.get("feature"),
+            "feature": feature_idx,
             "signed_attribution": float(edge["weight"]),
         })
     records.sort(key=lambda r: r["signed_attribution"], reverse=True)
@@ -208,12 +236,9 @@ def extract_feature_profile(
             raise ValueError(f"unknown feature_type {src_type!r}")
         if node_type_to_category[src_type] != "feature":
             continue
-        layer_raw = src_node.get("layer")
-        F = src_node.get("feature")
-        if layer_raw is None or F is None:
-            continue
-        L = int(layer_raw) if str(layer_raw).lstrip("-").isdigit() else None
-        if L is None:
+        # Parse node_id for (layer, feature_idx) — Stage-04-compatible indexing.
+        L, F = _parse_layer_feature_from_node(src_node)
+        if L is None or F is None:
             continue
         profile[(L, F)] = float(edge["weight"])
     return profile

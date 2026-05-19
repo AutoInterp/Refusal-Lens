@@ -102,15 +102,22 @@ else
   echo "0a output present; skipping."
 fi
 
-# --- Step 4: 0b-simple ---
+# --- Step 4: drift sanity check (cheap pre-flight before 0b/0d/0e) ---
 echo ""
-echo "=== Step 4: 0b-simple (7 variants × 550 prompts × 80 tokens) ==="
+echo "=== Step 4: direct_dot drift sanity check (5 prompts × 11 conds × 4 variants) ==="
+echo "Expected: ~3 min. Verifies hook math achieves the predicted delta."
+echo "If this fails, abort the long runs and investigate."
+PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_directdot_drift_verify.py
+
+# --- Step 5: 0b-simple ---
+echo ""
+echo "=== Step 5: 0b-simple (7 variants × 550 prompts × 80 tokens) ==="
 echo "Expected: ~2h H100 / ~3.5h 4090. Saves incrementally."
 PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_edge_ablation_runtime.py
 
-# --- Step 5: 0d top-K feature sweep ---
+# --- Step 6: 0d top-K feature sweep ---
 echo ""
-echo "=== Step 5: 0d top-K feature sweep ==="
+echo "=== Step 6: 0d top-K feature sweep ==="
 if [[ "$K_MODE" == "coarse" ]]; then
   K_FLAG="--k-values 5,50,500"
   echo "Coarse mode: $K_FLAG (~2h on H100)"
@@ -120,18 +127,19 @@ else
 fi
 PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_topk_sweep.py --mode features $K_FLAG
 
-# --- Step 6: 0e top-K edge sweep ---
+# --- Step 7: 0e top-K edge sweep ---
 echo ""
-echo "=== Step 6: 0e top-K edge sweep ==="
+echo "=== Step 7: 0e top-K edge sweep ==="
 PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_topk_sweep.py --mode edges $K_FLAG
 
-# --- Step 7: Summary ---
+# --- Step 8: Summary ---
 echo ""
 echo "============================================================"
 echo "Phase 0 0b + 0d + 0e DONE"
 echo "============================================================"
 echo ""
 echo "Result files:"
+ls -la data/results/emnlp_perm_edit/phase0_controllability/directdot_drift_audit.json
 ls -la data/results/emnlp_perm_edit/phase0_controllability/edge_ablation_flip_rates.json
 ls -la data/results/emnlp_perm_edit/phase0_controllability/topk_feature_sweep.json
 ls -la data/results/emnlp_perm_edit/phase0_controllability/topk_edge_sweep.json
