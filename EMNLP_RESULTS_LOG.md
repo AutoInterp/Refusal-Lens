@@ -240,3 +240,83 @@ All 50 bare prompts show >5% filtering loss vs Stage 03. **This is expected and 
 ---
 
 *Last updated 2026-05-19 after Batch 4 linearization decomposition.*
+
+---
+
+## 2026-05-19 — Batch 5: Package 0b-simple for RunPod (CPU prep done)
+
+**Tasks executed**:
+- P0 Task 5 (`edge_ablation_hook.py` library + 4 tests)
+- P0 Task 6 (`00_edge_ablation_runtime.py` driver — CPU-syntax-validated)
+- New: `runpod_phase0_0b.sh` launch script (matches scripts/pipeline/run_p7.sh pattern)
+
+**Compute**: ~5 min CPU for code + tests. **No execution yet — driver requires CUDA.**
+
+### What's in the package
+
+1. `edge_ablation_hook.py`: factory for the residual-stream `r_hat`-projection subtraction hook. Math: `h_new = h - (delta / ||r_hat||²) · r_hat`, so `h_new · r_hat = h · r_hat - delta` after the hook. 4/4 unit tests pass.
+
+2. `00_edge_ablation_runtime.py`: the driver. For each of 7 variants × 50 prompts × 11 conditions = 3,850 generations:
+   - Looks up per-(prompt, condition) `delta` from 0a's `linearization_decomposition.json`
+   - Registers the hook on Gemma-3-4B-IT's `language_model.layers[15]` block output
+   - Greedy generate `max_new_tokens=80`
+   - Classifies refuse/comply via `utils.classify_response` (Stage 08 convention)
+   - Saves incrementally every 100 generations + after each variant (robust to OOM/crash)
+
+3. `runpod_phase0_0b.sh`: tmux-persistent launcher. Verifies CUDA torch, pulls HF graphs if missing, regenerates 0a if missing, runs the driver.
+
+### Sanity check (CPU-only, on real data)
+
+Delta-lookup verification for prompt 0 bare across all 7 variants:
+
+| Variant | delta_field | scale | delta_applied |
+|---|---|---:|---:|
+| ablate_features_pos | feature_pos | 1.0 | +8,234 |
+| ablate_features_neg | feature_neg | 1.0 | −17,272 |
+| ablate_features_all | feature_signed | 1.0 | −9,039 |
+| ablate_embeddings_all | embedding_signed | 1.0 | **−35,139** |
+| ablate_errors_all | error_signed | 1.0 | +144 |
+| ablate_all_edges | all_signed | 1.0 | −44,033 |
+| ablate_all_2x | all_signed | 2.0 | −88,067 |
+
+Hook math verified: applying delta=−9,039 to a test tensor shifted `r_hat`-projection by exactly −9,039.0 (machine precision). Driver is logically correct; just needs CUDA torch to run.
+
+### Behavioral predictions for the GPU run
+
+For JB-comply prompts (where the model currently complies, direct_dot ≈ −32k):
+- **`ablate_all_2x`**: delta ≈ −90k, shifts direct_dot to ~+58k — should flip ~all JB-comply → REFUSE (strongest test of H0-1)
+- **`ablate_all_edges`**: delta ≈ −48k, shifts to ~+16k — should also flip many to REFUSE; tests H0-1 at baseline magnitude
+- **`ablate_embeddings_all`**: delta ≈ −36k, shifts to ~+4k — predicts strong flip-to-refuse (highest single-component impact)
+- **`ablate_features_all`**: delta ≈ −12k, shifts to ~−20k — borderline; tests if MLP features alone are sufficient
+- **`ablate_errors_all`**: delta ≈ +0.5k, shifts to ~−32.5k — predicts ~no behavioral change (tests H0-3)
+- **`ablate_features_pos` vs `ablate_features_neg`**: predicts ASYMMETRY (pos drives more flip than neg) — tests H0-2 sign-handling
+
+### RunPod execution instructions for the user
+
+```bash
+# 1. Spin up RunPod (H100 SXM or A100 80GB recommended; RTX 4090 24GB also works)
+#    Template: pytorch:2.x-py3.12-cuda12.x
+#    Volume: 50 GB minimum
+
+# 2. From RunPod terminal at /workspace:
+git clone https://github.com/<your-fork>/Refusal-Lens.git
+cd Refusal-Lens
+git checkout emnlp-perm-edit
+git submodule update --init --recursive
+bash scripts/emnlp_perm_edit/runpod_phase0_0b.sh
+# Detaches into tmux; reattach with: tmux attach -t phase0_0b
+
+# 3. Pull result back when done:
+# From laptop:
+scp -P <port> root@<pod-ip>:/workspace/Refusal-Lens/data/results/emnlp_perm_edit/phase0_controllability/edge_ablation_flip_rates.json .
+```
+
+Expected wall: ~2h on H100 SXM, ~3.5h on RTX 4090. Output: `edge_ablation_flip_rates.json` with 3,850 classification records (7 variants × 550 inputs).
+
+### Aggregation deferred to next CPU batch (Batch 6)
+
+The driver produces RAW classifications. To compute flip rates with Wilson CIs vs Stage 06 baselines, we need a separate aggregation script (Phase 0 plan Task 8). That's CPU-only and can run on the laptop after the GPU run completes.
+
+---
+
+*Last updated 2026-05-19 after Batch 5 (0b-simple packaged for RunPod, awaiting GPU execution).*
