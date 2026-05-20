@@ -1,0 +1,1999 @@
+{
+  "metadata": {
+    "n_prompts": 5,
+    "tolerance": 50.0,
+    "variants": [
+      "ablate_features_all",
+      "ablate_embeddings_all",
+      "ablate_all_edges",
+      "ablate_all_2x"
+    ]
+  },
+  "per_check": [
+    {
+      "prompt_idx": 0,
+      "condition": "bare",
+      "variant": "ablate_features_all",
+      "delta_predicted": -9038.593276023865,
+      "drift_measured": -9056.0,
+      "abs_error": 17.406723976135254,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "bare",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35138.91094970703,
+      "drift_measured": -35152.0,
+      "abs_error": 13.08905029296875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "bare",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -44033.477412223816,
+      "drift_measured": -44048.0,
+      "abs_error": 14.522587776184082,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "bare",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -88066.95482444763,
+      "drift_measured": -88056.0,
+      "abs_error": 10.954824447631836,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_roleplay",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11986.16394996643,
+      "drift_measured": -11960.0,
+      "abs_error": 26.163949966430664,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_roleplay",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35578.74853515625,
+      "drift_measured": -35584.0,
+      "abs_error": 5.25146484375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_roleplay",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -46931.74074661732,
+      "drift_measured": -46920.0,
+      "abs_error": 11.7407466173172,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_roleplay",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -93863.48149323463,
+      "drift_measured": -93872.0,
+      "abs_error": 8.5185067653656,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12022.327832698822,
+      "drift_measured": -12016.0,
+      "abs_error": 6.3278326988220215,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36305.94842529297,
+      "drift_measured": -36336.0,
+      "abs_error": 30.05157470703125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48134.99637365341,
+      "drift_measured": -48128.0,
+      "abs_error": 6.996373653411865,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96269.99274730682,
+      "drift_measured": -96288.0,
+      "abs_error": 18.00725269317627,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_fiction",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12672.291645050049,
+      "drift_measured": -12688.0,
+      "abs_error": 15.708354949951172,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_fiction",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35231.750549316406,
+      "drift_measured": -35248.0,
+      "abs_error": 16.24945068359375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_fiction",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47427.6580491066,
+      "drift_measured": -47456.0,
+      "abs_error": 28.3419508934021,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_fiction",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -94855.3160982132,
+      "drift_measured": -94888.0,
+      "abs_error": 32.6839017868042,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11154.058201313019,
+      "drift_measured": -11152.0,
+      "abs_error": 2.058201313018799,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36745.50225830078,
+      "drift_measured": -36760.0,
+      "abs_error": 14.49774169921875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47944.43343710899,
+      "drift_measured": -47976.0,
+      "abs_error": 31.56656289100647,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -95888.86687421799,
+      "drift_measured": -95896.0,
+      "abs_error": 7.1331257820129395,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_analytical",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13218.035955905914,
+      "drift_measured": -13248.0,
+      "abs_error": 29.964044094085693,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_analytical",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36036.42175292969,
+      "drift_measured": -36048.0,
+      "abs_error": 11.5782470703125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_analytical",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48140.50346326828,
+      "drift_measured": -48152.0,
+      "abs_error": 11.49653673171997,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_analytical",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96281.00692653656,
+      "drift_measured": -96288.0,
+      "abs_error": 6.993073463439941,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_features_all",
+      "delta_predicted": -10393.35695528984,
+      "drift_measured": -10424.0,
+      "abs_error": 30.6430447101593,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36180.24084472656,
+      "drift_measured": -36176.0,
+      "abs_error": 4.2408447265625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -46885.42089891434,
+      "drift_measured": -46872.0,
+      "abs_error": 13.420898914337158,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -93770.84179782867,
+      "drift_measured": -93768.0,
+      "abs_error": 2.8417978286743164,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_completion",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11226.059227228165,
+      "drift_measured": -11216.0,
+      "abs_error": 10.059227228164673,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_completion",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36237.94757080078,
+      "drift_measured": -36232.0,
+      "abs_error": 5.94757080078125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_completion",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47160.01712632179,
+      "drift_measured": -47152.0,
+      "abs_error": 8.017126321792603,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_completion",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -94320.03425264359,
+      "drift_measured": -94312.0,
+      "abs_error": 8.034252643585205,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_completion",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11207.227592229843,
+      "drift_measured": -11192.0,
+      "abs_error": 15.22759222984314,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_completion",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36723.03289794922,
+      "drift_measured": -36704.0,
+      "abs_error": 19.03289794921875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_completion",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47529.24335813522,
+      "drift_measured": -47520.0,
+      "abs_error": 9.243358135223389,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_completion",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -95058.48671627045,
+      "drift_measured": -95064.0,
+      "abs_error": 5.513283729553223,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12856.949738025665,
+      "drift_measured": -12840.0,
+      "abs_error": 16.949738025665283,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36060.9952545166,
+      "drift_measured": -36056.0,
+      "abs_error": 4.9952545166015625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47998.637040138245,
+      "drift_measured": -48000.0,
+      "abs_error": 1.362959861755371,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -95997.27408027649,
+      "drift_measured": -96040.0,
+      "abs_error": 42.72591972351074,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11584.750548124313,
+      "drift_measured": -11616.0,
+      "abs_error": 31.249451875686646,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35954.437591552734,
+      "drift_measured": -35976.0,
+      "abs_error": 21.562408447265625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47427.82780575752,
+      "drift_measured": -47440.0,
+      "abs_error": 12.172194242477417,
+      "passing": true
+    },
+    {
+      "prompt_idx": 0,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -94855.65561151505,
+      "drift_measured": -94880.0,
+      "abs_error": 24.344388484954834,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "bare",
+      "variant": "ablate_features_all",
+      "delta_predicted": -10118.061226606369,
+      "drift_measured": -10088.0,
+      "abs_error": 30.06122660636902,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "bare",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35574.37240600586,
+      "drift_measured": -35560.0,
+      "abs_error": 14.372406005859375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "bare",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -45560.3604323864,
+      "drift_measured": -45560.0,
+      "abs_error": 0.36043238639831543,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "bare",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -91120.7208647728,
+      "drift_measured": -91120.0,
+      "abs_error": 0.7208647727966309,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_roleplay",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12890.486188650131,
+      "drift_measured": -12880.0,
+      "abs_error": 10.486188650131226,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_roleplay",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35766.912048339844,
+      "drift_measured": -35752.0,
+      "abs_error": 14.91204833984375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_roleplay",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47681.7001645565,
+      "drift_measured": -47672.0,
+      "abs_error": 9.700164556503296,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_roleplay",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -95363.400329113,
+      "drift_measured": -95368.0,
+      "abs_error": 4.599670886993408,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12147.579277276993,
+      "drift_measured": -12128.0,
+      "abs_error": 19.579277276992798,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36468.11990356445,
+      "drift_measured": -36416.0,
+      "abs_error": 52.119903564453125,
+      "passing": false
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48323.959250450134,
+      "drift_measured": -48296.0,
+      "abs_error": 27.959250450134277,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96647.91850090027,
+      "drift_measured": -96672.0,
+      "abs_error": 24.081499099731445,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_fiction",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13360.32967710495,
+      "drift_measured": -13384.0,
+      "abs_error": 23.67032289505005,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_fiction",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35555.19970703125,
+      "drift_measured": -35568.0,
+      "abs_error": 12.80029296875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_fiction",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48251.04182934761,
+      "drift_measured": -48240.0,
+      "abs_error": 11.041829347610474,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_fiction",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96502.08365869522,
+      "drift_measured": -96520.0,
+      "abs_error": 17.916341304779053,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11635.094358026981,
+      "drift_measured": -11632.0,
+      "abs_error": 3.0943580269813538,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36876.92350769043,
+      "drift_measured": -36904.0,
+      "abs_error": 27.076492309570312,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48199.017175257206,
+      "drift_measured": -48192.0,
+      "abs_error": 7.017175257205963,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96398.03435051441,
+      "drift_measured": -96432.0,
+      "abs_error": 33.965649485588074,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_analytical",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13313.897519826889,
+      "drift_measured": -13320.0,
+      "abs_error": 6.102480173110962,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_analytical",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36228.71337890625,
+      "drift_measured": -36264.0,
+      "abs_error": 35.28662109375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_analytical",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48814.008066773415,
+      "drift_measured": -48856.0,
+      "abs_error": 41.99193322658539,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_analytical",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -97628.01613354683,
+      "drift_measured": -97672.0,
+      "abs_error": 43.983866453170776,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11468.19498860836,
+      "drift_measured": -11464.0,
+      "abs_error": 4.1949886083602905,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36290.25149536133,
+      "drift_measured": -36288.0,
+      "abs_error": 2.251495361328125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47663.36500585079,
+      "drift_measured": -47664.0,
+      "abs_error": 0.6349941492080688,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -95326.73001170158,
+      "drift_measured": -95320.0,
+      "abs_error": 6.730011701583862,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_completion",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11399.860980391502,
+      "drift_measured": -11416.0,
+      "abs_error": 16.13901960849762,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_completion",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36315.643127441406,
+      "drift_measured": -36312.0,
+      "abs_error": 3.64312744140625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_completion",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47393.39464151859,
+      "drift_measured": -47400.0,
+      "abs_error": 6.6053584814071655,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_completion",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -94786.78928303719,
+      "drift_measured": -94832.0,
+      "abs_error": 45.21071696281433,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_completion",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11713.77292072773,
+      "drift_measured": -11728.0,
+      "abs_error": 14.227079272270203,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_completion",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36791.61959838867,
+      "drift_measured": -36808.0,
+      "abs_error": 16.380401611328125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_completion",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47679.42213976383,
+      "drift_measured": -47696.0,
+      "abs_error": 16.577860236167908,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_completion",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -95358.84427952766,
+      "drift_measured": -95376.0,
+      "abs_error": 17.155720472335815,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_features_all",
+      "delta_predicted": -15488.209586143494,
+      "drift_measured": -15464.0,
+      "abs_error": 24.209586143493652,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36457.031677246094,
+      "drift_measured": -36440.0,
+      "abs_error": 17.03167724609375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -51725.843379974365,
+      "drift_measured": -51728.0,
+      "abs_error": 2.1566200256347656,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -103451.68675994873,
+      "drift_measured": -103448.0,
+      "abs_error": 3.6867599487304688,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12343.3697412014,
+      "drift_measured": -12336.0,
+      "abs_error": 7.369741201400757,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36271.14974975586,
+      "drift_measured": -36240.0,
+      "abs_error": 31.149749755859375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47996.985476732254,
+      "drift_measured": -47984.0,
+      "abs_error": 12.985476732254028,
+      "passing": true
+    },
+    {
+      "prompt_idx": 1,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -95993.97095346451,
+      "drift_measured": -95976.0,
+      "abs_error": 17.970953464508057,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "bare",
+      "variant": "ablate_features_all",
+      "delta_predicted": -10317.971711397171,
+      "drift_measured": -10296.0,
+      "abs_error": 21.97171139717102,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "bare",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36723.32943725586,
+      "drift_measured": -36704.0,
+      "abs_error": 19.329437255859375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "bare",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -45848.74442052841,
+      "drift_measured": -45840.0,
+      "abs_error": 8.744420528411865,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "bare",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -91697.48884105682,
+      "drift_measured": -91656.0,
+      "abs_error": 41.48884105682373,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_roleplay",
+      "variant": "ablate_features_all",
+      "delta_predicted": -14041.424596309662,
+      "drift_measured": -14048.0,
+      "abs_error": 6.575403690338135,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_roleplay",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36576.41194152832,
+      "drift_measured": -36608.0,
+      "abs_error": 31.588058471679688,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_roleplay",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49355.55517446995,
+      "drift_measured": -49360.0,
+      "abs_error": 4.444825530052185,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_roleplay",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -98711.1103489399,
+      "drift_measured": -98720.0,
+      "abs_error": 8.88965106010437,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13995.030078411102,
+      "drift_measured": -13992.0,
+      "abs_error": 3.030078411102295,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -37179.33866882324,
+      "drift_measured": -37208.0,
+      "abs_error": 28.661331176757812,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -50237.30598640442,
+      "drift_measured": -50264.0,
+      "abs_error": 26.694013595581055,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -100474.61197280884,
+      "drift_measured": -100480.0,
+      "abs_error": 5.388027191162109,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_fiction",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13940.383891820908,
+      "drift_measured": -13944.0,
+      "abs_error": 3.6161081790924072,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_fiction",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35735.798751831055,
+      "drift_measured": -35728.0,
+      "abs_error": 7.7987518310546875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_fiction",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48410.15380835533,
+      "drift_measured": -48408.0,
+      "abs_error": 2.153808355331421,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_fiction",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96820.30761671066,
+      "drift_measured": -96848.0,
+      "abs_error": 27.692383289337158,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13197.969969213009,
+      "drift_measured": -13200.0,
+      "abs_error": 2.0300307869911194,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -37778.367767333984,
+      "drift_measured": -37792.0,
+      "abs_error": 13.632232666015625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -50189.60102432966,
+      "drift_measured": -50192.0,
+      "abs_error": 2.398975670337677,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -100379.20204865932,
+      "drift_measured": -100384.0,
+      "abs_error": 4.797951340675354,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_analytical",
+      "variant": "ablate_features_all",
+      "delta_predicted": -14164.251725077629,
+      "drift_measured": -14192.0,
+      "abs_error": 27.74827492237091,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_analytical",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36695.306640625,
+      "drift_measured": -36712.0,
+      "abs_error": 16.693359375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_analytical",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49531.78012692928,
+      "drift_measured": -49552.0,
+      "abs_error": 20.219873070716858,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_analytical",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -99063.56025385857,
+      "drift_measured": -99080.0,
+      "abs_error": 16.439746141433716,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12375.397082805634,
+      "drift_measured": -12368.0,
+      "abs_error": 7.397082805633545,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -37321.59103393555,
+      "drift_measured": -37320.0,
+      "abs_error": 1.591033935546875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49139.60255265236,
+      "drift_measured": -49120.0,
+      "abs_error": 19.60255265235901,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -98279.20510530472,
+      "drift_measured": -98224.0,
+      "abs_error": 55.20510530471802,
+      "passing": false
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_completion",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12993.041190981865,
+      "drift_measured": -12976.0,
+      "abs_error": 17.04119098186493,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_completion",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -37266.019302368164,
+      "drift_measured": -37256.0,
+      "abs_error": 10.019302368164062,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_completion",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49116.92766785622,
+      "drift_measured": -49128.0,
+      "abs_error": 11.07233214378357,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_completion",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -98233.85533571243,
+      "drift_measured": -98216.0,
+      "abs_error": 17.85533571243286,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_completion",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12697.50006711483,
+      "drift_measured": -12672.0,
+      "abs_error": 25.500067114830017,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_completion",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -37765.46891784668,
+      "drift_measured": -37736.0,
+      "abs_error": 29.468917846679688,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_completion",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49047.84920299053,
+      "drift_measured": -49048.0,
+      "abs_error": 0.1507970094680786,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_completion",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -98095.69840598106,
+      "drift_measured": -98064.0,
+      "abs_error": 31.698405981063843,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_features_all",
+      "delta_predicted": -16042.000008821487,
+      "drift_measured": -16064.0,
+      "abs_error": 21.999991178512573,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36948.6955871582,
+      "drift_measured": -36976.0,
+      "abs_error": 27.304412841796875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -52484.67072582245,
+      "drift_measured": -52520.0,
+      "abs_error": 35.32927417755127,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -104969.3414516449,
+      "drift_measured": -104976.0,
+      "abs_error": 6.658548355102539,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13585.861981630325,
+      "drift_measured": -13592.0,
+      "abs_error": 6.138018369674683,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36947.95274353027,
+      "drift_measured": -36984.0,
+      "abs_error": 36.04725646972656,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49528.5276620388,
+      "drift_measured": -49536.0,
+      "abs_error": 7.472337961196899,
+      "passing": true
+    },
+    {
+      "prompt_idx": 2,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -99057.0553240776,
+      "drift_measured": -99064.0,
+      "abs_error": 6.944675922393799,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "bare",
+      "variant": "ablate_features_all",
+      "delta_predicted": -10631.667978286743,
+      "drift_measured": -10632.0,
+      "abs_error": 0.33202171325683594,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "bare",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35638.210388183594,
+      "drift_measured": -35624.0,
+      "abs_error": 14.21038818359375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "bare",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -45367.65377044678,
+      "drift_measured": -45368.0,
+      "abs_error": 0.34622955322265625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "bare",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -90735.30754089355,
+      "drift_measured": -90736.0,
+      "abs_error": 0.6924591064453125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_roleplay",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13145.832564234734,
+      "drift_measured": -13144.0,
+      "abs_error": 1.8325642347335815,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_roleplay",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35594.0760345459,
+      "drift_measured": -35584.0,
+      "abs_error": 10.076034545898438,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_roleplay",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47656.32867360115,
+      "drift_measured": -47648.0,
+      "abs_error": 8.328673601150513,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_roleplay",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -95312.6573472023,
+      "drift_measured": -95304.0,
+      "abs_error": 8.657347202301025,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12449.745140075684,
+      "drift_measured": -12432.0,
+      "abs_error": 17.745140075683594,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36509.95462036133,
+      "drift_measured": -36520.0,
+      "abs_error": 10.045379638671875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48613.79328536987,
+      "drift_measured": -48608.0,
+      "abs_error": 5.793285369873047,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -97227.58657073975,
+      "drift_measured": -97240.0,
+      "abs_error": 12.413429260253906,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_fiction",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13414.810559272766,
+      "drift_measured": -13392.0,
+      "abs_error": 22.810559272766113,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_fiction",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35514.55438232422,
+      "drift_measured": -35512.0,
+      "abs_error": 2.55438232421875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_fiction",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48235.10310959816,
+      "drift_measured": -48232.0,
+      "abs_error": 3.10310959815979,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_fiction",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96470.20621919632,
+      "drift_measured": -96488.0,
+      "abs_error": 17.79378080368042,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11851.590168833733,
+      "drift_measured": -11856.0,
+      "abs_error": 4.409831166267395,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36955.44541931152,
+      "drift_measured": -36984.0,
+      "abs_error": 28.554580688476562,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48310.869599699974,
+      "drift_measured": -48320.0,
+      "abs_error": 9.13040030002594,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96621.73919939995,
+      "drift_measured": -96632.0,
+      "abs_error": 10.26080060005188,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_analytical",
+      "variant": "ablate_features_all",
+      "delta_predicted": -14012.728968381882,
+      "drift_measured": -14008.0,
+      "abs_error": 4.728968381881714,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_analytical",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36155.41297912598,
+      "drift_measured": -36152.0,
+      "abs_error": 3.4129791259765625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_analytical",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49177.06793761253,
+      "drift_measured": -49176.0,
+      "abs_error": 1.0679376125335693,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_analytical",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -98354.13587522507,
+      "drift_measured": -98320.0,
+      "abs_error": 34.13587522506714,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11480.939900875092,
+      "drift_measured": -11480.0,
+      "abs_error": 0.9399008750915527,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36393.66339111328,
+      "drift_measured": -36352.0,
+      "abs_error": 41.66339111328125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47296.9304523468,
+      "drift_measured": -47272.0,
+      "abs_error": 24.930452346801758,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -94593.8609046936,
+      "drift_measured": -94600.0,
+      "abs_error": 6.139095306396484,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_completion",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12020.76719224453,
+      "drift_measured": -12056.0,
+      "abs_error": 35.232807755470276,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_completion",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36055.96014404297,
+      "drift_measured": -36072.0,
+      "abs_error": 16.03985595703125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_completion",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47686.22783410549,
+      "drift_measured": -47704.0,
+      "abs_error": 17.772165894508362,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_completion",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -95372.45566821098,
+      "drift_measured": -95376.0,
+      "abs_error": 3.5443317890167236,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_completion",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12220.46633708477,
+      "drift_measured": -12216.0,
+      "abs_error": 4.466337084770203,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_completion",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36857.83969116211,
+      "drift_measured": -36832.0,
+      "abs_error": 25.839691162109375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_completion",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48038.645248770714,
+      "drift_measured": -48016.0,
+      "abs_error": 22.645248770713806,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_completion",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96077.29049754143,
+      "drift_measured": -96080.0,
+      "abs_error": 2.7095024585723877,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_features_all",
+      "delta_predicted": -14573.277367591858,
+      "drift_measured": -14576.0,
+      "abs_error": 2.72263240814209,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35997.39649963379,
+      "drift_measured": -36008.0,
+      "abs_error": 10.603500366210938,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -50330.008397340775,
+      "drift_measured": -50320.0,
+      "abs_error": 10.008397340774536,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -100660.01679468155,
+      "drift_measured": -100656.0,
+      "abs_error": 4.016794681549072,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12872.966262459755,
+      "drift_measured": -12872.0,
+      "abs_error": 0.9662624597549438,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36096.01989746094,
+      "drift_measured": -36112.0,
+      "abs_error": 15.9801025390625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48230.00858652592,
+      "drift_measured": -48240.0,
+      "abs_error": 9.991413474082947,
+      "passing": true
+    },
+    {
+      "prompt_idx": 3,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96460.01717305183,
+      "drift_measured": -96472.0,
+      "abs_error": 11.982826948165894,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "bare",
+      "variant": "ablate_features_all",
+      "delta_predicted": -10365.896174907684,
+      "drift_measured": -10352.0,
+      "abs_error": 13.896174907684326,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "bare",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36132.88098144531,
+      "drift_measured": -36088.0,
+      "abs_error": 44.8809814453125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "bare",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -45676.18364620209,
+      "drift_measured": -45624.0,
+      "abs_error": 52.1836462020874,
+      "passing": false
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "bare",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -91352.36729240417,
+      "drift_measured": -91328.0,
+      "abs_error": 24.367292404174805,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_roleplay",
+      "variant": "ablate_features_all",
+      "delta_predicted": -14029.743609786034,
+      "drift_measured": -14008.0,
+      "abs_error": 21.74360978603363,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_roleplay",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36077.98733520508,
+      "drift_measured": -36056.0,
+      "abs_error": 21.987335205078125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_roleplay",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49269.54132378101,
+      "drift_measured": -49264.0,
+      "abs_error": 5.541323781013489,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_roleplay",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -98539.08264756203,
+      "drift_measured": -98536.0,
+      "abs_error": 3.0826475620269775,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13616.023443460464,
+      "drift_measured": -13624.0,
+      "abs_error": 7.9765565395355225,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -37093.4541015625,
+      "drift_measured": -37096.0,
+      "abs_error": 2.5458984375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49819.83988952637,
+      "drift_measured": -49832.0,
+      "abs_error": 12.160110473632812,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_roleplay",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -99639.67977905273,
+      "drift_measured": -99592.0,
+      "abs_error": 47.679779052734375,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_fiction",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13363.645519852638,
+      "drift_measured": -13384.0,
+      "abs_error": 20.354480147361755,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_fiction",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -35510.10192871094,
+      "drift_measured": -35520.0,
+      "abs_error": 9.8980712890625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_fiction",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48496.33408653736,
+      "drift_measured": -48496.0,
+      "abs_error": 0.334086537361145,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_fiction",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -96992.66817307472,
+      "drift_measured": -97000.0,
+      "abs_error": 7.33182692527771,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12642.962726473808,
+      "drift_measured": -12664.0,
+      "abs_error": 21.03727352619171,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -37510.24826049805,
+      "drift_measured": -37504.0,
+      "abs_error": 6.248260498046875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49332.92146742344,
+      "drift_measured": -49328.0,
+      "abs_error": 4.921467423439026,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_fiction",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -98665.84293484688,
+      "drift_measured": -98664.0,
+      "abs_error": 1.8429348468780518,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_analytical",
+      "variant": "ablate_features_all",
+      "delta_predicted": -15009.30171918869,
+      "drift_measured": -15016.0,
+      "abs_error": 6.6982808113098145,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_analytical",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36827.40565490723,
+      "drift_measured": -36824.0,
+      "abs_error": 3.4056549072265625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_analytical",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -50806.48562824726,
+      "drift_measured": -50816.0,
+      "abs_error": 9.514371752738953,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_analytical",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -101612.97125649452,
+      "drift_measured": -101592.0,
+      "abs_error": 20.971256494522095,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12588.9235394001,
+      "drift_measured": -12592.0,
+      "abs_error": 3.076460599899292,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -37182.56510925293,
+      "drift_measured": -37176.0,
+      "abs_error": 6.5651092529296875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -48897.4638133049,
+      "drift_measured": -48888.0,
+      "abs_error": 9.463813304901123,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_analytical",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -97794.9276266098,
+      "drift_measured": -97808.0,
+      "abs_error": 13.072373390197754,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_completion",
+      "variant": "ablate_features_all",
+      "delta_predicted": -11920.278902292252,
+      "drift_measured": -11896.0,
+      "abs_error": 24.278902292251587,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_completion",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -37000.49105834961,
+      "drift_measured": -37016.0,
+      "abs_error": 15.508941650390625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_completion",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -47972.1387386322,
+      "drift_measured": -47976.0,
+      "abs_error": 3.8612613677978516,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_completion",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -95944.2774772644,
+      "drift_measured": -95968.0,
+      "abs_error": 23.722522735595703,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_completion",
+      "variant": "ablate_features_all",
+      "delta_predicted": -12799.619417786598,
+      "drift_measured": -12800.0,
+      "abs_error": 0.38058221340179443,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_completion",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -37745.67657470703,
+      "drift_measured": -37744.0,
+      "abs_error": 1.67657470703125,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_completion",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49105.416412234306,
+      "drift_measured": -49096.0,
+      "abs_error": 9.416412234306335,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_completion",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -98210.83282446861,
+      "drift_measured": -98200.0,
+      "abs_error": 10.832824468612671,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_features_all",
+      "delta_predicted": -15105.458334445953,
+      "drift_measured": -15072.0,
+      "abs_error": 33.45833444595337,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36688.416564941406,
+      "drift_measured": -36672.0,
+      "abs_error": 16.41656494140625,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -51148.669801712036,
+      "drift_measured": -51128.0,
+      "abs_error": 20.669801712036133,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "jb_cognitive_reframe",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -102297.33960342407,
+      "drift_measured": -102264.0,
+      "abs_error": 33.339603424072266,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_features_all",
+      "delta_predicted": -13950.52295923233,
+      "drift_measured": -13944.0,
+      "abs_error": 6.522959232330322,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_embeddings_all",
+      "delta_predicted": -36948.57540893555,
+      "drift_measured": -36936.0,
+      "abs_error": 12.575408935546875,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_all_edges",
+      "delta_predicted": -49950.95810174942,
+      "drift_measured": -49952.0,
+      "abs_error": 1.041898250579834,
+      "passing": true
+    },
+    {
+      "prompt_idx": 4,
+      "condition": "ctrl_cognitive_reframe",
+      "variant": "ablate_all_2x",
+      "delta_predicted": -99901.91620349884,
+      "drift_measured": -99904.0,
+      "abs_error": 2.083796501159668,
+      "passing": true
+    }
+  ],
+  "summary": {
+    "n_passing": 217,
+    "n_failing": 3,
+    "pass_rate": 0.9863636363636363
+  }
+}
