@@ -65,6 +65,11 @@ def parse_args():
     p.add_argument("--dtype", default="float32", choices=["bfloat16", "float32"],
                    help="Model dtype. Default float32 because bf16 loses ~95%% of small "
                         "per-element hook deltas (drift verification confirmed 2026-05-19).")
+    p.add_argument("--position-mode", default="all", choices=["all", "last_prompt_only"],
+                   help="Where to apply the r_hat subtraction. 'all' = every position every "
+                        "forward step (default; original Phase 0 0b/0d/0e behavior). "
+                        "'last_prompt_only' = only seq pos=-2 of the prompt encoding pass, "
+                        "matching where direct_dot is measured. Used for Cell D of the 2x2.")
     return p.parse_args()
 
 
@@ -115,6 +120,7 @@ def main():
             "n_prompts": len(dataset),
             "variants": variants_to_run,
             "r_hat_norm": r_hat.norm().item(),
+            "position_mode": args.position_mode,
         },
         "per_variant": {v: [] for v in variants_to_run},
     }
@@ -132,7 +138,8 @@ def main():
                 if decomp_rec is None:
                     continue
                 delta = float(decomp_rec[delta_field]) * scale
-                hook_fn = make_scalar_rhat_subtraction_hook(r_hat, delta)
+                hook_fn = make_scalar_rhat_subtraction_hook(
+                    r_hat, delta, position_mode=args.position_mode)
 
                 text = blob["text"]
                 formatted = format_prompt(tokenizer, text)
