@@ -729,3 +729,91 @@ data/results/emnlp_perm_edit/phase0_controllability/
 ---
 
 *Last updated 2026-05-20 after Batch 12 — Phase 0 GPU run COMPLETE. Behavioral verdict: L15 is a measurement axis, not a behaviorally-sufficient causal lever. Story for the EMNLP paper has tightened.*
+
+---
+
+## 2026-05-21 — Batch 13: Tejas-flagged correction — pooled vs mean-of-per-class-rates
+
+**Tasks executed**:
+- Methodological correction to JB-aggregated flip-rate reporting (Tejas review, 2026-05-21).
+- Aggregator (`00_aggregate_phase0_gpu.py`) updated to compute and surface pooled JB-comply flip rate as the primary aggregate.
+- Re-derivation of corrected numbers from raw `flip_rate_summary.json` (per-class data was always correct; the bug was in the log's aggregate).
+
+### What Tejas caught
+
+Batch 12 reported `jb_avg` as a simple mean of per-class flip rates across the 4 classes with nonzero baseline complies (fiction n=19, roleplay n=9, analytical n=28, cog_reframe n=33; completion excluded with n=0). This gives **each class equal weight** regardless of denominator.
+
+The standard pooled metric — `total_flips / total_baselines` (n=89 across all 5 JB classes) — weights each class by its actual baseline-comply count. For variants where the high-flip class is also the smallest-n class (roleplay, n=9, frequently shows the largest per-class flip rate), **mean-of-per-class inflates the aggregate**.
+
+The per-class flip rates in `flip_rate_summary.json` are correct and unchanged. **Only the cross-class aggregate I cited in the Batch 12 log was inflated.** No fix needed to the actual computation; just the summary number.
+
+### Corrected pooled JB flip rates for 0b
+
+Re-derived from `flip_rate_summary.json` raw counts:
+
+| Variant | Reported (mean-of-rates) | **Corrected (pooled)** | Δ |
+|---|---:|---:|---:|
+| ablate_features_pos | 0.8% | **1.1%** (1/89) | +0.4 pp |
+| ablate_features_neg | 4.3% | **3.4%** (3/89) | −0.9 pp |
+| ablate_features_all | 0.8% | **1.1%** (1/89) | +0.4 pp |
+| ablate_embeddings_all | 8.4% | **5.6%** (5/89) | **−2.8 pp** |
+| ablate_errors_all | 0.8% | **1.1%** (1/89) | +0.4 pp |
+| ablate_all_edges | 9.3% | **6.7%** (6/89) | **−2.5 pp** |
+| **ablate_all_2x** | **12.1%** | **7.9%** (7/89) | **−4.2 pp** |
+
+The biggest corrections are for the strongest variants (where roleplay's n=9 was carrying disproportionate weight in the simple mean).
+
+### Corrected 0d feature Pareto — pooled JB flip rate
+
+| Variant\K | 1 | 5 | 10 | 20 | 50 | 100 | 500 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| pos | 1.1% | 1.1% | 1.1% | 1.1% | 1.1% | 1.1% | 1.1% |
+| neg | 1.1% | 1.1% | 1.1% | 1.1% | **2.2%** | **2.2%** | 1.1% |
+| abs | 1.1% | 1.1% | 1.1% | 1.1% | 1.1% | 1.1% | 1.1% |
+
+Mean-of-rates had reported peaks of 1.5% at K=50/100 for neg; pooled shows 2.2% at the same K's. **Both reflect a near-flat Pareto** — the qualitative finding (no sparsity knee in feature ablation) is preserved.
+
+### Corrected 0e edge Pareto — pooled JB flip rate
+
+| Variant\K | 1 | 5 | 10 | 50 | 100 | 500 | 1000 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| pos | 1.1% | 1.1% | 1.1% | 1.1% | 1.1% | **6.7%** | **6.7%** |
+| neg | 2.2% | 3.4% | 3.4% | 6.7% | **7.9%** | 6.7% | 6.7% |
+| abs | 2.2% | 3.4% | 3.4% | 6.7% | 6.7% | 6.7% | 6.7% |
+
+Mean-of-rates had reported the "12.1% peak" at neg K=100; pooled is **7.9% peak**. The Pareto structure is still real on JB-comply for edges (vs flat for features at ~1.1%) but the absolute magnitude is meaningfully smaller.
+
+### What changes in the qualitative interpretation
+
+**Preserved:**
+- **Bare flip rates unchanged** (single condition, n=50 — pooled and mean are the same number).
+- **All 7 variants near baseline noise on bare-flip** (6–10%). Pillar finding intact.
+- **Feature Pareto is FLAT** for 0d (1.1% pooled across all K vs the 0.8% mean-of-rates). Knee-absence claim stands.
+- **Edge Pareto has mild structure** on JB-comply: pos/abs flat at low K, all variants rise to ~6.7% pooled at K≥500. Sign asymmetry visible.
+- **H0-2 sign correctness preserved**: pooled neg=3.4% > pooled pos=1.1% on 0b features (right direction); 0e edge sweep neg-K consistently ≥ pos-K at every K with the curve crossing earlier (right direction). Effect sizes are tiny but signs are correct.
+- **The "L15 is a measurement axis, not a behaviorally-sufficient lever" story is STRENGTHENED** — pooled rates make the ceiling look even lower than the inflated mean-of-rates suggested. The argument for downstream-dominance of refusal (L33) is more, not less, compelling under the correct metric.
+
+**Numerical claims that need restating in the paper / future communications:**
+- "ablate_all_2x flips 12% of JB-comply prompts" → **"flips 7.9% (7/89) of JB-comply prompts"**
+- "Edge ablation peak JB-comply flip rate ~12%" → **"peak ~7.9% (pooled)"**
+- "ablate_embeddings_all 8.4% JB-comply" → **"5.6% (5/89)"**
+- "ablate_all_edges 9.3% JB-comply" → **"6.7% (6/89)"**
+
+### Why this matters going forward
+
+A pooled aggregate is the right primary metric whenever per-class denominators vary widely. In our dataset, JB-comply baselines range from 0 (completion) to 33 (cog_reframe) — a 3.7× spread between the smallest non-zero and largest classes. Any time we aggregate across these classes, equal-weight averaging will systematically over-weight roleplay (the small-n class with the highest variability).
+
+**Going forward in the EMNLP paper and any Georg comms**, default to pooled rates with explicit `n_flipped / n_baseline` denominators. Mean-of-per-class can be a secondary diagnostic if reported with explicit "macro-average" labeling, but the headline number should be pooled.
+
+### Trust signal: the per-class data has been correct the whole time
+
+Worth being clear-eyed: `flip_rate_summary.json` and the `PHASE0_GPU_SUMMARY.md` table both correctly report **per-class** flip rates with proper Wilson 95% CIs. The mistake was purely in how the Batch 12 log narrative aggregated those per-class numbers into a single "JB-avg" figure. The corrected numbers above are derived from the same underlying data with no re-running needed.
+
+### Output / next step
+
+- Aggregator script (`00_aggregate_phase0_gpu.py`) updated to surface `pooled_jb_flip_rate` and `pooled_ctrl_flip_rate` as first-class fields in `flip_rate_summary.json` going forward, alongside per-class breakdowns.
+- The Slack draft for Georg that we'll send next will use **pooled** rates throughout, with explicit `(n_flipped/n_baseline)` denominators next to every aggregate number.
+
+---
+
+*Last updated 2026-05-21 after Batch 13 — pooled-rate methodological correction per Tejas review. Qualitative story unchanged; absolute magnitudes corrected downward in cross-class aggregates.*

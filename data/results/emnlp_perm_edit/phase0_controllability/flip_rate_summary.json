@@ -100,6 +100,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.104,
+          "n_flipped": 26,
+          "n_baseline": 250,
+          "ci_lo": 0.07196523249243102,
+          "ci_hi": 0.14802034070796105,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10400000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "ablate_features_neg": {
@@ -201,6 +229,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.033707865168539325,
+          "n_flipped": 3,
+          "n_baseline": 89,
+          "ci_lo": 0.011529221151789802,
+          "ci_hi": 0.09447362440561424,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.04292929292929293,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "ablate_features_all": {
@@ -302,6 +358,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "ablate_embeddings_all": {
@@ -403,6 +487,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.056179775280898875,
+          "n_flipped": 5,
+          "n_baseline": 89,
+          "ci_lo": 0.024232878420720118,
+          "ci_hi": 0.12485416735078494,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.08386496544391281,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "ablate_errors_all": {
@@ -504,6 +616,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "ablate_all_edges": {
@@ -605,6 +745,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.06741573033707865,
+          "n_flipped": 6,
+          "n_baseline": 89,
+          "ci_lo": 0.03126138505292331,
+          "ci_hi": 0.13936776082563224,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.09279353687248423,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "ablate_all_2x": {
@@ -706,6 +874,34 @@
           "ci_hi": 0.18838246918342838,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.07865168539325842,
+          "n_flipped": 7,
+          "n_baseline": 89,
+          "ci_lo": 0.03861982216517404,
+          "ci_hi": 0.15355142382043202,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.084,
+          "n_flipped": 21,
+          "n_baseline": 250,
+          "ci_lo": 0.05559603876664466,
+          "ci_hi": 0.12499486641356522,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.12057131465026201,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.08399999999999999,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       }
     },
@@ -809,6 +1005,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K5": {
@@ -910,6 +1134,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K10": {
@@ -1011,6 +1263,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.104,
+          "n_flipped": 26,
+          "n_baseline": 250,
+          "ci_lo": 0.07196523249243102,
+          "ci_hi": 0.14802034070796105,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10400000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K20": {
@@ -1112,6 +1392,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.104,
+          "n_flipped": 26,
+          "n_baseline": 250,
+          "ci_lo": 0.07196523249243102,
+          "ci_hi": 0.14802034070796105,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10400000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K50": {
@@ -1213,6 +1521,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.104,
+          "n_flipped": 26,
+          "n_baseline": 250,
+          "ci_lo": 0.07196523249243102,
+          "ci_hi": 0.14802034070796105,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10400000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K100": {
@@ -1314,6 +1650,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.104,
+          "n_flipped": 26,
+          "n_baseline": 250,
+          "ci_lo": 0.07196523249243102,
+          "ci_hi": 0.14802034070796105,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10400000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K500": {
@@ -1415,6 +1779,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K1": {
@@ -1516,6 +1908,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K5": {
@@ -1617,6 +2037,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K10": {
@@ -1718,6 +2166,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K20": {
@@ -1819,6 +2295,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K50": {
@@ -1920,6 +2424,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.02247191011235955,
+          "n_flipped": 2,
+          "n_baseline": 89,
+          "ci_lo": 0.006184398702128599,
+          "ci_hi": 0.07827634674822494,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.015151515151515152,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K100": {
@@ -2021,6 +2553,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.02247191011235955,
+          "n_flipped": 2,
+          "n_baseline": 89,
+          "ci_lo": 0.006184398702128599,
+          "ci_hi": 0.07827634674822494,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.015151515151515152,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K500": {
@@ -2122,6 +2682,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K1": {
@@ -2223,6 +2811,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K5": {
@@ -2324,6 +2940,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K10": {
@@ -2425,6 +3069,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K20": {
@@ -2526,6 +3198,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K50": {
@@ -2627,6 +3327,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K100": {
@@ -2728,6 +3456,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K500": {
@@ -2829,6 +3585,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       }
     },
@@ -2932,6 +3716,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K5": {
@@ -3033,6 +3845,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K10": {
@@ -3134,6 +3974,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.104,
+          "n_flipped": 26,
+          "n_baseline": 250,
+          "ci_lo": 0.07196523249243102,
+          "ci_hi": 0.14802034070796105,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10400000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K50": {
@@ -3235,6 +4103,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.104,
+          "n_flipped": 26,
+          "n_baseline": 250,
+          "ci_lo": 0.07196523249243102,
+          "ci_hi": 0.14802034070796105,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10400000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K100": {
@@ -3336,6 +4232,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.011235955056179775,
+          "n_flipped": 1,
+          "n_baseline": 89,
+          "ci_lo": 0.001986183228256385,
+          "ci_hi": 0.060932462115046646,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.104,
+          "n_flipped": 26,
+          "n_baseline": 250,
+          "ci_lo": 0.07196523249243102,
+          "ci_hi": 0.14802034070796105,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.007575757575757576,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10400000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K500": {
@@ -3437,6 +4361,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.06741573033707865,
+          "n_flipped": 6,
+          "n_baseline": 89,
+          "ci_lo": 0.03126138505292331,
+          "ci_hi": 0.13936776082563224,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.09279353687248423,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "pos_K1000": {
@@ -3538,6 +4490,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.06741573033707865,
+          "n_flipped": 6,
+          "n_baseline": 89,
+          "ci_lo": 0.03126138505292331,
+          "ci_hi": 0.13936776082563224,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.09279353687248423,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K1": {
@@ -3639,6 +4619,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.02247191011235955,
+          "n_flipped": 2,
+          "n_baseline": 89,
+          "ci_lo": 0.006184398702128599,
+          "ci_hi": 0.07827634674822494,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.015151515151515152,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K5": {
@@ -3740,6 +4748,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.033707865168539325,
+          "n_flipped": 3,
+          "n_baseline": 89,
+          "ci_lo": 0.011529221151789802,
+          "ci_hi": 0.09447362440561424,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.04292929292929293,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K10": {
@@ -3841,6 +4877,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.033707865168539325,
+          "n_flipped": 3,
+          "n_baseline": 89,
+          "ci_lo": 0.011529221151789802,
+          "ci_hi": 0.09447362440561424,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.04292929292929293,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K50": {
@@ -3942,6 +5006,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.06741573033707865,
+          "n_flipped": 6,
+          "n_baseline": 89,
+          "ci_lo": 0.03126138505292331,
+          "ci_hi": 0.13936776082563224,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.09279353687248423,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K100": {
@@ -4043,6 +5135,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.07865168539325842,
+          "n_flipped": 7,
+          "n_baseline": 89,
+          "ci_lo": 0.03861982216517404,
+          "ci_hi": 0.15355142382043202,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.12057131465026201,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K500": {
@@ -4144,6 +5264,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.06741573033707865,
+          "n_flipped": 6,
+          "n_baseline": 89,
+          "ci_lo": 0.03126138505292331,
+          "ci_hi": 0.13936776082563224,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.09279353687248423,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "neg_K1000": {
@@ -4245,6 +5393,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.06741573033707865,
+          "n_flipped": 6,
+          "n_baseline": 89,
+          "ci_lo": 0.03126138505292331,
+          "ci_hi": 0.13936776082563224,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.09279353687248423,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K1": {
@@ -4346,6 +5522,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.02247191011235955,
+          "n_flipped": 2,
+          "n_baseline": 89,
+          "ci_lo": 0.006184398702128599,
+          "ci_hi": 0.07827634674822494,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.015151515151515152,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K5": {
@@ -4447,6 +5651,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.033707865168539325,
+          "n_flipped": 3,
+          "n_baseline": 89,
+          "ci_lo": 0.011529221151789802,
+          "ci_hi": 0.09447362440561424,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.04292929292929293,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K10": {
@@ -4548,6 +5780,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.033707865168539325,
+          "n_flipped": 3,
+          "n_baseline": 89,
+          "ci_lo": 0.011529221151789802,
+          "ci_hi": 0.09447362440561424,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.04292929292929293,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K50": {
@@ -4649,6 +5909,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.06741573033707865,
+          "n_flipped": 6,
+          "n_baseline": 89,
+          "ci_lo": 0.03126138505292331,
+          "ci_hi": 0.13936776082563224,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.09279353687248423,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K100": {
@@ -4750,6 +6038,34 @@
           "ci_hi": 0.23804817383202992,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.06741573033707865,
+          "n_flipped": 6,
+          "n_baseline": 89,
+          "ci_lo": 0.03126138505292331,
+          "ci_hi": 0.13936776082563224,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.112,
+          "n_flipped": 28,
+          "n_baseline": 250,
+          "ci_lo": 0.07863430779240635,
+          "ci_hi": 0.1571091326160586,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.09279353687248423,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.11200000000000002,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K500": {
@@ -4851,6 +6167,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.06741573033707865,
+          "n_flipped": 6,
+          "n_baseline": 89,
+          "ci_lo": 0.03126138505292331,
+          "ci_hi": 0.13936776082563224,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.09279353687248423,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       },
       "abs_K1000": {
@@ -4952,6 +6296,34 @@
           "ci_hi": 0.21360231437479654,
           "target_baseline_cls": "REFUSE",
           "target_intervened_cls": "COMPLY"
+        },
+        "pooled_jb": {
+          "flip_rate": 0.06741573033707865,
+          "n_flipped": 6,
+          "n_baseline": 89,
+          "ci_lo": 0.03126138505292331,
+          "ci_hi": 0.13936776082563224,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "pooled_ctrl": {
+          "flip_rate": 0.108,
+          "n_flipped": 27,
+          "n_baseline": 250,
+          "ci_lo": 0.07529194840055528,
+          "ci_hi": 0.15257255840387324,
+          "aggregation": "pooled (total_flips / total_baselines across classes)"
+        },
+        "macro_jb": {
+          "flip_rate": 0.09279353687248423,
+          "n_classes_included": 4,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
+        },
+        "macro_ctrl": {
+          "flip_rate": 0.10800000000000001,
+          "n_classes_included": 5,
+          "aggregation": "macro-average over per-class flip rates (over-weights small-n classes)",
+          "note": "NOT the primary metric; use pooled_jb / pooled_ctrl for headline numbers."
         }
       }
     }
