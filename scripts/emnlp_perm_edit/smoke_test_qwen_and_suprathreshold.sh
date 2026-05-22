@@ -21,9 +21,11 @@ SMOKE_RUN_NAME="${SMOKE_RUN_NAME:-smoke_qwen_L18}"
 SMOKE_RUN_DIR="$ROOT/data/results/pipeline_runs_qwen/$SMOKE_RUN_NAME"
 SMOKE_DIR="$ROOT/data/results/emnlp_perm_edit/phase0_controllability/smoke_qwen_supra"
 QWEN_DIRECTIONS_SRC="$ROOT/data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/directions"
+QWEN_POSITIONS_SRC="$ROOT/data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/positions_L18"
 QWEN_DIRECTIONS_RUN="$SMOKE_RUN_DIR/01_direction/directions"
+QWEN_POSITIONS_RUN="$SMOKE_RUN_DIR/01_direction/positions_L18"
 
-mkdir -p "$SMOKE_DIR" "$QWEN_DIRECTIONS_RUN" "$SMOKE_RUN_DIR/01_direction"
+mkdir -p "$SMOKE_DIR" "$QWEN_DIRECTIONS_RUN" "$QWEN_POSITIONS_RUN" "$SMOKE_RUN_DIR/01_direction"
 
 cd "$ROOT"
 if [[ ! -f "scripts/emnlp_perm_edit/00_direction_intervention_sweep_qwen.py" ]]; then
@@ -40,16 +42,37 @@ if [[ ! -f "scripts/pipeline_qwen/02_run_attribution.py" ]]; then
 fi
 
 # Pull Qwen direction files if not present
+git fetch origin temp/gemma-vs-qwen-pipeline 2>/dev/null || true
+QWEN_SRC_PREFIX="data/results/pipeline_runs_qwen/run_20260502_154423/01_direction"
+
 if [[ ! -f "$QWEN_DIRECTIONS_SRC/layer_18.pt" ]]; then
-  echo "Fetching Qwen direction files..."
-  git fetch origin temp/gemma-vs-qwen-pipeline 2>/dev/null || true
+  echo "Fetching Qwen per-layer directions..."
   mkdir -p "$QWEN_DIRECTIONS_SRC"
-  QWEN_SRC_PREFIX="data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/directions"
   for L in $(seq -f "%02g" 0 35); do
-    git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/layer_${L}.pt" > "$QWEN_DIRECTIONS_SRC/layer_${L}.pt" 2>/dev/null || true
+    git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/directions/layer_${L}.pt" > "$QWEN_DIRECTIONS_SRC/layer_${L}.pt" 2>/dev/null || true
   done
 fi
+
+if [[ ! -f "$QWEN_POSITIONS_SRC/pos_-1.pt" ]]; then
+  echo "Fetching Qwen per-position directions at L18 (required by Stage 02)..."
+  mkdir -p "$QWEN_POSITIONS_SRC"
+  for P in $(seq -1 -1 -15); do
+    git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/positions_L18/pos_${P}.pt" > "$QWEN_POSITIONS_SRC/pos_${P}.pt" 2>/dev/null || true
+    git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/positions_L18/pos_${P}_unnormalized.pt" > "$QWEN_POSITIONS_SRC/pos_${P}_unnormalized.pt" 2>/dev/null || true
+  done
+  git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/positions_L18/index.json" > "$QWEN_POSITIONS_SRC/index.json" 2>/dev/null || true
+fi
+
 cp -n "$QWEN_DIRECTIONS_SRC"/*.pt "$QWEN_DIRECTIONS_RUN/" 2>/dev/null || true
+cp -n "$QWEN_POSITIONS_SRC"/*.pt "$QWEN_POSITIONS_RUN/" 2>/dev/null || true
+cp -n "$QWEN_POSITIONS_SRC/index.json" "$QWEN_POSITIONS_RUN/" 2>/dev/null || true
+
+if [[ ! -f "$QWEN_POSITIONS_RUN/pos_-1.pt" ]]; then
+  echo "FATAL: $QWEN_POSITIONS_RUN/pos_-1.pt missing — Stage 02 will fail."
+  exit 1
+fi
+echo "  Qwen per-layer files: $(ls $QWEN_DIRECTIONS_RUN/*.pt 2>/dev/null | wc -l)"
+echo "  Qwen per-position files at L18: $(ls $QWEN_POSITIONS_RUN/pos_*.pt 2>/dev/null | wc -l)"
 
 echo "============================================================"
 echo "Qwen + supra-threshold SMOKE TEST"

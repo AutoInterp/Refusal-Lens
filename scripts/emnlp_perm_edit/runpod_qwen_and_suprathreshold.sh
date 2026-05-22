@@ -64,7 +64,9 @@ FAIL_FILE="$OUT_DIR/.QWEN_SUPRA_STEP_FAILED.txt"
 
 QWEN_RUN_DIR="$ROOT/data/results/pipeline_runs_qwen/$QWEN_RUN_NAME"
 QWEN_DIRECTIONS_SRC="$ROOT/data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/directions"
+QWEN_POSITIONS_SRC="$ROOT/data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/positions_L18"
 QWEN_DIRECTIONS_RUN="$QWEN_RUN_DIR/01_direction/directions"
+QWEN_POSITIONS_RUN="$QWEN_RUN_DIR/01_direction/positions_L18"
 
 echo "============================================================"
 echo "Qwen Phase 0 + Gemma supra-threshold launcher"
@@ -138,26 +140,47 @@ if [[ ! -f "scripts/pipeline_qwen/02_run_attribution.py" ]]; then
   echo "  pulled $(ls scripts/pipeline_qwen/ | wc -l) files into scripts/pipeline_qwen/"
 fi
 
-# --- Pull Qwen direction files (Ruqiya's r_hat per layer) ---
+# --- Pull Qwen direction files (Ruqiya's per-layer + per-position) ---
 echo ""
 echo "=== Step B: Set up Qwen direction files ==="
+git fetch origin temp/gemma-vs-qwen-pipeline 2>/dev/null || true
+QWEN_SRC_PREFIX="data/results/pipeline_runs_qwen/run_20260502_154423/01_direction"
+
+# Per-layer aggregated directions (for our direction sweep + 0b drivers)
 if [[ ! -f "$QWEN_DIRECTIONS_SRC/layer_18.pt" ]]; then
-  echo "Fetching Qwen direction files from temp/gemma-vs-qwen-pipeline (~1.5 MB)..."
-  git fetch origin temp/gemma-vs-qwen-pipeline 2>/dev/null || true
+  echo "Fetching Qwen per-layer directions (~1.5 MB)..."
   mkdir -p "$QWEN_DIRECTIONS_SRC"
-  QWEN_SRC_PREFIX="data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/directions"
   for L in $(seq -f "%02g" 0 35); do
-    git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/layer_${L}.pt" > "$QWEN_DIRECTIONS_SRC/layer_${L}.pt" 2>/dev/null || \
-      echo "  warning: layer_${L}.pt not in branch"
+    git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/directions/layer_${L}.pt" > "$QWEN_DIRECTIONS_SRC/layer_${L}.pt" 2>/dev/null || true
   done
-  git show origin/temp/gemma-vs-qwen-pipeline:data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/direction_metadata.json > "$QWEN_DIRECTIONS_SRC/../direction_metadata.json" 2>/dev/null || true
+  git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/direction_metadata.json" > "$QWEN_DIRECTIONS_SRC/../direction_metadata.json" 2>/dev/null || true
 fi
-# Copy into the new run dir so Stage 02 finds them at the expected path
-mkdir -p "$QWEN_DIRECTIONS_RUN"
-mkdir -p "$QWEN_RUN_DIR/01_direction"
+
+# Per-position directions at L18 (REQUIRED by Stage 02 — pos_-1.pt at minimum)
+if [[ ! -f "$QWEN_POSITIONS_SRC/pos_-1.pt" ]]; then
+  echo "Fetching Qwen per-position directions at L18 (~400 KB)..."
+  mkdir -p "$QWEN_POSITIONS_SRC"
+  # Pull all pos_*.pt (normalized + unnormalized) and index.json for L18
+  for P in $(seq -1 -1 -15); do
+    git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/positions_L18/pos_${P}.pt" > "$QWEN_POSITIONS_SRC/pos_${P}.pt" 2>/dev/null || true
+    git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/positions_L18/pos_${P}_unnormalized.pt" > "$QWEN_POSITIONS_SRC/pos_${P}_unnormalized.pt" 2>/dev/null || true
+  done
+  git show origin/temp/gemma-vs-qwen-pipeline:"$QWEN_SRC_PREFIX/positions_L18/index.json" > "$QWEN_POSITIONS_SRC/index.json" 2>/dev/null || true
+fi
+
+# Copy into the new run dir so Stage 02 finds them at the expected paths
+mkdir -p "$QWEN_DIRECTIONS_RUN" "$QWEN_POSITIONS_RUN" "$QWEN_RUN_DIR/01_direction"
 cp -n "$QWEN_DIRECTIONS_SRC"/*.pt "$QWEN_DIRECTIONS_RUN/" 2>/dev/null || true
+cp -n "$QWEN_POSITIONS_SRC"/*.pt "$QWEN_POSITIONS_RUN/" 2>/dev/null || true
+cp -n "$QWEN_POSITIONS_SRC/index.json" "$QWEN_POSITIONS_RUN/" 2>/dev/null || true
 cp -n "$QWEN_DIRECTIONS_SRC/../direction_metadata.json" "$QWEN_RUN_DIR/01_direction/" 2>/dev/null || true
-echo "  directions in place: $(ls $QWEN_DIRECTIONS_RUN/*.pt 2>/dev/null | wc -l) layer files"
+echo "  per-layer files: $(ls $QWEN_DIRECTIONS_RUN/*.pt 2>/dev/null | wc -l)"
+echo "  per-position files at L18: $(ls $QWEN_POSITIONS_RUN/pos_*.pt 2>/dev/null | wc -l)"
+# Verify the critical file is there
+if [[ ! -f "$QWEN_POSITIONS_RUN/pos_-1.pt" ]]; then
+  echo "FATAL: $QWEN_POSITIONS_RUN/pos_-1.pt missing — Stage 02 will fail." | tee -a "$FAIL_FILE"
+  touch "$DONE_FILE"; exit 1
+fi
 
 # --- STEP 1: Stage 02 attribution graph generation (L18, single-mode only) ---
 # Biggest time step (~14 h). This generates 550 .pt files in
