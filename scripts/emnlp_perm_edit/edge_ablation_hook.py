@@ -19,6 +19,7 @@ def make_scalar_rhat_subtraction_hook(
     r_hat: torch.Tensor,
     delta: float,
     position_mode: str = "all",
+    target_position: int = -2,
 ):
     """Return a forward_hook that subtracts `delta` from h . r_hat.
 
@@ -29,11 +30,13 @@ def make_scalar_rhat_subtraction_hook(
             "all" (default): subtract at every (batch, seq) position on every
                 forward pass — matches Arditi-style intervention and the
                 original Phase 0 0b/0d/0e behavior.
-            "last_prompt_only": subtract only at seq position -2 of the prompt
-                encoding pass (the position whose representation predicts the
-                first generated token, matching where direct_dot is measured).
-                Generation-step forward passes (seq_len == 1) are skipped, so
-                downstream generated tokens are not directly perturbed.
+            "last_prompt_only": subtract only at the prompt encoding pass's
+                seq position `target_position`. Generation-step forward passes
+                (seq_len == 1) are skipped.
+        target_position: which seq position to edit in `last_prompt_only` mode.
+            Default -2 for Gemma (the position whose representation predicts
+            the first generated token under Gemma's chat template). Set -1 for
+            models like Qwen where the direction was constructed at pos=-1.
 
     The hook handles both tuple outputs (Gemma layer modules return tuples)
     and plain-tensor outputs. Casts r_hat to the output dtype at hook time
@@ -55,9 +58,9 @@ def make_scalar_rhat_subtraction_hook(
         else:  # last_prompt_only
             seq_len = h.shape[1]
             if seq_len > 1:
-                # Prompt encoding pass: edit only position -2 (the measurement target)
+                # Prompt encoding pass: edit only `target_position`
                 h_new = h.clone()
-                h_new[:, -2, :] = h[:, -2, :] - coeff * r_cast
+                h_new[:, target_position, :] = h[:, target_position, :] - coeff * r_cast
             else:
                 # Generation step (single new token, seq_len == 1): no edit
                 h_new = h
