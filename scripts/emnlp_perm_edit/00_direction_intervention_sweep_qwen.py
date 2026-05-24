@@ -50,12 +50,10 @@ def parse_args():
     p.add_argument("--directions-dir", type=Path,
                    default=REPO / "data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/directions",
                    help="Directory containing layer_XX.pt files (Ruqiya's Qwen format).")
-    p.add_argument("--metadata-path", type=Path,
-                   default=REPO / "data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/direction_metadata.json",
-                   help="Path to direction_metadata.json, which holds per-layer "
-                        "unnormalized r-norm values used to convert normalized "
-                        "per-layer files into unnormalized r (matching Ruqiya's Stage 06 "
-                        "Arditi convention).")
+    p.add_argument("--metadata-path", type=Path, default=None,
+                   help="Path to direction_metadata.json (per-layer r_norm values used to "
+                        "convert normalized per-layer files into unnormalized r). "
+                        "If not given, defaults to '<directions-dir>/../direction_metadata.json'.")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--model", default="Qwen/Qwen3-4B")
     p.add_argument("--max-new-tokens", type=int, default=80)
@@ -126,9 +124,24 @@ def main():
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
 
+    # Default metadata path is sibling of directions/ (e.g., <run>/01_direction/direction_metadata.json)
+    metadata_path = args.metadata_path
+    if metadata_path is None:
+        metadata_path = args.directions_dir.parent / "direction_metadata.json"
+    if not metadata_path.exists():
+        # Fallback to Ruqiya's source run dir (works on pods where that's still mounted)
+        fallback = REPO / "data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/direction_metadata.json"
+        if fallback.exists():
+            metadata_path = fallback
+        else:
+            raise FileNotFoundError(
+                f"direction_metadata.json not found at {metadata_path} or {fallback}. "
+                f"Pass --metadata-path explicitly."
+            )
     print(f"[qwen_sweep] loading UNNORMALIZED r_hat for layers {layers_to_run}")
-    print(f"            from {args.directions_dir} × {args.metadata_path}")
-    r_per_layer = load_qwen_directions(args.directions_dir, args.metadata_path, layers_to_run)
+    print(f"            directions: {args.directions_dir}")
+    print(f"            metadata:   {metadata_path}")
+    r_per_layer = load_qwen_directions(args.directions_dir, metadata_path, layers_to_run)
     for L in layers_to_run:
         print(f"  ||r_hat_unnorm[L{L}]|| = {r_per_layer[L].norm().item():.4f}  shape={tuple(r_per_layer[L].shape)}")
 

@@ -39,6 +39,34 @@ for f in "$QWEN_DIRECTIONS_RUN/layer_18.pt" "$QWEN_GRAPH_DIR/000_bare_single.jso
   fi
 done
 
+# Ensure direction_metadata.json + unnormalized per-position direction are present
+QWEN_METADATA="$QWEN_RUN_DIR/01_direction/direction_metadata.json"
+QWEN_UNNORM_PATH="$QWEN_RUN_DIR/01_direction/positions_L18/pos_-1_unnormalized.pt"
+if [[ ! -f "$QWEN_METADATA" ]] || [[ ! -f "$QWEN_UNNORM_PATH" ]]; then
+  echo "Pulling direction_metadata.json + unnormalized per-position direction from branch..."
+  git fetch origin temp/gemma-vs-qwen-pipeline 2>/dev/null || true
+  mkdir -p "$QWEN_RUN_DIR/01_direction/positions_L18"
+  QWEN_SRC_PREFIX="data/results/pipeline_runs_qwen/run_20260502_154423/01_direction"
+  git show "origin/temp/gemma-vs-qwen-pipeline:$QWEN_SRC_PREFIX/direction_metadata.json" \
+    > "$QWEN_METADATA" 2>/dev/null || true
+  for P in $(seq -1 -1 -15); do
+    git show "origin/temp/gemma-vs-qwen-pipeline:$QWEN_SRC_PREFIX/positions_L18/pos_${P}.pt" \
+      > "$QWEN_RUN_DIR/01_direction/positions_L18/pos_${P}.pt" 2>/dev/null || true
+    git show "origin/temp/gemma-vs-qwen-pipeline:$QWEN_SRC_PREFIX/positions_L18/pos_${P}_unnormalized.pt" \
+      > "$QWEN_RUN_DIR/01_direction/positions_L18/pos_${P}_unnormalized.pt" 2>/dev/null || true
+  done
+fi
+if [[ ! -f "$QWEN_METADATA" ]]; then
+  echo "FATAL: direction_metadata.json could not be fetched."
+  exit 1
+fi
+if [[ ! -f "$QWEN_UNNORM_PATH" ]]; then
+  echo "FATAL: positions_L18/pos_-1_unnormalized.pt could not be fetched."
+  exit 1
+fi
+echo "  ✓ direction_metadata.json: $QWEN_METADATA"
+echo "  ✓ unnormalized r at L18 pos=-1: $QWEN_UNNORM_PATH"
+
 echo "============================================================"
 echo "Path A re-run SMOKE TEST (Qwen thinking-mode + Gemma sign fixes)"
 echo "Smoke output: $SMOKE_DIR"

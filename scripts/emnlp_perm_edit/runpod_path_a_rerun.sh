@@ -36,6 +36,8 @@ COEFFS="${COEFFS:-0.001,0.005,0.01,0.05,0.1,0.25,0.5,1.0}"
 LOCATOR_LAYERS="${LOCATOR_LAYERS:-0,5,10,15,22,28,32,34}"
 QWEN_RUN_DIR="$ROOT/data/results/pipeline_runs_qwen/run_emnlp_qwen_L18_20260522"
 QWEN_DIRECTIONS_RUN="$QWEN_RUN_DIR/01_direction/directions"
+QWEN_UNNORM_PATH="$QWEN_RUN_DIR/01_direction/positions_L18/pos_-1_unnormalized.pt"
+QWEN_METADATA="$QWEN_RUN_DIR/01_direction/direction_metadata.json"
 QWEN_DECOMP="$ROOT/data/results/emnlp_perm_edit/phase0_controllability/qwen_linearization_decomposition.json"
 OUT_DIR="$ROOT/data/results/emnlp_perm_edit/phase0_controllability"
 DONE_FILE="$OUT_DIR/.PATH_A_DONE"
@@ -105,19 +107,44 @@ for f in "$QWEN_DIRECTIONS_RUN/layer_18.pt" "$QWEN_RUN_DIR/graph_data/000_bare_s
     touch "$DONE_FILE"; exit 1
   fi
 done
-echo "  All prerequisites present."
 
-# --- STEP 1: Qwen 0b edge ablation (FIXED) ---
+# Ensure direction_metadata.json + unnormalized per-position direction are present
+QWEN_METADATA="$QWEN_RUN_DIR/01_direction/direction_metadata.json"
+QWEN_UNNORM_PATH="$QWEN_RUN_DIR/01_direction/positions_L18/pos_-1_unnormalized.pt"
+if [[ ! -f "$QWEN_METADATA" ]] || [[ ! -f "$QWEN_UNNORM_PATH" ]]; then
+  echo "Pulling metadata + unnormalized per-position direction from temp/gemma-vs-qwen-pipeline..."
+  git fetch origin temp/gemma-vs-qwen-pipeline 2>/dev/null || true
+  mkdir -p "$QWEN_RUN_DIR/01_direction/positions_L18"
+  QWEN_SRC_PREFIX="data/results/pipeline_runs_qwen/run_20260502_154423/01_direction"
+  git show "origin/temp/gemma-vs-qwen-pipeline:$QWEN_SRC_PREFIX/direction_metadata.json" \
+    > "$QWEN_METADATA" 2>/dev/null || true
+  for P in $(seq -1 -1 -15); do
+    git show "origin/temp/gemma-vs-qwen-pipeline:$QWEN_SRC_PREFIX/positions_L18/pos_${P}.pt" \
+      > "$QWEN_RUN_DIR/01_direction/positions_L18/pos_${P}.pt" 2>/dev/null || true
+    git show "origin/temp/gemma-vs-qwen-pipeline:$QWEN_SRC_PREFIX/positions_L18/pos_${P}_unnormalized.pt" \
+      > "$QWEN_RUN_DIR/01_direction/positions_L18/pos_${P}_unnormalized.pt" 2>/dev/null || true
+  done
+fi
+for f in "$QWEN_METADATA" "$QWEN_UNNORM_PATH"; do
+  if [[ ! -f "$f" ]]; then
+    echo "FATAL: could not fetch $f from temp/gemma-vs-qwen-pipeline" | tee -a "$FAIL_FILE"
+    touch "$DONE_FILE"; exit 1
+  fi
+done
+echo "  All prerequisites present (including metadata + unnormalized r)."
+
+# --- STEP 1: Qwen 0b edge ablation (FIXED — uses unnormalized r) ---
 run_step "qwen_0b_edge_ablation_fixed" \
   bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_edge_ablation_runtime_qwen.py \
       --decomposition '$QWEN_DECOMP' \
-      --rhat-path '$QWEN_DIRECTIONS_RUN/layer_18.pt' \
+      --rhat-path '$QWEN_UNNORM_PATH' \
       --out '$OUT_DIR/qwen_edge_ablation_flip_rates_v2.json'"
 
 # --- STEP 2: Qwen sweep all positions (FIXED) ---
 run_step "qwen_direction_sweep_all_positions_fixed" \
   bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_direction_intervention_sweep_qwen.py \
       --directions-dir '$QWEN_DIRECTIONS_RUN' \
+      --metadata-path '$QWEN_METADATA' \
       --layers 18 \
       --position-mode all \
       --coefficients '$COEFFS' \
@@ -127,6 +154,7 @@ run_step "qwen_direction_sweep_all_positions_fixed" \
 run_step "qwen_direction_sweep_pos_neg1_fixed" \
   bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_direction_intervention_sweep_qwen.py \
       --directions-dir '$QWEN_DIRECTIONS_RUN' \
+      --metadata-path '$QWEN_METADATA' \
       --layers 18 \
       --position-mode last_prompt_only \
       --target-position -1 \
@@ -137,6 +165,7 @@ run_step "qwen_direction_sweep_pos_neg1_fixed" \
 run_step "qwen_layer_locator_pos_neg1_fixed" \
   bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_direction_intervention_sweep_qwen.py \
       --directions-dir '$QWEN_DIRECTIONS_RUN' \
+      --metadata-path '$QWEN_METADATA' \
       --layers '$LOCATOR_LAYERS' \
       --position-mode last_prompt_only \
       --target-position -1 \
