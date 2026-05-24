@@ -126,7 +126,7 @@ echo ""
 echo "[smoke 2/4] Qwen 0b edge ablation (FIXED enable_thinking=False), ablate_all_edges only, 3 prompts"
 PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_edge_ablation_runtime_qwen.py \
     --decomposition "$QWEN_DECOMP" \
-    --rhat-path "$QWEN_DIRECTIONS_RUN/layer_18.pt" \
+    --rhat-path "$QWEN_UNNORM_PATH" \
     --variants "ablate_all_edges" \
     --max-prompts 3 \
     --out "$SMOKE_DIR/smoke_qwen_edge_ablation.json"
