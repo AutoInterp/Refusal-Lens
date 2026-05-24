@@ -46,15 +46,39 @@ VARIANT_TO_DELTA_FIELD = {
     "ablate_all_edges": ("all_signed", 1.0),
     "ablate_all_2x": ("all_signed", 2.0),
     # Supra-threshold variants (added 2026-05-22 for the magnitude-gap confirmation).
-    # Scaling the edge-derived delta by N is equivalent to running direction
-    # intervention at coeff = N * (median all_signed / ||r||^2) = N * ~0.005.
-    # Expected to reproduce the dose-response curve from EXP 1 at the
-    # corresponding effective coefficient.
-    "ablate_all_edges_5x":   ("all_signed",   5.0),   # effective coeff ~ 0.025
-    "ablate_all_edges_10x":  ("all_signed",  10.0),   # effective coeff ~ 0.05
-    "ablate_all_edges_50x":  ("all_signed",  50.0),   # effective coeff ~ 0.25 (inflection band)
-    "ablate_all_edges_100x": ("all_signed", 100.0),   # effective coeff ~ 0.5
-    "ablate_all_edges_200x": ("all_signed", 200.0),   # effective coeff ~ 1.0 (saturation)
+    # NB: Original variants `ablate_all_edges_{5x,...,200x}` (positive scale) accidentally
+    # tested PRO-refusal scaling because Gemma's all_signed is negative for refusing prompts
+    # (median ~-48000). With scale=+N, delta = N*(-48000) is negative; the hook computes
+    # h - (delta/||r||^2)*r = h + (N*48000/||r||^2)*r, which ADDS r — the pro-refusal
+    # direction (opposite of Stage 06 anti-refuse-sub). Batch 15 run (2026-05-23) confirmed
+    # this empirically: flip rate DECREASES with scale (0% at 200x), since the model
+    # outputs stronger refusal language at higher pro-refusal pushes.
+    #
+    # The intended supra-threshold test is anti-refuse-direction scaling. With Gemma's
+    # negative all_signed, scale=-N produces positive delta → hook subtracts r → anti-refuse
+    # (matches Stage 06 anti-refuse-sub direction, matches EXP 1 direction).
+    # The new `_antirefuse_` variants below implement this. The originals are kept for
+    # historical reproducibility but should not be reported as the magnitude-gap test.
+    "ablate_all_edges_5x":   ("all_signed",   5.0),   # pro-refuse  (DO NOT use for magnitude-gap test)
+    "ablate_all_edges_10x":  ("all_signed",  10.0),   # pro-refuse
+    "ablate_all_edges_50x":  ("all_signed",  50.0),   # pro-refuse
+    "ablate_all_edges_100x": ("all_signed", 100.0),   # pro-refuse
+    "ablate_all_edges_200x": ("all_signed", 200.0),   # pro-refuse
+    # Sign-flipped variants — these are what the paper should report as supra-threshold.
+    # Scale = -N inverts the sign of Gemma's negative all_signed, yielding positive delta;
+    # hook subtracts (positive_coeff)*r from h, which is the anti-refuse direction (matches
+    # the Stage 06 / EXP 1 anti-refuse-sub convention).
+    # Effective coefficients in the EXP 1 axis (anti-refuse):
+    #   5x → eff_coeff ≈ 0.025  (between EXP 1's 0.01 (6% bare) and 0.05 (20% bare))
+    #   10x → eff_coeff ≈ 0.05  (matches EXP 1 coeff=0.05 → 20% bare)
+    #   50x → eff_coeff ≈ 0.25  (matches EXP 1 coeff=0.25 → 60% bare)
+    #   100x → eff_coeff ≈ 0.5   (matches EXP 1 coeff=0.5  → 94% bare)
+    #   200x → eff_coeff ≈ 1.0   (matches EXP 1 coeff=1.0  → 100% bare)
+    "ablate_all_edges_antirefuse_5x":   ("all_signed",   -5.0),
+    "ablate_all_edges_antirefuse_10x":  ("all_signed",  -10.0),
+    "ablate_all_edges_antirefuse_50x":  ("all_signed",  -50.0),
+    "ablate_all_edges_antirefuse_100x": ("all_signed", -100.0),
+    "ablate_all_edges_antirefuse_200x": ("all_signed", -200.0),
 }
 
 

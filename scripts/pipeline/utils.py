@@ -38,12 +38,29 @@ def load_json(path: Path) -> dict:
         return json.load(f)
 
 
-def format_prompt(tokenizer, text: str) -> str:
-    """Apply Gemma-3 chat template."""
+def format_prompt(tokenizer, text: str, enable_thinking: bool | None = None) -> str:
+    """Apply chat template. Gemma-3 by default; pass enable_thinking=False for Qwen3.
+
+    Qwen3 tokenizers default to enable_thinking=True, which prepends a
+    `<think>\\n` reasoning scaffold that consumes the model's first ~100-500
+    generated tokens before the actual answer. For our short-generation
+    experiments (max_new_tokens=80) this means we never see the answer.
+    Ruqiya's pipeline_qwen/utils.py hardcodes enable_thinking=False with the
+    comment "enable_thinking=False is load-bearing" — directions were
+    constructed and Stage 06 was run in non-thinking mode. Our intervention
+    experiments must match.
+
+    Args:
+        tokenizer: any HF tokenizer with apply_chat_template.
+        text: user message content.
+        enable_thinking: if None, use tokenizer default (Gemma path).
+            If False, pass enable_thinking=False (Qwen non-thinking mode).
+    """
     msgs = [{"role": "user", "content": text}]
-    return tokenizer.apply_chat_template(
-        msgs, tokenize=False, add_generation_prompt=True
-    )
+    kwargs = {"tokenize": False, "add_generation_prompt": True}
+    if enable_thinking is not None:
+        kwargs["enable_thinking"] = enable_thinking
+    return tokenizer.apply_chat_template(msgs, **kwargs)
 
 
 def classify_response(resp: str) -> str:

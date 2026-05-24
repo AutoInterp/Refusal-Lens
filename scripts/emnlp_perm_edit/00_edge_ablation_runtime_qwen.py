@@ -143,7 +143,10 @@ def main():
                 )
 
                 text = blob["text"]
-                formatted = format_prompt(tokenizer, text)
+                # enable_thinking=False is load-bearing for Qwen3-4B (Ruqiya's convention;
+                # her directions were constructed in non-thinking mode). See format_prompt
+                # docstring for details.
+                formatted = format_prompt(tokenizer, text, enable_thinking=False)
                 ids = tokenizer(formatted, return_tensors="pt").to(model.device)
                 prompt_len = ids.input_ids.shape[1]
 

@@ -173,7 +173,11 @@ def main():
             for prompt_idx, prompt in enumerate(dataset):
                 for cond, blob in prompt["conditions"].items():
                     text = blob["text"]
-                    formatted = format_prompt(tokenizer, text)
+                    # enable_thinking=False is load-bearing for Qwen3-4B (Ruqiya's convention).
+                    # Default thinking mode wraps responses in <think>...</think> consuming our
+                    # 80-token budget before any actual answer; classifier sees no refuse
+                    # phrases inside the think trace and returns false-positive COMPLY.
+                    formatted = format_prompt(tokenizer, text, enable_thinking=False)
                     ids = tokenizer(formatted, return_tensors="pt").to(model.device)
                     prompt_len = ids.input_ids.shape[1]
 

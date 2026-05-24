@@ -201,14 +201,19 @@ run_step "qwen_stage02c_pack_graphs" \
 # --- STEP 3: Qwen 0a linearization decomposition ---
 # Reuses existing scripts/emnlp_perm_edit/00_linearization_decomposition.py since
 # it just sums edge attributions from the packed graphs.
+# IMPORTANT: write to a separate temp dir, NOT $OUT_DIR — otherwise the 0a output
+# `linearization_decomposition.json` would clobber the Gemma decomposition file
+# at the same name (which the Gemma supra-threshold step depends on).
 QWEN_GRAPH_DIR="$QWEN_RUN_DIR/graph_data"
 QWEN_DECOMP_OUT="$OUT_DIR/qwen_linearization_decomposition.json"
+QWEN_DECOMP_TMPDIR="$QWEN_RUN_DIR/_qwen_0a_tmp"
+mkdir -p "$QWEN_DECOMP_TMPDIR"
 run_step "qwen_0a_linearization" \
   bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_linearization_decomposition.py \
       --graph-data-dir '$QWEN_GRAPH_DIR' \
-      --out-dir '$OUT_DIR' \
+      --out-dir '$QWEN_DECOMP_TMPDIR' \
       --n-prompts 50 \
-      --mode single && mv '$OUT_DIR/linearization_decomposition.json' '$QWEN_DECOMP_OUT'"
+      --mode single && mv '$QWEN_DECOMP_TMPDIR/linearization_decomposition.json' '$QWEN_DECOMP_OUT'"
 
 # --- STEP 4: Qwen 0b edge ablation at L18 ---
 run_step "qwen_0b_edge_ablation" \
