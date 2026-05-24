@@ -155,10 +155,12 @@ for ck, recs in qd["per_layer"]["L18"]["per_coefficient"].items():
             n_differ += 1
     n_comply = sum(1 for r in bare_recs if r["classification"] == "COMPLY")
     print(f"    coeff={coeff:.3f}  bare COMPLY: {n_comply}/{len(bare_recs)}   matches baseline: {n_match_baseline}   differs: {n_differ}")
-print(f"    Expected:")
+print(f"    Expected with UNNORMALIZED r (post-fix):")
 print(f"      coeff=0.001 → mostly matches baseline (tiny edit, no behavior change)")
-print(f"      coeff=1.0   → mostly differs from baseline (Arditi flip; Ruqiya: 92.5%)")
-print(f"    If both rows show the same numbers, intervention isn't working.")
+print(f"      coeff=1.0   → mostly differs from baseline (Arditi-equivalent; Ruqiya: 92.5% bare flip)")
+print(f"      ||r_hat_unnorm[L18]|| should print as ~15.14, NOT 1.00")
+print(f"    If r_hat shows 1.00, the unnormalized-r fix isn't loaded.")
+print(f"    If coeff=1.0 still matches baseline 100%, the fix didn't work — STOP.")
 
 # === Check 3: Gemma sign-flip — different deltas, different results ===
 g = json.loads((smoke / "smoke_gemma_supra_signfix.json").read_text())

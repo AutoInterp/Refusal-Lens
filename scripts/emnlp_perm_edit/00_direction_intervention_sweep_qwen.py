@@ -50,6 +50,12 @@ def parse_args():
     p.add_argument("--directions-dir", type=Path,
                    default=REPO / "data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/directions",
                    help="Directory containing layer_XX.pt files (Ruqiya's Qwen format).")
+    p.add_argument("--metadata-path", type=Path,
+                   default=REPO / "data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/direction_metadata.json",
+                   help="Path to direction_metadata.json, which holds per-layer "
+                        "unnormalized r-norm values used to convert normalized "
+                        "per-layer files into unnormalized r (matching Ruqiya's Stage 06 "
+                        "Arditi convention).")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--model", default="Qwen/Qwen3-4B")
     p.add_argument("--max-new-tokens", type=int, default=80)
@@ -64,12 +70,25 @@ def parse_args():
     return p.parse_args()
 
 
-def load_qwen_directions(directions_dir: Path, layers: list[int]) -> dict[int, torch.Tensor]:
-    """Load Ruqiya's per-layer Qwen direction files.
+def load_qwen_directions(directions_dir: Path, metadata_path: Path,
+                         layers: list[int]) -> dict[int, torch.Tensor]:
+    """Load Ruqiya's per-layer Qwen direction files and rescale to UNNORMALIZED r.
 
-    Each file is a tensor (presumably saved as `torch.save(r_layer, "layer_XX.pt")`).
-    Falls back to wrapped dict format if the file contains one.
+    The files at `directions/layer_XX.pt` store unit-norm (normalized) directions.
+    Ruqiya's Stage 06 used UNNORMALIZED r (matching the Arditi/Gemma convention) —
+    direction_metadata.json records each layer's r_norm (= ||r_unnormalized||).
+    We multiply normalized_r by r_norm[L] to recover the unnormalized direction
+    so that coeff=1.0 in the sweep means "subtract one full Arditi-canonical r"
+    (consistent with Stage 06 and matches Gemma's coeff=1.0 semantics).
+
+    Without this rescaling, coeff=1.0 with normalized r is only ~7% of the
+    Arditi-canonical magnitude on Qwen (15.14× too small), and the sweep never
+    reaches the behavioral inflection point.
     """
+    import json
+    md = json.loads(metadata_path.read_text())
+    r_norms = md["layers"]  # {"18": {"r_norm": 15.1354, "separation": ...}, ...}
+
     out = {}
     for L in layers:
         path = directions_dir / f"layer_{L:02d}.pt"
@@ -77,17 +96,20 @@ def load_qwen_directions(directions_dir: Path, layers: list[int]) -> dict[int, t
             raise FileNotFoundError(f"Direction file not found: {path}")
         obj = torch.load(path, weights_only=False, map_location="cpu")
         if isinstance(obj, torch.Tensor):
-            out[L] = obj.float()
+            normalized_r = obj.float()
         elif isinstance(obj, dict):
-            # In case Ruqiya saved as {"direction": tensor, "metadata": ...}
             if "direction" in obj:
-                out[L] = obj["direction"].float()
+                normalized_r = obj["direction"].float()
             elif L in obj:
-                out[L] = obj[L].float()
+                normalized_r = obj[L].float()
             else:
                 raise ValueError(f"Unexpected dict structure in {path}: keys={list(obj.keys())}")
         else:
             raise ValueError(f"Unexpected type in {path}: {type(obj)}")
+
+        # Rescale to unnormalized
+        r_norm_value = r_norms[str(L)]["r_norm"]
+        out[L] = normalized_r * r_norm_value
     return out
 
 
@@ -104,10 +126,11 @@ def main():
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
 
-    print(f"[qwen_sweep] loading r_hat for layers {layers_to_run} from {args.directions_dir}")
-    r_per_layer = load_qwen_directions(args.directions_dir, layers_to_run)
+    print(f"[qwen_sweep] loading UNNORMALIZED r_hat for layers {layers_to_run}")
+    print(f"            from {args.directions_dir} × {args.metadata_path}")
+    r_per_layer = load_qwen_directions(args.directions_dir, args.metadata_path, layers_to_run)
     for L in layers_to_run:
-        print(f"  ||r_hat[L{L}]|| = {r_per_layer[L].norm().item():.4f}  shape={tuple(r_per_layer[L].shape)}")
+        print(f"  ||r_hat_unnorm[L{L}]|| = {r_per_layer[L].norm().item():.4f}  shape={tuple(r_per_layer[L].shape)}")
 
     dtype_map = {"bfloat16": torch.bfloat16, "float32": torch.float32}
     torch_dtype = dtype_map[args.dtype]

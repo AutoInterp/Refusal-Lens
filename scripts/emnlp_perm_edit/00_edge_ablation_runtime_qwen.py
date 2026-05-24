@@ -44,10 +44,14 @@ VARIANT_TO_DELTA_FIELD = {
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--decomposition", type=Path, required=True,
-                   help="Qwen 0a linearization_decomposition.json (computed from L18-target graphs).")
+                   help="Qwen 0a linearization_decomposition.json (computed from L18-target graphs). "
+                        "Deltas are in NORMALIZED-r-projection units (since Stage 02 used the "
+                        "normalized direction). We convert to unnormalized basis at hook time.")
     p.add_argument("--rhat-path", type=Path,
-                   default=REPO / "data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/directions/layer_18.pt",
-                   help="Path to Qwen r_hat[L18] tensor (Ruqiya's format: single-tensor .pt file).")
+                   default=REPO / "data/results/pipeline_runs_qwen/run_20260502_154423/01_direction/positions_L18/pos_-1_unnormalized.pt",
+                   help="Path to Qwen UNNORMALIZED r_hat[L18, pos=-1] (||r||≈15.14). Matches "
+                        "Ruqiya's Stage 06 Arditi convention so coeff=1.0 in our sweep is "
+                        "equivalent to her anti-refuse-sub at coeff=1.0.")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--model", default="Qwen/Qwen3-4B")
     p.add_argument("--max-new-tokens", type=int, default=80)
@@ -71,7 +75,7 @@ def main():
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
 
-    print(f"[qwen-0b] loading r_hat[L{LAYER}] from {args.rhat_path}")
+    print(f"[qwen-0b] loading UNNORMALIZED r_hat[L{LAYER}] from {args.rhat_path}")
     r_hat_obj = torch.load(args.rhat_path, weights_only=False, map_location="cpu")
     if isinstance(r_hat_obj, torch.Tensor):
         r_hat = r_hat_obj.float()
@@ -79,7 +83,11 @@ def main():
         r_hat = r_hat_obj["direction"].float()
     else:
         raise ValueError(f"Unexpected r_hat format in {args.rhat_path}: {type(r_hat_obj)}")
-    print(f"  ||r_hat|| = {r_hat.norm().item():.4f}  shape={tuple(r_hat.shape)}")
+    r_hat_norm = r_hat.norm().item()
+    print(f"  ||r_hat_unnorm|| = {r_hat_norm:.4f}  shape={tuple(r_hat.shape)}")
+    if r_hat_norm < 5.0:
+        print(f"  WARNING: expected ||r_hat|| ≈ 15.14 for Qwen L18 unnormalized. "
+              f"Got {r_hat_norm:.4f}. Did you accidentally pass the normalized file?")
 
     print(f"[qwen-0b] loading decomposition from {args.decomposition}")
     decomp = json.loads(args.decomposition.read_text())
@@ -135,7 +143,16 @@ def main():
                 decomp_rec = per_prompt.get((prompt_idx, cond))
                 if decomp_rec is None:
                     continue
-                delta = float(decomp_rec[delta_field]) * scale
+                # Decomposition deltas are in NORMALIZED-r-projection units (Stage 02 used
+                # normalized r). To apply equivalent edits with unnormalized r_hat in the
+                # hook, we scale: delta_unnorm = ||r_unnorm|| * delta_norm.
+                # Hook math: h_new = h - (delta_unnorm/||r_unnorm||²)·r_unnorm
+                #         = h - (delta_norm/||r_unnorm||)·r_unnorm
+                #         = h - delta_norm·(r_unnorm/||r_unnorm||)·1
+                #         = h - delta_norm·r_normalized  (same edit as the normalized basis)
+                # This preserves the linearization identity: h_new·r_normalized = h·r_normalized - delta_norm.
+                delta_norm = float(decomp_rec[delta_field]) * scale
+                delta = delta_norm * r_hat_norm  # convert to unnormalized basis
                 hook_fn = make_scalar_rhat_subtraction_hook(
                     r_hat, delta,
                     position_mode=args.position_mode,
@@ -164,7 +181,8 @@ def main():
 
                 results["per_variant"][variant].append({
                     "prompt_idx": prompt_idx, "condition": cond,
-                    "delta_applied": delta,
+                    "delta_applied": delta,            # unnormalized basis
+                    "delta_norm_basis": delta_norm,    # for reference / debugging
                     "response": resp[:300],
                     "classification": classify_response(resp),
                     "coherent": is_coherent(resp),
