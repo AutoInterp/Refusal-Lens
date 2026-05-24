@@ -1,223 +1,227 @@
 # Refusal-Lens — Paper Outline v2 (EMNLP 2026 main)
 
-**Track**: EMNLP 2026 main conference (~3 weeks to deadline at time of writing).
-**Status**: superset of `PAPER_OUTLINES_v1.md`. Restructured 2026-05-22 after Batch 14 reframe.
-**Companion document**: `EMNLP_RESULTS_LOG.md` (Batch 14 is the headline).
+**Track**: EMNLP 2026 main conference.
+**Status**: Major framing pivot 2026-05-24 after meeting with Georg. Magnitude-gap thesis dropped; replaced with circuit-tracer-as-behavior-editor thesis.
+**Companion document**: `EMNLP_RESULTS_LOG.md` (Batches 1-16).
 
 ---
 
-## 0. The strategic reframe (post-Batch 14)
+## 0. The Georg pivot (2026-05-24)
 
-The earlier v2 framing led with "directional intervention Pareto-dominates feature ablation by ~3×" and asked "where does the missing ~65% live?". Batch 14 (2026-05-21) showed that this framing **buries the lede**. The real finding is:
+The earlier "magnitude gap between edge ablation and direction intervention" framing has been retired. Two reasons:
 
-> **L15:r_hat IS a behavioral lever. Circuit-tracer's linearization decomposition correctly accounts for `direct_dot` algebraically but its per-edge-type predicted contributions sit ~36× below the magnitude inflection where the lever actually engages.**
+1. **Reviewer fragility**: "Subtracting the entire refusal direction at every position is stronger than ablating individual feature edges" is a *trivial* result. A reviewer would correctly point out that the Arditi-style intervention is an artificial maximum that the model could never produce on its own. Claiming a gap against an artificial ceiling is not a publishable contribution.
 
-This is a **probe-vs-lever distinction** about mechanistic decomposition methodology — not a "find where the residual signal lives" puzzle. The framing change matters because:
+2. **Cost-to-completeness**: Even if we did pursue the gap framing, explaining *why* the gap exists (the actual scientific content) is much more work than a 3-week sprint allows. Better to invest that time in a paper that asks a more pointed question.
 
-- "Edge ablation is weak" (old) → reads as a negative result
-- "Edge ablation is sub-threshold by a factor of 36×" (new) → reads as a quantified methodological finding about decomposition-vs-intervention mismatch
-
-The new framing positions our work at the **methodological level** of mech-interp, with broad implications beyond refusal. EMNLP reviewers will value this much more than incremental "we decomposed another behavior" framing.
+The new paper is about **how circuit-tracer attribution graphs let us identify natural, interpretable feature edits that steer refusal behavior in a way the model could plausibly produce on its own**. The baseline shifts from "the unnatural full-Arditi intervention" to "the most natural intervention we can construct from the same probe machinery."
 
 ---
 
 ## 1. Title (drafts in order of preference)
 
-1. **"Probes Are Not Levers: A Magnitude Gap in Mechanistic Refusal Interventions"**
-2. "The Magnitude Gap: Decomposition Without Control in Refusal Circuits"
-3. "Probe–Lever Asymmetry: When Circuit Decomposition Predicts Without Prescribing"
+1. **"Editing Refusal via Circuit Tracing: From Probe Geometry to Natural Behavioral Edits"**
+2. "Natural Circuit Edits for Refusal Control in Open-Weights LLMs"
+3. "Beyond Arditi: Circuit-Tracer-Guided Interventions for Refusal Behavior"
 
 ## 2. One-sentence thesis
 
-> A learned 1-D refusal direction at L15 in Gemma-3-4B-IT (and L18 in Qwen3-4B) is *simultaneously* a clean probe and a strong behavioral lever — but the circuit-tracer linearization decomposition that accurately accounts for the projection's algebraic composition predicts per-edge-type contributions that are **~36× below the magnitude inflection** at which the lever engages, because behavioral flipping requires bulk residual displacement along *r̂*, not algebraic compensation of any single edge-bucket's contribution.
+> A learned refusal direction `r̂` in Gemma-3-4B-IT and Qwen3-4B can be decomposed via circuit-tracer attribution graphs into per-feature contributions, and the same decomposition tells us which features to ablate to achieve refusal flips comparable to a **position-wise direction subtraction** — a natural intervention that the model could in principle produce on its own from prompt context, unlike the unnatural full-Arditi push.
 
 ---
 
-## 3. Contributions (3, in order of novelty)
+## 3. Contributions (revised, 3-in-priority-order)
 
-1. **The probe-vs-lever magnitude gap** — we quantify, for the first time, that circuit-tracer's predicted per-edge-type contributions sit ~36× below the magnitude inflection where behavioral intervention engages. This generalizes across models (Gemma-3-4B, Qwen3-4B [pending]).
-2. **Layer-broad redundancy of refusal control surfaces** — the lever exists across layers L12–L24 in Gemma (peaks L15–L18, within Wilson CI). No upstream "decision layer" exists.
-3. **A methodological warning for mech-interp** — algebraic decompositions of probe-relevant quantities (like `h·r̂`) do not by default give recipes for behavioral intervention. Authors should validate magnitude-sufficiency.
+1. **A natural baseline for refusal interventions**: position-wise direction subtraction (subtract `r̂_pos=-i` at each position `-i`) is much closer to what the model could spontaneously produce given a harmless or jail-broken prompt, and bounds where any "feature-level" edit could realistically achieve. **This becomes the headline benchmark, not Arditi**.
+2. **Circuit-tracer-guided feature edits**: identifying which features to ablate *and which to add back* using the harmful↔JB-broken attribution-graph delta, and showing whether this can match the natural baseline's flip rate.
+3. **Cross-model validation**: replicate on Qwen3-4B at L18 using a fresh set of attribution graphs we publish (`moon70/refusal-lens-graphs`).
 
-## 4. Headline figure
+## 4. Headline figure (re-scoped)
 
-`controllability_extension_figure.png` — 4 panels:
-- **A:** EXP 1 dose-response curve, L15 all positions. Sigmoid from 6% at coeff=0.005 to 100% at coeff=1.0. Inflection at coeff≈0.18. Edge-derived range shaded.
-- **B:** EXP 2 dose-response curve, L15 pos=−2 only. Same shape but shifted right and capped lower.
-- **C:** EXP 4 layer locator depth profile, coeff=1.0 pos=−2. Plateau L12–L24, peak L15–L18.
-- **D:** 2×2 bar chart, magnitude × position cross-comparison.
+`controllability_natural_figure.png` — 4 panels (to be generated):
+- **A**: Dose-response curve of position-wise direction subtraction (the natural baseline) on Gemma L15 — how flip rate scales with how many positions we apply at.
+- **B**: Edge-ablation flip rates (active-only vs active+newly-active feature sets) compared to the natural baseline.
+- **C**: Layer locator on the natural baseline (where in the network does position-wise subtraction work).
+- **D**: Qwen3-4B replication of the headline result.
+
+The old 4-panel `controllability_extension_figure.png` (Batch 14) becomes supplementary, illustrating the magnitude-gap finding as context for why we pivoted to natural interventions.
 
 ---
 
 ## 5. Section structure (8-page main conference)
 
 ### § 1. Introduction (≈ 1 page)
-
-- Mech-interp's standard pipeline: probe → decompose → ablate
-- Implicit but unstated assumption: decomposition predictions translate to intervention recipes
-- We test this assumption on the cleanest known refusal direction (Gemma-3-4B, L15:r̂) and show it fails by ~36×
-- Three contributions enumerated
-- One paragraph foreshadowing the Qwen3-4B replication (generalization)
+- The mechanistic-interpretability promise: identify causal features via probes + attribution → edit those features to control behavior.
+- A common but unaddressed gap: behavioral baselines used for "is this intervention effective?" (e.g., Arditi steering) are artificial — they apply the full direction at every position simultaneously, an intervention the model could never produce on its own.
+- We propose a **natural baseline**: position-wise direction subtraction (different `r̂` per position, calibrated from harmful↔harmless contrast at that position).
+- We show that circuit-tracer-guided feature edits can match this natural baseline — provided we include both *deactivated* and *newly-activated* features from the harmful↔JB attribution-graph delta.
 
 ### § 2. Background and Setup (≈ ¾ page)
+- 2.1 Arditi-style refusal direction (mean-diff over harmful/harmless prompts)
+- 2.2 Per-position refusal directions (Stage 01 output: `positions_LX/pos_-N.pt`)
+- 2.3 Circuit-tracer attribution graphs at the chosen layer (CLT-based decomposition)
+- 2.4 Models: Gemma-3-4B-IT at L15, Qwen3-4B at L18 (Ruqiya's pipeline)
+- 2.5 Controlled dataset (50 prompts × 11 conditions)
 
-- 2.1 Difference-of-means refusal probes (Arditi 2024, Ball 2024, Wang 2025)
-- 2.2 Circuit-tracer attribution graphs and CLT-based decomposition (Lindsey et al.)
-- 2.3 The linearization identity at L15: `direct_dot = Σ edges + baseline_offset`
-- 2.4 Controlled dataset (50 prompts × 11 conditions: bare + 5 JB + 5 CTRL, n=550 per cell)
+### § 3. The Natural-vs-Unnatural Spectrum of Direction Interventions (≈ 1 page)
+- 3.1 The "Arditi maximum": subtract canonical `r̂` at every position → ~100% flip on Gemma. *Note: this is upper-bound; model can't do this on its own.*
+- 3.2 The "single-position minimum": subtract `r̂_pos=-2` only at pos=-2 → ~20% flip on Gemma.
+- 3.3 The **natural middle**: subtract `r̂_pos=-i` at each position `-i` → expected flip rate somewhere in between, expressing what the model could plausibly do given different prompt contexts.
+- 3.4 Replicating on Qwen3-4B at L18.
 
-### § 3. The Refusal Direction as a Probe AND a Lever (≈ 1 page)
+### § 4. Circuit-Tracer Decomposition and Feature Identification (≈ 1 page)
+- 4.1 Linearization identity at the target layer: `h · r̂ = Σ edges + baseline_offset`
+- 4.2 Active features in the harmful attribution graph: features that contribute non-zero attribution to the target.
+- 4.3 The harmful↔JB-broken attribution-graph delta:
+  - Features active in *harmful* but not in *JB-broken*: candidates to *ablate* (these are the "refusal-promoting" features that the jailbreak prompt suppresses)
+  - Features active in *JB-broken* but not in *harmful*: candidates to *add* (these are the features the jailbreak prompt activates in lieu)
+- 4.4 Why we couldn't see this with active-only ablation: removing the refusal-promoting set is not enough on its own; you also need to add the "compliance-supporting" features that jailbreaks naturally activate.
 
-- 3.1 r̂ at L15 (Gemma) / L18 (Qwen) separates harmful refuse vs. comply
-- 3.2 Per-prompt projection `direct_dot` tracks refusal classification (probe property)
-- 3.3 Stage 06 / Arditi anti-refuse-sub at coeff=1.0: **100% bare→COMPLY flip, 100% benign-force-refuse** (lever property)
-- 3.4 Symmetric: pro-refuse-add at coeff=1.0 also fully flips (100% on JB-comply baseline)
-- 3.5 Same finding on Qwen3-4B at L18 (92.5% bare-flip, 96.3% JB-comply→REFUSE flip) [Ruqiya]
-- *Headline*: a clean direction that is BOTH a probe AND a lever — the question is whether the lever is captured by the decomposition.
+### § 5. Natural Edits vs Circuit Edits: Closing the Loop (≈ 1¾ pages)
+- 5.1 Setup: compare three intervention classes:
+  - (a) Position-wise direction subtraction (the natural baseline)
+  - (b) Active-feature ablation only (what we did in Batches 12-15)
+  - (c) Active-feature ablation + newly-active feature addition (the proposed extension)
+- 5.2 Per-prompt comparison: does (c) match (a)'s flip rate? On which conditions?
+- 5.3 Sanity: are the deactivated and newly-activated feature sets stable across prompts in a class? Or per-prompt idiosyncratic?
+- 5.4 [pending] Cross-model: do the same combinations work on Qwen at L18?
 
-### § 4. The Decomposition Hypothesis: Edge Ablation (≈ 1¼ pages)
+### § 6. Layer-Broad Redundancy (≈ ¾ page)
+- 6.1 Where in the network does position-wise subtraction work (layer locator on the natural baseline).
+- 6.2 Where in the network do circuit edits work (layer locator on (c) above).
+- 6.3 Implication: refusal is broadly encoded; feature edits at a single layer recover only part of the natural-baseline flip rate.
 
-- 4.1 Setup: subtract the linearization-predicted contribution of each edge bucket at L15
-- 4.2 Drift verification: hook achieves the predicted delta (217/220 checks within ±50)
-- 4.3 Seven variants × 550 prompts; top-K sweeps over features (0d) and edges (0e)
-- 4.4 Pooled flip rates: 6–8% across all variants — at or near baseline noise
-- 4.5 Pareto sweeps: flat across K (no sparsity knee)
-- *The puzzle*: if `direct_dot` causally drives refusal, why doesn't subtracting its components flip behavior?
+### § 7. Discussion (≈ ¾ page)
+- 7.1 What "natural" means: the model could in principle output the same residual stream geometry given a different prompt; our edit gets it there. Unnatural interventions (full-Arditi) move the residual to a configuration unreachable by any prompt.
+- 7.2 Implication for mech-interp: most published feature-ablation results benchmark against unnatural ceilings. Natural baselines change the question from "did you flip behavior?" to "did you achieve the same flip the model could do on its own?".
+- 7.3 Connections to Arditi 2024, Ball 2024, Wang 2025.
 
-### § 5. The Magnitude Gap [HEADLINE SECTION] (≈ 2 pages)
+### § 8. Limitations (≈ ¼ page)
+- Two model families (Gemma + Qwen, both 4B).
+- Keyword classifier; same classifier-noise caveat as Batch 14 stands.
+- n=50 prompts.
+- Refusal-specific behavior; generalization to other behaviors (sycophancy, etc.) is open.
 
-- 5.1 Coefficient sweep at L15 all-positions, 8 coefficients log-spaced — dose-response curve
-- 5.2 Inflection at coeff≈0.18; edge-derived deltas at coeff≈0.005 (**36× below**)
-- 5.3 Where the coefficients come from: direction coefficient is a knob (we choose 1.0); edge "coefficient" is a *measurement* extracted from the linearization (~0.005 by data, not by setting)
-- 5.4 The thermometer analogy: linearization decomposes the *reading* (`direct_dot`), but behavior depends on the *room temperature* (bulk residual geometry). Subtracting predicted contributions adjusts the reading without changing the room.
-- 5.5 Implication: per-edge-type contributions are real but redundantly distributed across paths. Flipping behavior requires bulk residual displacement, not algebraic compensation.
-- 5.6 [pending] Supra-threshold confirmation: re-running edge ablation at 5× / 10× / 50× / 100× the predicted delta produces the same dose-response curve as direction intervention at the equivalent effective coefficient. This proves magnitude IS the only missing variable.
-- 5.7 [pending] Qwen3-4B replication: dose-response curve has the same shape and inflects at similar relative coefficient.
-
-### § 6. Position vs Magnitude: A 2×2 (≈ ½ page)
-
-- 6.1 Setup: full direction vs edge-derived × all positions vs pos=−2
-- 6.2 Cell values + the A→C, A→B, C→D step-sizes
-- 6.3 Conclusion: magnitude dominates; position is a secondary modulator (only matters when magnitude is supra-threshold)
-
-### § 7. Layer-Broad Redundancy (≈ ¾ page)
-
-- 7.1 Depth profile at coeff=1.0 pos=−2 across 9 Gemma layers
-- 7.2 Lever exists L12–L24, peaks L15–L18 (Wilson CI overlap)
-- 7.3 No early-layer "decision layer" — refusal builds up gradually L9–L18 and is read redundantly through L24
-- 7.4 [pending] Qwen3-4B layer locator: confirms band structure (L?–L? expected to be similar relative positioning to L18 best-probe)
-- 7.5 Implication: prior "find the refusal layer" framing replaced by "refusal exists in a band, with a peak"
-
-### § 8. Discussion (≈ ¾ page)
-
-- 8.1 **Methodological:** decomposition probes are not intervention recipes by default. Authors claiming "feature X causes behavior Y because ablating it changes the probe direction" should validate magnitude-sufficiency at the behavioral level.
-- 8.2 **For safety/alignment:** bulk-magnitude levers are robust (work at any position-mode, across a layer band); narrow-feature levers may be elusive due to the redundancy story. Has implications for "find the X feature and ablate it" interpretability programs (e.g., Anthropic's monosemantic-feature work).
-- 8.3 **Connections:** extends rather than contradicts Wang 2025, Ball 2024, Arditi 2024. Their decomposition findings stand as probes; we add the lever-magnitude caveat.
-- 8.4 **Why ~200×:** redundancy across parallel paths + RMSnorm dynamics + the fact that `direct_dot` at pos=−2 captures only one slice of a higher-dimensional refusal manifold.
-
-### § 9. Limitations (≈ ¼ page)
-
-- Two model families (Gemma-3-4B + Qwen3-4B). Llama, Mistral, larger Qwen unconfirmed.
-- Keyword classifier; spot-check revealed soft-refusal false positives at intermediate coefficients. Need hand-graded sample or LLM judge.
-- n=50 prompts; pooled denominators are n=161 (JB-refuse) and n=250 (CTRL).
-- Refusal-specific; whether the magnitude gap generalizes to other behaviors (sycophancy, deception, formatting) is open.
-
-### § 10. Conclusion (≈ ¼ page)
-
-- Restate: probe ≠ lever-recipe; the 36× gap is the empirical signature.
+### § 9. Conclusion (≈ ¼ page)
+- "The right benchmark for circuit-level interventions is what the model could do on its own, not what we can do to it by force. Under that benchmark, circuit-tracer-guided edits recover most of the natural intervention's effect — when we include both deactivated and newly-activated features."
 
 ---
 
-## 6. Figure plan (5 figures total)
+## 6. Figure plan
 
 | # | Content | Source |
 |---|---|---|
-| **F1** | Concept diagram: probe vs lever; thermometer analogy | NEW illustrator |
-| **F2** | r̂ probe identification + Arditi symmetry (Gemma + Qwen side-by-side) | Existing v1 + Ruqiya's Qwen data |
-| **F3** | Linearization decomposition + edge ablation 7-variant bar chart | `controllability_audit_figure.png` |
-| **F4** | Top-K Pareto sweeps (features + edges) | `topk_feature_pareto_figure.png`, `topk_edge_vs_node_figure.png` |
-| **F5 [HEADLINE]** | 4-panel: EXP 1 dose-response, EXP 2 dose-response, depth profile, 2×2 bars (Gemma; Qwen overlay if data allows) | `controllability_extension_figure.png` |
+| **F1** | Concept diagram: spectrum of interventions (unnatural Arditi → natural per-position → circuit edits) | NEW illustrator |
+| **F2** | r̂ probe identification + per-position directions across positions -1..-15 | Per-position direction data already exists; new figure |
+| **F3** | Natural-vs-unnatural intervention dose-response (Arditi all positions vs per-position vs pos=-2 only) | NEW experiment + figure |
+| **F4** | Active-only ablation vs active+newly-active ablation comparison | NEW experiment + figure |
+| **F5 (HEADLINE)** | 4-panel — natural-baseline dose-response (Gemma), edge ablation comparison, layer locator on natural baseline, Qwen replication | NEW |
 
 ---
 
 ## 7. Experiment status
 
-### ✅ Complete (Gemma-3-4B-IT)
+### ✅ Complete (Gemma-3-4B-IT, valid for new framing)
 
 | Experiment | Result | Where |
 |---|---|---|
-| Stage 01 — r̂ identification per layer | clean probe at L15, ‖r̂‖=3101.2 | `data/results/pipeline_runs/run_20260430_023247/01_direction/` |
-| Stage 06 — Arditi intervention | 98% bare→COMPLY at coeff=1.0 | `data/results/pipeline_runs/run_20260430_023247/06_causal/` |
-| Stage 04 — feature labels (Gemma Scope) | universal cluster: L13:F427, L10:F111, L7:F384, L11:F315 | run_20260430_023247/04_labels/ |
-| Phase 0 0b — edge ablation (7 variants) | pooled JB-refuse 6.7% at all_edges | Batch 12, EMNLP_RESULTS_LOG.md |
-| Phase 0 0d/0e — top-K Pareto sweeps | flat; no knee | Batch 12 |
-| Drift verification | 217/220 within ±50 | Batch 12 |
-| **Batch 14 EXP 1** — direction sweep, all positions | 100% flip at coeff=1.0; inflection ≈ 0.18 | `direction_intervention_sweep_all.json` |
-| **Batch 14 EXP 2** — direction sweep, pos=−2 only | 20% bare flip / 48% JB-refuse at coeff=1.0 | `direction_intervention_sweep_pos2.json` |
-| **Batch 14 EXP 3** — edge ablation pos=−2 (Cell D) | 6–11% (same as all-positions edge ablation) | `edge_ablation_pos2_flip_rates.json` |
-| **Batch 14 EXP 4** — layer locator coeff=1.0 pos=−2 | L18 narrowly leads L15; band L12–L24 | `layer_locator_pos2_coeff1.json` |
+| Stage 01 (r̂) | clean probe at L15, ‖r̂‖=3101.2; per-position files in `positions_L15/` | run_20260430_023247 |
+| Stage 02 (attribution graphs) | 550 single-mode at L15 pos=-2 | moon70/refusal-lens-graphs |
+| Stage 04 (feature labels) | universal refusal cluster + per-class features | run_20260430_023247/04_labels/ |
+| Stage 06 baseline (Arditi all positions) | 98% bare→COMPLY (now framed as upper bound, not target) | Stage 06 doc |
+| Phase 0 0a linearization | `linearization_decomposition.json` | Batch 4 |
+| Phase 0 0b edge ablation (7 variants) | pooled JB-refuse 6.7% (now framed as "active-only ablation underperforms") | Batch 12 |
+| Phase 0 0d/0e Pareto sweeps | flat across K | Batch 12 |
+| Batch 14 EXP 1 — direction sweep all positions | 100% at coeff=1.0; inflection ≈ 0.18 | EXP 1 |
+| Batch 14 EXP 2 — direction sweep pos=-2 only | 20% bare flip at coeff=1.0 | EXP 2 |
+| Batch 14 EXP 4 — layer locator | L12-L24 band, peak L15-L18 | EXP 4 |
 
-### 🔄 In progress (pending kickoff)
+### ✅ Complete (Qwen3-4B replication of magnitude data, now reframed)
 
-| Experiment | Purpose | Cost estimate |
+| Experiment | Result | Where |
 |---|---|---|
-| **Supra-threshold edge ablation** (Gemma) | Scale edge-derived deltas by {5×, 10×, 50×, 100×} and verify dose-response matches direction sweep at equivalent coefficient. Confirms magnitude is the only missing variable. | ~$7, ~2 hr on H100 SXM fp32 |
-| **Qwen3-4B direction sweep, all positions** | Reproduce EXP 1 on Qwen at L18 | ~$14, ~4 hr |
-| **Qwen3-4B direction sweep, pos=−1 only** | Reproduce EXP 2 on Qwen (Qwen probe was built at pos=−1, not −2) | ~$14, ~4 hr |
-| **Qwen3-4B layer locator** | Reproduce EXP 4 on Qwen across 8 non-L18 layers | ~$14, ~4 hr |
+| Qwen Stage 02 attribution graphs at L18 | 550 single-mode at L18 pos=-1; ||r||=15.14 | moon70/refusal-lens-graphs (run_emnlp_qwen_L18_20260522) |
+| Qwen 0a linearization | `qwen_linearization_decomposition.json` | Batch 15 |
 
-**Total pending Gemma + Qwen work: ~14 hr H100 SXM, ~$50.**
+### 🔄 In progress (Path A re-run — partially still useful)
 
-### 📋 Future work (deferred; not blocking the EMNLP submission)
-
-| Experiment | Purpose | Notes |
+| Experiment | Status | Useful under new framing? |
 |---|---|---|
-| LLM-judge classifier validation | Bound the keyword false-positive rate flagged in Batch 14 spot-check | Hand-graded stratified sample at coeff ∈ {0.1, 0.25}; add LLM judge for absolute-rate calibration. ~$20 in API. |
-| Alternative datasets (XSTest, HarmBench, AdvBench) | Generalization beyond our controlled dataset | Re-run direction sweep + Arditi check on each dataset. Plug into existing pipeline once datasets are added to `dataset/`. |
-| Qwen circuit-tracer attribution graphs | Full Phase 0 reproduction on Qwen (would enable Qwen edge-ablation 0b/0d/0e) | Expensive: 2-3 days GPU + CLT training. Defer to camera-ready or follow-up paper. Without it, Qwen story is "dose-response only" — sufficient for the main claim. |
-| Per-class r_jb directions (paused track) | Per-class JB intervention; does magnitude gap also apply per-class? | Mentioned briefly in discussion; full execution post-EMNLP. |
-| Larger models (Llama-3-8B, Qwen-2.5-7B, Gemma-2-9B) | Does the magnitude gap scale with model size? | Defer to follow-up. ~$50-100 per model. |
+| Qwen 0b edge ablation with unnormalized r + enable_thinking=False | Running | Yes — gives us the active-feature ablation baseline on Qwen |
+| Qwen direction sweep all positions | Running | Yes — gives us the unnatural upper bound on Qwen for context |
+| Qwen direction sweep pos=-1 only | Running | Yes — single-position lower bound for Qwen |
+| Qwen layer locator | Running | Yes — band structure on Qwen |
+| Gemma supra-threshold (antirefuse variants) | Running | **Lower priority** — confirms magnitude scaling but no longer the headline |
+
+### 📋 New experiments (proposed for the new framing)
+
+**Priority 1 — the new headline experiments**:
+
+| Experiment | Purpose | Estimate |
+|---|---|---|
+| **Position-wise direction subtraction** (Gemma L15) | The new "natural baseline". Subtract `r̂_pos=-i` at each position `-i` simultaneously, sweeping how many positions we apply at. | ~3-4 hr GPU, ~$15 |
+| **Position-wise direction subtraction** (Qwen L18) | Same as above on Qwen | ~3-4 hr, ~$15 |
+| **Feature-delta clustering** (CPU analysis on existing graphs) | For each (prompt, JB class), compute the active-set difference between harmful and JB-broken graphs. Identify *deactivated* (active in harmful, gone in JB) and *newly-activated* (gone in harmful, active in JB) features. | ~30 min CPU |
+| **Active-only vs active+newly-active ablation** (Gemma L15) | The 0b extension. For each prompt, ablate the deactivated set AND add back the newly-activated set. Compare to active-only ablation flip rate and to natural-baseline flip rate. | ~4 hr GPU, ~$15 |
+| **Active+newly-active on Qwen L18** | Same on Qwen | ~4 hr GPU, ~$15 |
+
+**Priority 2 — sanity checks**:
+
+| Verification | Why |
+|---|---|
+| **Per-position alpha is computed correctly** | Georg flagged: Mahmoud said "before I was taking the average across all positions rather than a per-position alpha". Need to verify the code actually computes per-position alpha now, not an average. Affects Batch 14 EXP 2 (pos=-2 only) interpretation. |
+| **Position-wise direction file integrity** | Verify per-position direction files `positions_L15/pos_-N.pt` and `positions_L18/pos_-N.pt` are loaded correctly with their unnormalized norms. |
+
+**Priority 3 — deferred**:
+
+| Experiment | Notes |
+|---|---|
+| LLM-judge classifier validation | Same as before — still useful but not blocking submission |
+| Llama-3-8B / Mistral-7B replication | If reviewers push for more models, replicate after submission |
 
 ---
 
-## 8. Cuts from earlier v2 framing
+## 8. Cuts from earlier outline
 
-These are deliberately cut from the Batch 14 reframe to keep the paper focused:
+The following were the centerpiece of the old (magnitude-gap) framing. They are now relegated to supplementary / context material:
 
-- **"Where does the missing 65% of refusal effect live?"** framing (old § 2 of v1 outline) — replaced by the magnitude-gap framing. The 65% gap is *explained* by the magnitude story, not partitioned across hypothesized residual sources.
-- **Attention-head paths investigation** — was hypothesis (1) of the old framing. Now: a footnote noting that attention paths are part of the parallel-redundancy story but not separately quantified.
-- **Transcoder error nodes deep dive** — was hypothesis (2). Now: covered briefly in § 4 (edge bucket includes error nodes; their predicted contribution is also sub-threshold).
-- **Cross-position interactions** — was hypothesis (4). Now: handled by the 2×2 (§ 6), which shows position is real but secondary to magnitude.
-- **Stage 08 MLP failed dissociation** — Was going to be a discussion point. Now: footnote in § 8.2 as evidence of redundancy.
-- **Taxonomy clustering / per-class signatures** — appendix only, not load-bearing for the main narrative.
+- **The 2×2 magnitude × position table** → demoted to a supplementary "why we initially thought there was a gap" callout in § 3.
+- **The 36× / 200× quantification** → still in the discussion as background, but not load-bearing.
+- **"L15 is a lever, not just a probe" reframe** → preserved as a true side-finding but not the headline.
+- **Supra-threshold edge-ablation scaling** → supplementary; demonstrates that the magnitude story is empirically real but doesn't address the actual question.
+
+The Batch 14 + Batch 15 data are not discarded — they become **background and supporting figures**, not the main claim.
 
 ---
 
-## 9. Timeline to submission
+## 9. Timeline (revised)
 
-Assuming Qwen + supra-threshold experiments kick off today and complete in <24 hr:
+Assuming Path A re-run completes and we kick off the new experiments shortly after:
 
 | Day | Work |
 |---|---|
-| Today | Kick off Qwen + supra-threshold on RunPod; draft § 5 (the headline) while it runs |
-| +1 | Qwen + supra-threshold results land; draft § 4, § 6, § 7 |
-| +2 | Draft § 3, § 1 (intro); update figures with Qwen data |
-| +3 | Draft § 2 (background) and § 8 (discussion); F1 concept diagram |
-| +4 | Polish + § 9 limitations + § 10 conclusion + abstract |
-| +5 | Internal review with Tejas/Georg/Ruqiya |
-| +6-7 | Revisions, format check, submit |
+| Day 0 (today, 2026-05-24) | Path A still running; verify alpha computation on the existing codebase |
+| Day 1 | Path A lands; CPU feature-delta clustering analysis |
+| Day 2-3 | Position-wise direction subtraction (Gemma + Qwen); analyze results |
+| Day 4-5 | Active+newly-active ablation (Gemma + Qwen) |
+| Day 6-8 | Draft § 3, § 4, § 5 of paper |
+| Day 9-11 | Draft § 1, § 2, § 6, § 7, § 8, § 9; figures |
+| Day 12-14 | Internal review, revisions |
+| Day 15-21 | Slack with Tejas/Georg/Ruqiya; final polish; submit |
 
-3-week buffer means ~2 weeks of slack for revisions, additional experiments if reviewers prompt them, or response-to-reviewers prep.
-
----
-
-## 10. Risks and what could derail this
-
-- **Qwen replication doesn't show the same magnitude gap.** If Qwen's dose-response has a fundamentally different shape, we need a backup framing. Mitigation: even a different shape is informative ("magnitude inflection is model-dependent" is also a valid finding, just less clean).
-- **Supra-threshold rerun reveals magnitude is NOT the only variable.** If 5× edge-derived doesn't match constant-coeff=0.025, something else is going on (variance across prompts, position-dependence at supra-threshold, etc.). Mitigation: this would be a real finding to investigate, not a paper-killer.
-- **Classifier false-positive rate higher than expected.** If hand-graded sample shows >15% FP at intermediate coefficients, the dose-response curve shape is questioned. Mitigation: report both keyword and LLM-judge rates; the qualitative finding (inflection exists) is robust to absolute-rate noise.
-- **Reviewer pushback on "only 2 models."** Possible. Mitigation: extending to Llama-3-8B is ~$20 of GPU; can add in revision phase.
+Tight but feasible if we don't get blocked on the new experiments.
 
 ---
 
-*Last updated 2026-05-22 — Batch 14 reframe + Qwen3-4B/supra-threshold experiments scoped and pending kickoff.*
+## 10. Open questions raised by Georg
+
+1. **Per-position alpha**: was the edge-ablation alpha computed per-position from each position's attribution, or averaged across positions? (Code check required.)
+2. **Why does edge ablation flatline at ~10% regardless of position-mode?** Georg said "I'm quite surprised that doing ablation at all doesn't improve anything." Maybe a sign of:
+   - Active-set being too narrow (the newly-activated features hypothesis above)
+   - Or the alpha computation bug above
+   - Or genuinely sub-threshold edits (but then position-wise direction should also be sub-threshold)
+3. **Are deactivated + newly-activated features sufficient, or do we need additional combinations?** Open. May need iterative experimentation.
+
+---
+
+*Last updated 2026-05-24 after Georg meeting — paper pivots from magnitude-gap to natural-circuit-intervention thesis. Old framing demoted to supplementary; new headline = circuit edits can match natural baseline when we include both deactivated and newly-activated features.*

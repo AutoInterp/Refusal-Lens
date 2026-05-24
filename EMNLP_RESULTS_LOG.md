@@ -1117,3 +1117,106 @@ Both are recoverable with re-runs. Neither blocks the Gemma-only headline.
 ---
 
 *Last updated 2026-05-24 after Batch 15 — Qwen replication + Gemma supra-threshold attempted; both behavioral interpretations invalidated by separate bugs (Qwen thinking mode, Gemma supra sign convention). Attribution graphs + 0a linearization on Qwen are valid and pushed to HF. Re-runs scoped; Batch 14 headline unaffected.*
+
+---
+
+## 2026-05-24 — Batch 16: Georg meeting follow-up — MAJOR PAPER PIVOT
+
+**Context**: ~28-minute meeting with Georg following the Batch 15 update. Mahmoud reviewed the magnitude-gap finding, the position-wise comparison results, and the supra-threshold attempts. Georg redirected the project's framing significantly.
+
+### Georg's reframe — drop the magnitude-gap paper
+
+> "Maybe we should think about, hey, this baseline that's up here, which is like just subtracting the entire refusal direction. Maybe that's actually not the best baseline for us because it's something very unnatural that the model could not do on its own."
+
+The Arditi-style intervention (subtract canonical `r̂` at every position) is an **artificial maximum** — the model has no mechanism to spontaneously displace its residual stream this uniformly. Benchmarking circuit-tracer ablation against this is unfair: of course feature-level edits can't match a force-applied global displacement.
+
+> "I think I would honestly probably just focus on the latter [writing a paper about how we can use circuit tracing to edit behavior] for two reasons. […] the first reason is that just making the claim of 'hey, the circuit's intervention is not the same as adding/subtracting steering directions' — reviewers would be like 'of course it's something else.' And then the second reason is that maybe even if we do want to make that claim, it will still be a lot of work to flesh this out into a real paper."
+
+So we drop the magnitude-gap narrative as the headline. It becomes background. The new headline is: **circuit-tracer-guided feature edits can match natural baselines for behavioral control**.
+
+### Georg's proposed natural baseline
+
+Instead of subtracting the *canonical* `r̂_pos=-2` at every position (the Arditi convention), subtract the **position-wise** refusal direction — `r̂_pos=-1` at position −1, `r̂_pos=-2` at position −2, etc. These per-position directions already exist on disk:
+
+- Gemma: `pipeline_runs/run_20260430_023247/01_direction/positions_L15/pos_-N.pt` for N=1..15
+- Qwen: `pipeline_runs_qwen/run_20260502_154423/01_direction/positions_L18/pos_-N.pt`
+
+> "I feel like subtracting the minus two refusal direction at position minus two is still something that's natural. Because that's literally the difference between a normal prompt and a jbroken prompt, or a normal prompt and a harmless prompt. But subtracting the refusal direction at minus two, which is supposed to be the strongest, and taking that but subtracting it from all other positions at the same time, that's maybe the more unnatural thing. So maybe we can just […] subtract the position-wise refusal direction."
+
+This intervention is "natural" because it's calibrated for each position from the harmful↔harmless contrast at that position. It represents what the model *could* express given a different prompt context. Anything stronger than this (e.g., full-Arditi) is unreachable by any prompt and therefore artificial.
+
+### Georg's proposed circuit-edit extension
+
+Current edge ablation only modifies *active* features (those that already have non-zero attribution in the harmful-prompt graph). But comparing harmful vs JB-broken attribution graphs reveals two important sets:
+
+1. **Deactivated** features: active in *harmful*, gone in *JB-broken* → these are the "refusal-promoting" features the jailbreak suppresses.
+2. **Newly-activated** features: gone in *harmful*, active in *JB-broken* → these are the "compliance-supporting" features the jailbreak introduces.
+
+> "I think now we try to ablate features that were active, but maybe what we should do as well is […] if you think about the difference in attribution graphs between harmful and jbroken or harmless prompts, then there are like some features deactivated, but some other features are also rare and rare not active, but are active now. So maybe that's a thing to brainstorm about and maybe we need both together in some smart way to actually make enough […] to increase alpha by enough so that the behavior actually flips."
+
+Our hypothesis going forward: active-only ablation underperforms because we're only knocking out half the change a natural JB prompt induces. Adding back the newly-activated features may close the gap.
+
+### Sanity check Georg requested
+
+> "How did you compute the alphas for every position?"
+
+Mahmoud responded:
+
+> "Before I was taking the average across all positions rather than a per position alpha. So I can double check that and make sure that it is per position."
+
+**This is a real code-verification item.** We need to confirm our edge-ablation hooks compute alpha per-position (using each position's attribution contribution), not as an average. If we used an average, the position-wise pos=-2 experiment from Batch 14 may have been biased.
+
+### What survives from prior batches
+
+- **Per-prompt baselines, controlled dataset, attribution graphs**: all still load-bearing. No changes.
+- **Stage 06 Arditi result (98% / 92.5%)**: reframed as "upper bound, but artificial". Still cited as context.
+- **EXP 1 dose-response curve**: still useful, but now framed as "the unnatural upper end of the intervention spectrum."
+- **EXP 2 (pos=-2 only)**: still useful as the "single-position lower end."
+- **EXP 4 (layer locator)**: still useful — band structure of where interventions work is independent of which type of intervention.
+- **Linearization decomposition (0a outputs for both Gemma and Qwen)**: load-bearing for the new feature-delta analysis.
+- **Qwen attribution graphs at L18 on HF**: load-bearing.
+
+### What gets demoted from prior batches
+
+- **The 36× / 200× "magnitude gap" framing**: demoted from headline to supplementary background. Cited as motivation for asking the better question, not as a finding.
+- **The 2×2 (magnitude × position)**: supplementary.
+- **Supra-threshold edge ablation (Batch 15 attempt)**: low priority going forward; useful for showing scaling behavior but no longer answering the headline question.
+
+### New experiments scoped (in priority order)
+
+1. **Verify per-position alpha computation** (code audit, ~30 min). Critical sanity check before any new experiment.
+2. **Position-wise direction subtraction** on Gemma L15 (~3-4 hr GPU). The new natural baseline. Subtract `r̂_pos=-i` at each position simultaneously; sweep the magnitude scalar (since "1.0" might still be unnatural).
+3. **Feature-delta clustering** (CPU, ~30 min). For each (prompt, JB class), compute the set difference between active features in harmful vs JB-broken attribution graphs.
+4. **Active+newly-active ablation** on Gemma L15 (~4 hr GPU). For each prompt, ablate the deactivated set AND add back the newly-activated set. Compare to position-wise baseline.
+5. **Repeat 2-4 on Qwen L18** (~6-8 hr GPU total).
+
+Estimated total new work: ~17-20 hr GPU + 1 hr CPU + ~$60-70.
+
+### Status of in-flight Path A re-run (running on RunPod as of meeting time)
+
+The Path A re-run (Qwen thinking-mode + Gemma supra-threshold sign-flip) is still running. Under the new framing:
+
+- **Qwen behavioral re-runs (steps 1-4 of Path A) are still useful** — they give us valid behavioral data on Qwen against the unnatural-Arditi baseline. We'll cite them as background.
+- **Gemma supra-threshold antirefuse (step 5)** is now low-priority. Magnitude scaling on edge ablation isn't the headline. But the data is fine to commit if it completes.
+
+No reason to abort the in-flight run. Let it finish and commit. Then pivot to the new experiments.
+
+### What needs to happen before drafting any paper section
+
+1. ✋ Verify per-position alpha computation (today, before next launch)
+2. Wait for Path A re-run to land (~12 hr from kickoff)
+3. Run position-wise direction subtraction on Gemma + Qwen (Days 2-3)
+4. Run active+newly-active ablation on Gemma + Qwen (Days 4-5)
+5. Then start drafting § 3 of the paper (the natural-vs-unnatural spectrum)
+
+### Output / next step
+
+- `PAPER_OUTLINE_v2_emnlp.md` rewritten to reflect the new framing (this commit).
+- Per-position alpha verification needed before launching new experiments.
+- Code: new hook factory for position-wise direction subtraction (different `r̂` per position).
+- Code: feature-delta clustering analysis script.
+- Code: extended edge-ablation variant that supports both ablating deactivated and adding newly-activated features.
+
+---
+
+*Last updated 2026-05-24 after Batch 16 — Georg meeting pivot. Paper thesis shifts from "magnitude gap" to "natural circuit edits." Old Batches 14-15 data preserved as supplementary; new natural-baseline experiments scoped.*
