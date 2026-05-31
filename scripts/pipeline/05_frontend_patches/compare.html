@@ -117,13 +117,7 @@
         </label>
         <label>
             JB class:
-            <select id="jb-select">
-                <option value="roleplay">roleplay</option>
-                <option value="fiction">fiction</option>
-                <option value="analytical">analytical</option>
-                <option value="completion">completion</option>
-                <option value="cognitive_reframe">cognitive_reframe</option>
-            </select>
+            <select id="jb-select"></select>
         </label>
         <span class="status" id="status">loading…</span>
     </div>
@@ -142,11 +136,32 @@
     /**
      * compare.html — side-by-side attribution graph viewer.
      *
-     * Loads graph-metadata.json, derives available prompt indices and the
-     * five JB classes, renders two iframes pointing at the vendored
-     * index.html?slug={idx}_bare and index.html?slug={idx}_{jb_class}.
-     * No vendored JS patch needed — index.html already honors ?slug= param.
+     * Loads graph-metadata.json, groups graphs by prompt index, and renders two
+     * iframes: bare on the left, a chosen condition on the right, via the
+     * vendored index.html?slug=<full-slug> (index.html honors ?slug=).
+     *
+     * Slug convention: {idx:03d}_{condition}[_{mode}] where condition is
+     * bare | jb_<class> | ctrl_<class> and mode (optional) is single|multi —
+     * e.g. 000_bare_single, 000_jb_fiction_single. Older runs used {idx}_{class}
+     * with no prefix/mode; both are handled. We always navigate using the ACTUAL
+     * slug string from metadata, never a reconstructed one.
      */
+    const MODE_SUFFIXES = new Set(['single', 'multi']);
+
+    // Returns {idx, cond} with any trailing mode suffix stripped, or null.
+    function parseCondition(slug) {
+        const m = slug.match(/^(\d+)_(.+)$/);
+        if (!m) return null;
+        let cond = m[2];
+        const parts = cond.split('_');
+        if (parts.length > 1 && MODE_SUFFIXES.has(parts[parts.length - 1])) {
+            cond = parts.slice(0, -1).join('_');
+        }
+        return { idx: m[1], cond };
+    }
+
+    let promptInfo;   // idx -> { condToSlug: Map<cond, fullSlug>, prompt_text }
+
     async function init() {
         const resp = await fetch('./data/graph-metadata.json');
         if (!resp.ok) {
@@ -154,31 +169,32 @@
         }
         const meta = await resp.json();
 
-        // Group slugs by prompt index.
-        // Our naming convention: {prompt_idx:03d}_{condition}
-        //   e.g. 000_bare, 000_fiction, 001_bare, 001_fiction, ...
-        const promptInfo = new Map();
+        promptInfo = new Map();
+        const conditions = new Set();   // all non-bare conditions present
         for (const g of meta.graphs) {
-            const m = g.slug.match(/^(\d+)_(.+)$/);
-            if (!m) continue;
-            const idx = m[1];
-            const cls = m[2];
+            const parsed = parseCondition(g.slug);
+            if (!parsed) continue;
+            const { idx, cond } = parsed;
             if (!promptInfo.has(idx)) {
-                promptInfo.set(idx, { classes: new Set(), prompt_text: g.prompt });
+                promptInfo.set(idx, { condToSlug: new Map(), prompt_text: g.prompt });
             }
             const info = promptInfo.get(idx);
-            info.classes.add(cls);
+            info.condToSlug.set(cond, g.slug);   // store the ACTUAL filename slug
             if (!info.prompt_text && g.prompt) info.prompt_text = g.prompt;
+            if (cond !== 'bare') conditions.add(cond);
         }
 
-        // Only keep prompt indices that have both bare and at least one JB class.
+        // Valid prompts have a bare graph and at least one non-bare graph to pair.
         const validIndices = [...promptInfo.keys()]
-            .filter(idx => promptInfo.get(idx).classes.has('bare'))
+            .filter(idx => {
+                const conds = promptInfo.get(idx).condToSlug;
+                return conds.has('bare') && [...conds.keys()].some(c => c !== 'bare');
+            })
             .sort();
 
         if (validIndices.length === 0) {
             document.getElementById('status').textContent =
-                'no prompt pairs found (need both bare and a JB class)';
+                'no prompt pairs found (need a bare graph + at least one other condition)';
             return;
         }
 
@@ -192,16 +208,16 @@
             promptSelect.appendChild(opt);
         }
 
-        // Restrict JB-class options to what's actually available for the first prompt
-        // (assume all prompts have the same classes; trim if not).
-        const availableClasses = promptInfo.get(validIndices[0]).classes;
+        // Populate the condition dropdown from what's actually present.
+        // Order: jb_* first, then ctrl_*, then anything else; alpha within group.
+        const rank = c => c.startsWith('jb_') ? 0 : c.startsWith('ctrl_') ? 1 : 2;
         const jbSelect = document.getElementById('jb-select');
-        for (const opt of [...jbSelect.options]) {
-            if (!availableClasses.has(opt.value)) opt.disabled = true;
-        }
-        // Set default to first non-disabled JB class
-        for (const opt of jbSelect.options) {
-            if (!opt.disabled) { jbSelect.value = opt.value; break; }
+        const sortedConds = [...conditions].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+        for (const cond of sortedConds) {
+            const opt = document.createElement('option');
+            opt.value = cond;
+            opt.text = cond;
+            jbSelect.appendChild(opt);
         }
 
         promptSelect.addEventListener('change', update);
@@ -217,26 +233,34 @@
 
     function update() {
         const idx = document.getElementById('prompt-select').value;
-        const jb = document.getElementById('jb-select').value;
-        const bareSlug = `${idx}_bare`;
-        const jbSlug = `${idx}_${jb}`;
+        const jbCond = document.getElementById('jb-select').value;
+        const info = promptInfo.get(idx);
+        if (!info) return;
+
+        const bareSlug = info.condToSlug.get('bare');
+        const jbSlug = info.condToSlug.get(jbCond);
+        if (!bareSlug || !jbSlug) {
+            document.getElementById('status').textContent =
+                `missing graph for ${idx} (${!bareSlug ? 'bare' : jbCond})`;
+            return;
+        }
 
         const left = document.getElementById('pane-left');
         const right = document.getElementById('pane-right');
 
-        // Only reload if the slug actually changes (avoids flashing on re-select).
+        // Navigate using the actual slug strings from metadata.
         const leftUrl = `./index.html?slug=${encodeURIComponent(bareSlug)}`;
         const rightUrl = `./index.html?slug=${encodeURIComponent(jbSlug)}`;
         if (left.src !== new URL(leftUrl, location.href).href) left.src = leftUrl;
         if (right.src !== new URL(rightUrl, location.href).href) right.src = rightUrl;
 
-        document.getElementById('jb-label').textContent = `Jailbreak: ${jb}`;
+        document.getElementById('jb-label').textContent = `Condition: ${jbCond}`;
         document.getElementById('status').textContent = `${bareSlug} ↔ ${jbSlug}`;
 
         // Sync URL for sharability
         const params = new URLSearchParams();
         params.set('prompt', idx);
-        params.set('jb', jb);
+        params.set('jb', jbCond);
         history.replaceState(null, '', '?' + params.toString());
     }
 
