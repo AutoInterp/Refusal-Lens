@@ -166,3 +166,10 @@ Thumbs.db
 
 .vscode/
 .idea/
+
+# Qwen run staged bulk data — regenerable from HF (graphs) / temp branch (directions).
+# Result JSONs from 02/04/07/08 in the same tree are committed explicitly by the
+# watcher via `git add -f`.
+data/results/pipeline_runs_qwen/**/graph_data/
+data/results/pipeline_runs_qwen/**/01_direction/
+data/results/pipeline_runs_qwen/**/02_attribution/graphs/

@@ -164,9 +164,14 @@ def extract_edge_records_to_target(
             "category": "feature" | "embedding" | "error_node",
             "layer": int | None,
             "feature": int | None,
+            "ctx_idx": int | None,
             "signed_attribution": float,
+            "activation": float,
         }
     Sorted by `signed_attribution` descending (most positive first).
+    `activation` is the source node's recorded activation value (0.0 when the
+    packed graph predates the field). One record per source node — the same
+    (layer, feature) can appear at several ctx positions as separate records.
 
     Args:
         graph: parsed packed-graph dict.
@@ -196,12 +201,15 @@ def extract_edge_records_to_target(
         # Parse node_id for (layer, feature_idx) — matches Stage 04's per-layer
         # 0-16383 indexing. Falls back to schema fields for test fixtures.
         layer, feature_idx = _parse_layer_feature_from_node(src_node)
+        ctx_raw = src_node.get("ctx_idx")
         records.append({
             "source_id": edge["source"],
             "category": category,
             "layer": layer,
             "feature": feature_idx,
+            "ctx_idx": int(ctx_raw) if isinstance(ctx_raw, (int, float)) else None,
             "signed_attribution": float(edge["weight"]),
+            "activation": float(src_node.get("activation") or 0.0),
         })
     records.sort(key=lambda r: r["signed_attribution"], reverse=True)
     return records

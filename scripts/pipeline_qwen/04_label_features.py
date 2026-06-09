@@ -513,7 +513,10 @@ def main():
                 collect_all_features(results_list)
             )
         save_json(feature_sets, out_dir / "feature_class_sets.json")
-        plot_feature_class_upset(feature_sets, out_dir)
+        try:
+            plot_feature_class_upset(feature_sets, out_dir)
+        except Exception as e:  # plots are cosmetic — never fail the stage on them
+            print(f"  WARNING: feature_class_upset plot failed ({e}); JSON outputs are complete.")
         print(f"  Saved feature_class_sets.json and feature_class_upset.png")
         print("DONE!")
         return
@@ -527,7 +530,10 @@ def main():
         comp = load_json(comp_path)
         histogram = build_layer_histogram(comp)
         save_json(histogram, out_dir / "layer_histogram.json")
-        plot_layer_histogram(histogram, out_dir)
+        try:
+            plot_layer_histogram(histogram, out_dir)
+        except Exception as e:  # plots are cosmetic — never fail the stage on them
+            print(f"  WARNING: layer histogram plot failed ({e}); JSON outputs are complete.")
         print(f"  Saved layer_histogram.json and features_by_layer.png")
         print("DONE!")
         return
@@ -732,14 +738,20 @@ def main():
     # A8: layer histogram                                                                                                       
     histogram = build_layer_histogram(comparison_labeled)
     save_json(histogram, out_dir / "layer_histogram.json")                                                                      
-    plot_layer_histogram(histogram, out_dir)
-    print("    Saved features_by_layer.png + layer_histogram.json")  
+    try:
+        plot_layer_histogram(histogram, out_dir)
+    except Exception as e:  # plots are cosmetic — never fail the stage on them
+        print(f"    WARNING: layer histogram plot failed ({e}); JSON outputs are complete.")
+    print("    Saved features_by_layer.png + layer_histogram.json")
 
     # A7: feature-class UpSet — bucket-based sets + per-condition top-50 sets
     feature_sets = build_feature_class_sets(comparison_labeled)
     feature_sets["per_condition_top50"] = build_per_condition_sets(all_features)
     save_json(feature_sets, out_dir / "feature_class_sets.json")
-    plot_feature_class_upset(feature_sets, out_dir)
+    try:
+        plot_feature_class_upset(feature_sets, out_dir)
+    except Exception as e:
+        print(f"    WARNING: feature_class_upset plot failed ({e}); JSON outputs are complete.")
     print(
         f"    Saved feature_class_upset.png + feature_class_sets.json "
         f"({len(feature_sets['per_condition_top50'])} conditions in per_condition_top50)"

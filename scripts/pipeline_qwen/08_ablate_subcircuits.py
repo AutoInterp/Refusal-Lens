@@ -121,6 +121,12 @@ def parse_args():
              "may not change behavior even when they're being intervened on.",
     )
     p.add_argument(
+        "--graph-mode", default="multi", choices=["multi", "single"],
+        help="Which Stage 02 graph mode to read top_features from for the "
+             "low-coverage diagnostic. The emnlp L18 run only has single-mode "
+             "graphs — pass 'single' there or the diagnostic silently disables.",
+    )
+    p.add_argument(
         "--ablate-with-mean", action="store_true",
         help="(Future work — not yet supported) Ablate features to their "
              "dataset-mean activation rather than 0. Currently raises if set; "
@@ -1033,7 +1039,7 @@ def main():
 
     # Per-prompt top-feature index for the coverage diagnostic
     print("\n  Building per-prompt top-feature index from Stage 02...")
-    per_prompt_top = build_per_prompt_top_index(run_dir, mode="multi")
+    per_prompt_top = build_per_prompt_top_index(run_dir, mode=args.graph_mode)
     print(
         f"    Indexed {len(per_prompt_top)} prompts "
         f"({'per-prompt coverage diagnostic enabled' if per_prompt_top else 'no Stage 02 data — diagnostic disabled'})"
