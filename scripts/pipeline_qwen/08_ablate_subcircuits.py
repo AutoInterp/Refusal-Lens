@@ -104,6 +104,13 @@ def parse_args():
                         "(useful for ablating a manual single-layer cart).")
     p.add_argument("--dtype", choices=["float32", "bfloat16", "float16"],
                    default="bfloat16")
+    p.add_argument("--backend", choices=["transformerlens", "nnsight"],
+                   default="transformerlens",
+                   help="ReplacementModel backend. transformerlens is the "
+                        "Qwen3-validated path (same stack as Stage 02); the "
+                        "nnsight backend's deferred-execution generate breaks "
+                        "on Qwen3 with non-empty interventions (2026-06 run). "
+                        "Gemma's pipeline copy still uses nnsight.")
     p.add_argument("--max-new-tokens", type=int, default=config.MAX_NEW_TOKENS)
     p.add_argument("--max-prompts", type=int, default=None,
                    help="Limit to first N prompts (smoke test)")
@@ -307,6 +314,7 @@ def generate_ablated(rm, tokenizer, formatted_prompt: str, interventions,
         max_new_tokens=max_new_tokens,
         return_activations=False,
         do_sample=False,
+        verbose=False,  # TL backend: silence per-generation tqdm; nnsight pops it
     )
     return _extract_response(decoded, formatted_prompt).strip()
 
@@ -320,6 +328,7 @@ def generate_baseline_rm(rm, tokenizer, formatted_prompt: str, max_new_tokens: i
         max_new_tokens=max_new_tokens,
         return_activations=False,
         do_sample=False,
+        verbose=False,  # TL backend: silence per-generation tqdm; nnsight pops it
     )
     return _extract_response(decoded, formatted_prompt).strip()
 
@@ -1081,7 +1090,7 @@ def main():
         config.MODEL_NAME,
         config.TRANSCODER_PATH,
         dtype=dtype_map[args.dtype],
-        backend="nnsight",
+        backend=args.backend,
         lazy_encoder=False,  # we need encoder for intervention
     )
     tokenizer = rm.tokenizer

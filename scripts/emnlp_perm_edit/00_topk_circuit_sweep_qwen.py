@@ -169,6 +169,12 @@ def parse_args():
     p.add_argument("--model", default="Qwen/Qwen3-4B")
     p.add_argument("--transcoders", default="mwhanna/qwen3-4b-transcoders",
                    help="zero mechanism only")
+    p.add_argument("--backend", choices=["transformerlens", "nnsight"],
+                   default="transformerlens",
+                   help="ReplacementModel backend (zero mechanism only). "
+                        "transformerlens is the Qwen3-validated path; nnsight's "
+                        "deferred-execution generate breaks on Qwen3 with "
+                        "non-empty interventions (2026-06 run).")
     p.add_argument("--k-values", default=",".join(str(k) for k in DEFAULT_K_VALUES))
     p.add_argument("--rankings", default=None,
                    help="Comma-separated; default per source "
@@ -266,10 +272,11 @@ def main():
         target_layer = layers[LAYER]
     else:
         from circuit_tracer import ReplacementModel
-        print(f"[topk] loading ReplacementModel {args.model} + {args.transcoders} in {dtype}")
+        print(f"[topk] loading ReplacementModel {args.model} + {args.transcoders} "
+              f"in {dtype} (backend={args.backend})")
         rm = ReplacementModel.from_pretrained(
             args.model, args.transcoders,
-            dtype=dtype_map[dtype], backend="nnsight", lazy_encoder=False)
+            dtype=dtype_map[dtype], backend=args.backend, lazy_encoder=False)
         tokenizer = rm.tokenizer
     print(f"  model ready in {time.time()-t0:.1f}s")
 
@@ -297,7 +304,8 @@ def main():
         formatted = format_prompt(tokenizer, text)
         decoded, _logits, _cache = rm.feature_intervention_generate(
             formatted, interventions, max_new_tokens=args.max_new_tokens,
-            return_activations=False, do_sample=False)
+            return_activations=False, do_sample=False,
+            verbose=False)  # TL backend: silence per-generation tqdm; nnsight pops it
         if decoded.startswith(formatted):
             return decoded[len(formatted):].strip()
         idx = decoded.rfind("<|im_start|>assistant\n")

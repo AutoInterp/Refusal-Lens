@@ -213,13 +213,13 @@ run_step "stage07_subcircuits" \
 run_step "stage08_subcircuit_ablation" \
   bash -c "PYTHONPATH=scripts/pipeline_qwen python3 scripts/pipeline_qwen/08_ablate_subcircuits.py \
       --run-dir '$QWEN_RUN' --graph-mode single --positions both \
-      --subcircuits '$SUBCIRCUITS' \
+      --subcircuits '$SUBCIRCUITS' --backend transformerlens \
       --max-new-tokens $MAX_NEW_TOKENS --resume"
 
 # --- STEP 5: Top-K sweep — zero mechanism, features (GPU, ReplacementModel) ---
 run_step "topk_zero_features" \
   bash -c "PYTHONPATH=scripts python3 scripts/emnlp_perm_edit/00_topk_circuit_sweep_qwen.py \
-      --mechanism zero --source features \
+      --mechanism zero --source features --backend transformerlens \
       --graph-data-dir '$GRAPH_DIR' --k-values '$K_VALUES' \
       --max-new-tokens $MAX_NEW_TOKENS --resume \
       --out '$OUT_DIR/topk_sweep_zero_features.json'"

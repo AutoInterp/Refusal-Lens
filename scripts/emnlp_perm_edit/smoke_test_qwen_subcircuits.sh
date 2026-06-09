@@ -103,10 +103,14 @@ if [[ "$CPU_ONLY" == "1" ]]; then
 else
   [[ -f "$RHAT_PATH" ]] || fail "direction file missing: $RHAT_PATH (run launcher prereq staging first)"
 
-  # 4. Stage 08 (1 subcircuit, anchors only, 2 prompts)
+  # 4. Stage 08 (1 subcircuit, BOTH position modes, 2 prompts).
+  # 'both' is required: the full run leads with 'all' (slice-position
+  # interventions), which is a different backend code path than 'anchors' —
+  # an anchors-only smoke previously passed while the full run crashed.
   PYTHONPATH=scripts/pipeline_qwen $PY scripts/pipeline_qwen/08_ablate_subcircuits.py \
     --run-dir "$SMOKE_RUN" --graph-mode single --max-prompts 2 \
-    --subcircuits universal_refusal_core --positions anchors --max-new-tokens 40 \
+    --subcircuits universal_refusal_core --positions both --max-new-tokens 40 \
+    --backend transformerlens \
     || fail "stage08"
   $PY -c "
 import json
@@ -116,15 +120,17 @@ assert len(rows)>=1
 r0=rows[0]
 assert 'baseline' in r0 and 'ablations' in r0
 abl=r0['ablations']['universal_refusal_core']
-assert 'anchors' in abl
-cond=next(iter(abl['anchors'].values()))
-assert 'cls' in cond and 'changed_vs_baseline' in cond
-print('  [4/8] stage08 OK')
+assert 'all' in abl and 'anchors' in abl, f'expected both position modes, got {list(abl)}'
+for mode in ('all','anchors'):
+    cond=next(iter(abl[mode].values()))
+    assert 'cls' in cond and 'changed_vs_baseline' in cond
+print('  [4/8] stage08 OK (both position modes)')
 " || fail "stage08 assertions"
 
   # 5-7. Top-K sweeps (2 prompts, K=1,5)
   PYTHONPATH=scripts $PY scripts/emnlp_perm_edit/00_topk_circuit_sweep_qwen.py \
-    --mechanism zero --source features --graph-data-dir "$GRAPH_DIR" \
+    --mechanism zero --source features --backend transformerlens \
+    --graph-data-dir "$GRAPH_DIR" \
     --max-prompts 2 --k-values 1,5 --max-new-tokens 40 \
     --out "$SMOKE_OUT/topk_sweep_zero_features.json" || fail "topk zero"
   PYTHONPATH=scripts $PY scripts/emnlp_perm_edit/00_topk_circuit_sweep_qwen.py \
