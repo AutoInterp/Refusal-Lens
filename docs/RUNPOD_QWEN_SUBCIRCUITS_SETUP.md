@@ -6,18 +6,19 @@ sweep on a RunPod H100, starting from a fresh SSH connection. Design spec:
 
 ## Cost & time budget (single H100 SXM 80 GB)
 
-Grounded in measured Path-A throughput (plain Qwen3-4B fp32, max_new_tokens=80:
-1.6–2.8 s/gen → planned 2.0; ReplacementModel bf16 planned 5 s/gen):
+Grounded in **observed pod smoke throughput** (2026-06, TL backend, mnt=40:
+Stage 08 ≈3.6 s/gen, zero sweep ≈2.1–3.1 s/gen, proxy ≈0.7 s/gen; scaled
+~1.8× for the full run's max_new_tokens=80):
 
 | step | generations | est. wall |
 |---|---|---|
 | setup + model/transcoder downloads (~70 GB) | — | ~0.7 h |
 | CPU steps (rebuild index, 04, 07, aggregate) | — | ~0.4 h |
-| Stage 08 ablation (7 subcircuits × 2 pos-modes × 11 conds × 50 + baselines) | 8,250 | ~11.5 h |
-| Top-K zero sweep (8 K × 600) | 4,800 | ~6.7 h |
-| Top-K proxy sweep, features (+ baseline) | 5,100 | ~2.8 h |
-| Top-K proxy sweep, edges | 4,800 | ~2.7 h |
-| **Total** | **~23,750** | **~25 h ± 20% (20–30 h)** |
+| Stage 08 ablation (7 subcircuits × 2 pos-modes × 11 conds × 50 + baselines) | 8,250 | ~15 h |
+| Top-K zero sweep (8 K × 600) | 4,800 | ~7 h |
+| Top-K proxy sweep, features (+ baseline) | 5,100 | ~1.8 h |
+| Top-K proxy sweep, edges | 4,800 | ~1.7 h |
+| **Total** | **~23,750** | **~26 h ± 20% (21–31 h)** |
 
 ≈ **$60–90** at ~$2.99/h (secure) / ~$2.69/h (community). Smoke test ≈ 30 min ≈ $1.50.
 

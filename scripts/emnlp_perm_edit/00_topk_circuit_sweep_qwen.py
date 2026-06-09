@@ -312,9 +312,14 @@ def main():
         return decoded[idx + len("<|im_start|>assistant\n"):].strip() if idx >= 0 else decoded.strip()
 
     # ---- resume ----
+    # Generation stack identity — resume must not mix records across stacks
+    # (e.g. an nnsight-era baseline with TL-era ablations).
+    gen_backend = args.backend if args.mechanism == "zero" else "hf-transformers"
+
     results = {
         "metadata": {
             "mechanism": args.mechanism, "source": args.source, "layer": LAYER,
+            "backend": gen_backend,
             "model": args.model, "graph_mode": args.graph_mode,
             "k_values": k_values, "rankings": args.rankings_list,
             "ranking_conditions": {r: RANKING_CONDITIONS[r] for r in args.rankings_list},
@@ -328,11 +333,21 @@ def main():
     }
     if args.resume and args.out.exists():
         prev = json.loads(args.out.read_text())
-        if (prev.get("metadata", {}).get("mechanism") == args.mechanism
-                and prev["metadata"].get("source") == args.source):
+        prev_md = prev.get("metadata", {})
+        # Backend compatibility: exact match, or a pre-backend-field proxy file
+        # (the plain-HF proxy stack never changed, so those records are valid).
+        backend_ok = (prev_md.get("backend") == gen_backend
+                      or (prev_md.get("backend") is None and args.mechanism == "proxy"))
+        if (prev_md.get("mechanism") == args.mechanism
+                and prev_md.get("source") == args.source
+                and backend_ok):
             results["baseline"] = prev.get("baseline", {})
             results["per_cell"] = prev.get("per_cell", {})
             print(f"[topk] resume: {len(results['per_cell'])} cells already present")
+        else:
+            print(f"[topk] resume: existing {args.out.name} is from a different "
+                  f"stack (mechanism/source/backend mismatch: {prev_md.get('mechanism')}/"
+                  f"{prev_md.get('source')}/{prev_md.get('backend')}) — starting fresh")
 
     def save():
         args.out.parent.mkdir(parents=True, exist_ok=True)
