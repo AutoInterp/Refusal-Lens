@@ -78,7 +78,9 @@ echo ""; echo "=== Step A: Python environment ==="
 if [[ ! -d ".venv" ]]; then python3 -m venv .venv; fi
 source .venv/bin/activate
 pip install --upgrade pip -q
-pip install -e . -q
+# 'steering' extra = torch + transformers + accelerate + safetensors + hf_hub
+# (everything generation needs; no circuit-tracer — this job doesn't use graphs).
+pip install -e ".[steering]" -q
 python3 -c "import torch; assert torch.cuda.is_available(); print(f'CUDA OK: torch {torch.__version__} {torch.cuda.get_device_name(0)}')" || {
   echo "FATAL: CUDA torch not available." | tee -a "$FAIL_FILE"; touch "$DONE_FILE"; exit 1
 }
