@@ -29,7 +29,13 @@ Knobs if you need to shrink it (env vars on the launcher):
 
 **VRAM**: ReplacementModel = Qwen3-4B (~8 GB bf16) + 36 transcoders (~60 GB) ≈
 70 GB → needs an **80 GB card** (48/24 GB cards do not fit).
-**Disk**: ≥ 150 GB volume recommended (HF cache ~70 GB + venv + outputs).
+**Disk**: **150 GB network volume** mounted at `/workspace` (actual footprint
+~85 GB: HF cache ~70 GB + venv ~10 GB + repo ~3 GB + graphs/outputs <1 GB).
+Use a *network* volume, not pod-local disk — it persists across pods, so a
+card switch or spot preemption reattaches the 70 GB model/transcoder cache
+instead of re-downloading it (requires `HF_HOME=/workspace/hf`, step 2).
+Exception: `REGEN_UPSTREAM=1` writes 550 raw `.pt` graphs via Stage 02
+`--save-graphs` (~50–100 GB) — size at **250 GB** for that path.
 
 ### Cheaper GPU option: A100 80 GB
 
