@@ -33,6 +33,24 @@ cd "$ROOT"
 
 fail() { echo "SMOKE FAILED: $1"; exit 1; }
 
+# Self-stage the packed graphs from HF if absent (~180MB; same staging the launcher does)
+if [[ ! -f "$GRAPH_DIR/000_bare_single.json.gz" ]]; then
+  echo "Packed graphs not found — pulling from HF (moon70/refusal-lens-graphs)..."
+  GRAPH_DIR="$QWEN_RUN/graph_data"
+  $PY - <<PYEOF || fail "HF graph pull (check HF_TOKEN / network)"
+from huggingface_hub import snapshot_download
+from pathlib import Path
+import shutil
+snap = snapshot_download(repo_id="${HF_DATASET:-moon70/refusal-lens-graphs}", repo_type="dataset",
+                         allow_patterns=["runs/$RUN_NAME/graph_data/*"])
+src = Path(snap) / "runs" / "$RUN_NAME" / "graph_data"
+dst = Path("$GRAPH_DIR"); dst.mkdir(parents=True, exist_ok=True)
+n = 0
+for f in src.iterdir():
+    shutil.copy2(f, dst / f.name); n += 1
+print(f"staged {n} graph files into $GRAPH_DIR")
+PYEOF
+fi
 [[ -f "$GRAPH_DIR/000_bare_single.json.gz" ]] || fail "packed graphs not found at $GRAPH_DIR"
 
 # 1. rebuild attribution index (2 prompts)

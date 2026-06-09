@@ -122,7 +122,9 @@ if [[ ! -f "$GRAPH_DIR/000_bare_single.json.gz" ]]; then
     mkdir -p "$GRAPH_DIR"
     cp "$LOCAL_FE"/*.json.gz "$GRAPH_DIR/" 2>/dev/null
     cp "$LOCAL_FE/graph-metadata.json" "$GRAPH_DIR/" 2>/dev/null || true
-  elif [[ "$DRY_RUN" != "1" ]]; then
+  else
+    # Staging (~180MB) runs even under DRY_RUN — it's prereq data, not GPU work,
+    # and the smoke test needs the graphs before the first real launch.
     echo "  Pulling packed graphs from HF ($HF_DATASET)..."
     python3 - <<PYEOF
 from huggingface_hub import snapshot_download
@@ -137,8 +139,6 @@ for f in src.iterdir():
     shutil.copy2(f, dst / f.name); n += 1
 print(f"  staged {n} graph files")
 PYEOF
-  else
-    echo "  [DRY_RUN] graphs missing — would pull from HF"
   fi
 fi
 N_GRAPHS=$(ls "$GRAPH_DIR"/*.json.gz 2>/dev/null | wc -l)
