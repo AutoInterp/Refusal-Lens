@@ -28,8 +28,24 @@ Knobs if you need to shrink it (env vars on the launcher):
 - `REGEN_UPSTREAM=1` **adds** ~14 h / ~$42 (full Stage 01→02→02c re-run; only for a fully self-contained reproduction — the default reuses the HF graphs)
 
 **VRAM**: ReplacementModel = Qwen3-4B (~8 GB bf16) + 36 transcoders (~60 GB) ≈
-70 GB → needs the 80 GB H100 (same stack that generated the graphs).
+70 GB → needs an **80 GB card** (48/24 GB cards do not fit).
 **Disk**: ≥ 150 GB volume recommended (HF cache ~70 GB + venv + outputs).
+
+### Cheaper GPU option: A100 80 GB
+
+This workload is single-stream batch-1 greedy decoding on a 4B model —
+bandwidth/overhead-bound, not compute-bound — so the H100's FLOPs advantage is
+mostly wasted. An **A100 80 GB** (community/spot ~$1.2–1.4/h vs H100 secure
+~$3.0/h) typically runs it ~1.3–1.5× slower for ~35–45% less money
+(~32–38 h, ~$40–55). The run is fully resumable (every step checkpoints;
+re-running the launcher continues), so interruptible/community instances are
+safe — a preemption costs minutes.
+
+**Decision rule:** run the §4 smoke test on the A100 first (~30 min, ~$1) and
+read its printed s/gen. If the zero-mechanism steps show **≤ ~7 s/gen**, the
+A100 is strictly cheaper — launch there. Otherwise fall back to a community
+H100. Scale the wall-time expectation by (observed s/gen ÷ 5) for the RM steps
+and (observed ÷ 2) for the proxy steps.
 
 ---
 
