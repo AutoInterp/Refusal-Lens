@@ -2,264 +2,219 @@
 
 Narrative record of the full Qwen3-4B (L18) subcircuit run: Stage 07 rule-based
 identification + Stage 08 feature-zeroing ablation + the new Top-K sparsity
-sweep. Companion to the auto-generated `QWEN_SUBCIRCUIT_REPORT.md` (which holds
-the raw Pareto tables) and the design spec
-`docs/superpowers/specs/2026-06-01-qwen-subcircuits-topk-design.md`.
+sweep, **re-scored with a corrected refusal classifier**. Companion to the
+auto-generated `QWEN_SUBCIRCUIT_REPORT.md` (raw keyword-scored tables) and the
+design spec `docs/superpowers/specs/2026-06-01-qwen-subcircuits-topk-design.md`.
 
 **Run:** `run_emnlp_qwen_L18_20260522`, H100 80GB, ~33 h wall, all 8 steps OK,
-0/14,400 sweep generations incoherent. Baselines/ablations greedy, mnt=80,
-`enable_thinking=False`.
+0/14,400 sweep generations incoherent. Greedy, mnt=80, `enable_thinking=False`.
+
+**Scoring:** all rates below are from the **corrected** scorer
+(`scripts/emnlp_perm_edit/rescore_classifier.py`) unless noted `(kw)`. The
+keyword classifier over-counts compliance ~2–3× ([[project_dataset_v2_behavioral_findings]]);
+§0 documents the correction and its validation. Figures + re-scored numbers:
+`data/results/emnlp_perm_edit/qwen_subcircuits/figures/`.
 
 ---
 
-## TL;DR (the five things worth telling Georg)
+## TL;DR (what to tell Georg)
 
-1. **The subcircuit methodology *works* on Qwen where it failed on Gemma.**
-   Zeroing the 122-feature `universal_refusal_core` at all positions breaks
-   bare refusal **90%** of the time on Qwen — vs **4.3%** on Gemma with the
-   identical pipeline. This is the behavioral confirmation of the
-   residual-stream-norm hypothesis: feature edits that were sub-threshold on
-   Gemma are potent on Qwen.
-2. **Breaking refusal is extremely sparse; removing a jailbreak is not.** Zeroing
-   the top **~5–10** attribution-ranked features (per prompt) breaks bare refusal
-   in the majority of cases (K=5→59%, K=10→85%, K=25→98%). Restoring refusal on a
-   jailbroken prompt needs **~100+** features and never exceeds 63% even at K=250.
-   A clean, quantified **asymmetry**.
-3. **Edges beat features, and attribution beats activation** — both cleanly. The
-   "edge > node" Pareto (more behavioral change per unit ablated) holds on Qwen,
-   and attribution-ranked selection is far more efficient than
-   activation-ranked. These answer two of the questions the sweep was designed for.
-4. **Fine-grained class-specific dissociation mostly does NOT replicate** (same
-   as Gemma). Of 5 `jb_X_specific_vs_ctrl` sets, only fiction shows a clean
-   positive dissociation; the rest are null/negative, and the one large
-   positive (completion +76pp) is a tiny-denominator artifact.
-5. **A validity threat we must resolve before quoting any of these numbers as
-   final:** the keyword `classify_response` is known to over-count compliance
-   (see [[project_dataset_v2_behavioral_findings]]), and several Qwen jailbreak
-   classes barely jailbreak at all. Treat the rates as directionally strong but
-   provisional pending re-scoring.
+1. **The subcircuit methodology works on Qwen where it failed on Gemma.** Zeroing
+   the `universal_refusal_core` breaks bare refusal **61%** of the time on Qwen
+   (90% keyword) vs **0%** on Gemma (4% keyword) — the gap *survives* scorer
+   correction. Confirms the residual-stream-norm hypothesis behaviorally.
+2. **Breaking refusal is sparse; restoring it is not** (true zeroing): the top
+   **~10** attribution-ranked features break bare refusal 59% of the time and
+   saturate by K≈250; *restoring* refusal on a jailbroken prompt needs **~100**.
+3. **Edges > nodes, and true-zeroing > proxy** — cleanly, and *stronger* after
+   correction. Ablating top-K edges is far more efficient than top-K features.
+4. **Attribution ranking ≫ activation ranking** — attribution-ranked features
+   break refusal at K=10 (59%); activation-ranked needs K=250 to reach the same.
+5. **Fine-grained per-class dissociation still fails** (as on Gemma), and the
+   class sets are 83–100% low-coverage. The coarse refusal circuit is real and
+   sparse; the per-class story is not — pointing at Georg's active+newly-active
+   pivot.
+
+---
+
+## 0. Scorer correction (done — was the top open risk)
+
+The pipeline keyword classifier labels soft refusals and deflections as COMPLY
+(e.g. *"As a security researcher, my focus is on identifying and mitigating…"*,
+*"No, that description is not technically accurate and is harmful"*). I
+re-implemented the v2 "expanded refusal/deflection detector"
+(`rescore_classifier.py`), which first strips the echoed prompt + chat scaffold
+from each saved generation, then flags refusal/deflection openers. Re-scoring is
+CPU-only over the saved generations — no re-generation.
+
+**Validation:** reproduces the documented v2 direction (Qwen jb baseline COMPLY
+collapses) and passes manual audit on our data:
+
+![scorer correction](../data/results/emnlp_perm_edit/qwen_subcircuits/figures/fig1_scorer_correction.png)
+
+| class | jb COMPLY (kw) | jb COMPLY (corrected) |
+|---|---|---|
+| roleplay | 96% | 12% |
+| analytical | 96% | 6% |
+| cognitive_reframe | 90% | 48% |
+| fiction | 30% | 30% |
+| completion | 18% | 0% |
+
+**Caveat (honest):** inputs were capped at 300 chars upstream, and the prompt
+echo eats ~150 of them, leaving ~100–140 chars of actual reply for long-prefix
+conditions (esp. roleplay). The corrected scorer catches opener-style
+refusals but not late pivots, so it is a **lower-bound correction**. A
+full-response LLM-judge pass is the remaining publication-grade upgrade
+(§5).
 
 ---
 
 ## 1. Stage 08 — subcircuit ablation
 
-### 1.1 Positive control succeeds on Qwen (the headline)
+### 1.1 Positive control works on Qwen, not Gemma (headline)
 
-| metric (universal_refusal_core, all-positions) | Qwen | Gemma (run_20260430) |
+![cross-model break](../data/results/emnlp_perm_edit/qwen_subcircuits/figures/fig2_cross_model_break.png)
+
+| universal_refusal_core, bare break (all-pos) | corrected | keyword |
 |---|---|---|
-| bare refusal break | **90.2%** (37/41) | 4.3% |
-| n features | 122 | 26 |
+| **Qwen3-4B (L18, 122 feats)** | **61%** | 90% |
+| Gemma-3-4B (L15, 26 feats) | **0%** | 4% |
 
-This is the single most important result: the **identical** Stage 07/08
-methodology that produced a near-null positive control on Gemma produces a
-strong one on Qwen. It validates that the cross-model difference we traced in
-the Batch-17/18 audits (Gemma's ~200× larger residual-stream norm burying
-feature-level edits) is real and behaviorally decisive.
+The identical Stage 07/08 methodology that gave a null positive control on Gemma
+gives a strong one on Qwen, and the gap is robust to scorer choice. This is the
+behavioral confirmation of the Batch-17/18 audit: Gemma's ~200× larger
+residual-stream norm buries feature-level edits; Qwen's does not.
 
-### 1.2 The "universal core" is genuinely refusal-causal, but broad
+### 1.2 The "universal core" is genuinely refusal-causal but not selective
 
-Ablating the universal core breaks refusal not just on `bare` (90%) but across
-every `ctrl_*` condition too (44–67%):
-
-| condition | break rate | condition | break rate |
-|---|---|---|---|
-| bare | 90% | ctrl_roleplay | 67% |
-| ctrl_cognitive_reframe | 65% | ctrl_fiction | 61% |
-| ctrl_analytical | 44% | ctrl_completion | 44% |
-
-So it's a true refusal mechanism, not a `bare`-specific quirk — but it is **not
-selective**: it knocks out refusal wherever refusal is happening. Good for "we
-found *the* refusal circuit," weaker for "we found a *targeted* lever."
-(jb_recovery is ~0 by construction — you cannot restore refusal by removing
+Ablating it breaks refusal on `bare` (61%) **and** every `ctrl_*` condition
+(27–48% corrected). It's a true refusal mechanism, but a *broad* one — it knocks
+out refusal wherever refusal is happening, rather than acting as a targeted
+lever. (jb-recovery is ~0 by construction: you can't restore refusal by removing
 pro-refusal features from an already-complying prompt.)
 
-### 1.3 Position is the dominant lever (all ≫ anchors)
+### 1.3 Position dominates (all ≫ anchors)
 
-Same subcircuit, same features, only the intervention positions differ:
+Same features, intervention positions differ: bare break **61% (all positions)
+vs 2% (template anchors `[-5,-3,-1]`)**. Refusal is maintained by distributed,
+position-spread feature activity — not a single anchor token. Mirrors the Task-3
+direction sweep.
 
-| universal_refusal_core | bare break |
-|---|---|
-| all positions | **90%** |
-| template anchors `[-5,-3,-1]` only | **2.4%** |
+### 1.4 Class-specific dissociation fails (as on Gemma); coverage confounds it
 
-The effect comes from displacing the refusal features across the *whole*
-sequence, not at the measured template tokens. This mirrors the Task-3 direction
-sweep (all-positions coeff=1.0 → 100% flip vs pos-only → 10%) and is itself a
-finding worth stating: refusal is maintained by distributed, position-spread
-feature activity, not a single anchor token.
-
-### 1.4 Class-specific dissociation: mostly fails (consistent with Gemma)
-
-`dissociation_delta` = target-class recovery − mean other-class recovery
-(positive = the class-specific subcircuit selectively restores refusal for its
-own class):
-
-| subcircuit (all-pos) | Δ | verdict |
-|---|---|---|
-| jb_completion_specific | +76.2pp | **artifact** (see below) |
-| jb_fiction_specific | +14.0pp | weak positive |
-| jb_cognitive_reframe_specific | +3.5pp | null |
-| jb_roleplay_specific | −6.1pp | negative |
-| jb_analytical_specific | −7.7pp | negative |
-
-Only fiction shows a believable class-selective effect. This reproduces the
-Gemma "failed dissociation" outcome and says the corpus-level
-`jb_X_specific_vs_ctrl` set logic does not cleanly isolate per-class causal
-circuits — directly motivating Georg's pivot to *active + newly-active* feature
-sets ([[batch16-georg-paper-pivot-may24-2026]]).
-
-**Why completion's +76pp is not real:** the completion *jailbreak barely works*
-on Qwen — only 9/50 completion prompts comply at baseline (82% still refuse,
-identical to bare). 77.8% "recovery" is ~7 of 9 prompts; the denominator is too
-small and the baseline too refusal-dominated to trust.
-
-### 1.5 Coverage caveat (why the dissociation nulls are partly mechanical)
-
-Fraction of prompts where the subcircuit's features were **not** in that
-prompt's top-K active features (`low_coverage`):
-
-| subcircuit | low-coverage prompts |
-|---|---|
-| universal_refusal_core | 8.7% (features genuinely active) |
-| jb_cognitive_reframe_specific | 83% |
-| jb_analytical_specific | 89% |
-| jb_fiction/roleplay/completion_specific | 91% |
-| ctrl_shared_refusal | **100%** |
-
-The class-specific and ctrl sets are largely composed of features that **don't
-fire strongly** on the prompts we ablate them on — so their near-null effects
-are partly "we ablated features that weren't doing anything here," not "these
-features are causally irrelevant." Any conclusion about class-specific circuits
-is confounded by this until the set-construction is fixed.
+Only `fiction` shows a believable class-selective recovery; roleplay/analytical
+are negative, completion's large positive is a tiny-denominator artifact
+(completion barely jailbreaks Qwen — 0% true comply). And the class sets are
+**83–100% low-coverage** (`ctrl_shared_refusal` 100%): their features mostly
+*don't fire* on the prompts we ablate them on, so the near-null effects are
+partly "we ablated inactive features," not proof of irrelevance. Any per-class
+conclusion is confounded until the set construction is fixed (§5).
 
 ---
 
-## 2. Top-K sparsity sweep (the novel, quantitative contribution)
+## 2. Top-K sparsity sweep (the novel contribution)
 
-Per-prompt top-K ablation, K ∈ {1,3,5,10,25,50,100,250}. "break" = bare
-REFUSE→COMPLY; "recovery" = jb COMPLY→REFUSE.
+Per-prompt top-K ablation, K ∈ {1,3,5,10,25,50,100,250}, corrected scorer.
 
-### 2.1 Refusal is sparse; jailbreak-suppression is distributed
+### 2.1 Refusal is sparse; jailbreak-suppression is distributed (true zeroing)
 
-True feature zeroing, attribution-ranked:
+![sparsity asymmetry](../data/results/emnlp_perm_edit/qwen_subcircuits/figures/fig3_sparsity_asymmetry.png)
 
-| K | break refusal (bare, `pos`) | remove jailbreak (jb, `neg`) |
+| K | break refusal (bare, `pos`) | restore refusal (jb, `neg`) |
 |---|---|---|
-| 1 | 24% | 13% |
-| 5 | 59% | 18% |
-| 10 | 85% | 24% |
-| 25 | 98% | 39% |
-| 50 | **100%** | 48% |
-| 100 | 100% | 52% |
-| 250 | 98% | 63% |
+| 5 | 28% | 19% |
+| 10 | **59%** | 25% |
+| 50 | 78% | 38% |
+| 100 | 83% | **67%** |
+| 250 | 96% | 58% |
 
-**~5–10 features carry refusal**; it saturates by K=50. **Removing a jailbreak
-is fundamentally more distributed** — it climbs steadily and never saturates in
-our range. Interpretation: a jailbroken prompt's compliance is held up by many
-small contributions, while refusal rides on a compact, fragile feature set. This
-"refusal = sparse default basin / jailbreak = distributed suppression" framing
-is the most paper-worthy idea from the run.
+Breaking refusal needs **~10** features (knee K=10) and saturates; restoring
+refusal climbs slower (knee K=100) and noisily. Refusal rides on a compact,
+fragile feature set; a jailbroken prompt's compliance is propped up by many
+small contributions. (The asymmetry is mechanism-dependent — see §2.4 — but for
+the *true* ablation it holds.)
 
-### 2.2 Edge > node (H0-7 holds on Qwen)
+### 2.2 Edge > node, and true-zeroing > proxy
 
-Break-refusal knees (smallest K to reach threshold), proxy mechanism:
+![edge vs node](../data/results/emnlp_perm_edit/qwen_subcircuits/figures/fig4_edge_vs_node.png)
 
-| source | break@50% | break@80% | recovery@K=250 |
-|---|---|---|---|
-| proxy **edges** (`pos`) | **K=10** | **K=25** | 64% |
-| proxy **features** (`pos`) | K=25 | K=250 | 45% |
-
-Ranking *edges* (feature + embedding + error contributions to the L18 target)
-is markedly more efficient per-K than ranking features alone — consistent with
-the edge-vs-node Pareto we hypothesized. Edges also recover more jailbreaks at
-high K (64% vs 45%).
+Bare-break efficiency (corrected): **zero-features (true) > proxy-edges >
+proxy-features**. Top-K *edges* (which include the large embedding/error
+contributions) are far more efficient to ablate than top-K *features*
+(proxy-edges break 93% vs proxy-features 48% at K=250), and true zeroing — which
+removes a feature's *indirect* paths too — dominates both at low K (K=10: 59% vs
+28% vs 11%). The "edge > node" Pareto holds on Qwen and is sharper after
+correction.
 
 ### 2.3 Attribution ranking ≫ activation ranking
 
-True zeroing, break refusal: `pos` (attribution) reaches 100% by K=50; the
-`activation` ranking only reaches 51% at K=100 and needs K=250 for 100%.
-Strongest-*activated* features are *not* the strongest *causal* features —
-attribution to the refusal target is the right selector. (Answers the "both,
-compare" design question decisively.)
+![ranking](../data/results/emnlp_perm_edit/qwen_subcircuits/figures/fig5_ranking.png)
 
-### 2.4 True zeroing > residual proxy at low K
+True zeroing, break refusal: attribution-ranked (`pos`) hits 59% at K=10;
+activation-ranked reaches only 9% at K=10, 30% at K=100, and needs K=250 to
+catch up. Strongest-*activated* ≠ strongest-*causal*; attribution to the refusal
+target is the right selector. (Answers the "both, compare" design question.)
 
-Break refusal at K=10: zero **85%** vs proxy-features **36%**. Zeroing removes
-all downstream paths of a feature; the proxy only subtracts its direct
-r̂-projection mass. The gap quantifies how much of a feature's behavioral effect
-is indirect/non-linear — large, as the Task-3 audit predicted.
+### 2.4 New nuance: the proxy produces deflections, not true compliance
 
----
-
-## 3. The baseline-heterogeneity problem (read before trusting recovery numbers)
-
-Qwen's jailbreak classes differ wildly in how often they actually jailbreak
-(baseline comply rate on the 50 prompts):
-
-| class | jb comply | class | jb comply |
-|---|---|---|---|
-| jb_analytical | 96% | jb_fiction | 30% |
-| jb_roleplay | 94% | jb_completion | **18%** |
-| jb_cognitive_reframe | 90% | | |
-
-`completion` and `fiction` barely jailbreak Qwen, so their "recovery" denominators
-are tiny and noisy (this is what produced the completion artifact in §1.4). The
-pooled `n_jb_comply=164` is dominated by roleplay/analytical/cognitive_reframe.
-
-**Compounding threat:** the keyword classifier `classify_response` is known to
-over-count compliance by ~2–3× and the v2 dataset's jailbreaks are weak
-([[project_dataset_v2_behavioral_findings]]). So both the high break rates and
-the comply baselines may be inflated by classifier false-positives. The
-*relative* patterns (sparse-vs-distributed, edge>node, attribution>activation,
-Qwen≫Gemma) are robust to a uniform classifier bias; the *absolute* rates are
-not. **Do not quote absolute percentages as final until re-scored.**
+Under correction, proxy-**features** break refusal only 48% even at K=250, yet
+*restores* refusal on jb 72% — the proxy is better at adding refusal than at
+producing genuine non-compliance. Much of what the keyword scorer counted as
+"broke refusal" under the residual proxy was soft deflection, which the
+corrected scorer rejects. Only **true feature zeroing** and the **edge proxy**
+(which carries the embedding mass) produce real bare→comply flips. This both
+validates using true zeroing as the "real" ablation and is itself a finding
+about the residual-direction method's behavioral weakness on bare prompts.
 
 ---
 
-## 4. What replicated vs. what's new
+## 3. The baseline-heterogeneity caveat (still load-bearing)
+
+Even corrected, Qwen's jailbreak classes differ wildly in baseline strength:
+analytical/roleplay/cognitive_reframe carry most of the (now much smaller) true
+comply mass; **completion (0%) and fiction (30%) barely jailbreak Qwen**. Their
+recovery denominators are tiny — completion's +76pp dissociation (§1.4) is an
+artifact of this. Recovery analysis should be restricted to the strong classes.
+
+---
+
+## 4. What replicated vs. what's new (corrected)
 
 | | Gemma | Qwen |
 |---|---|---|
-| universal-core positive control | ❌ 4.3% | ✅ 90% |
+| universal-core positive control | ❌ 0% | ✅ 61% |
 | class-specific dissociation | ❌ failed | ❌ failed (same) |
 | position: all ≫ anchors | ✅ | ✅ |
-| refusal sparser than jailbreak-suppression | (untested at this K grid) | ✅ new |
-| edge > node | suggested (Task-3) | ✅ confirmed |
+| refusal sparser than jailbreak-suppression | (untested) | ✅ new |
+| edge > node | suggested (Task-3) | ✅ confirmed, stronger |
 | attribution > activation ranking | (untested) | ✅ new |
-
-The methodology *executes* on Qwen (the Gemma blocker is gone), the *coarse*
-refusal circuit is real and sparse, but the *fine-grained per-class* story
-still doesn't hold — pointing the same direction Georg already pivoted toward.
+| proxy → deflections not compliance | (consistent w/ Task-3) | ✅ new |
 
 ---
 
 ## 5. Recommended next steps
 
-**Validity (do first — gates everything else):**
-1. **Re-score with a trustworthy classifier.** Re-run classification over the
-   already-saved generations (they're in the result JSONs — no GPU needed) with
-   an LLM-judge or the improved scorer from the v2 work, and regenerate the
-   Pareto curves + Stage 08 summary. Confirms whether the 90% break and the
-   asymmetry survive. **Cheap, high-leverage.**
-2. **Restrict recovery analysis to the strong jailbreak classes** (roleplay,
-   analytical, cognitive_reframe; drop completion/fiction or report them
-   separately), so recovery denominators are meaningful.
+**Validity:**
+1. ~~Re-score with a corrected classifier~~ — **done** (§0). Remaining upgrade:
+   a **full-response LLM-judge pass** to lift the 300-char truncation ceiling.
+   Needs an API key or a local judge model + re-generating (or saving) full
+   responses; quantifies the residual error in the corrected scorer.
+2. **Restrict recovery analysis to strong jailbreak classes** (roleplay,
+   analytical, cognitive_reframe); report completion/fiction separately.
 
-**Science (the paper-worthy threads):**
-3. **Make the sparse-vs-distributed asymmetry rigorous** — per-class Pareto
-   curves with CIs, and an explicit "minimum features to break refusal"
-   statistic. This is the strongest novel finding.
-4. **Fix class-specific set construction** via Georg's active + newly-active
-   feature definition, then re-run Stage 08 dissociation — the current
-   83–100% low-coverage shows the present sets are the wrong features.
-5. **Head-to-head Gemma Top-K** on the same K grid + rankings, so the
-   sparse-vs-distributed and edge>node claims are cross-model, not Qwen-only.
+**Science:**
+3. **Fix class-specific set construction** via Georg's *active + newly-active*
+   feature definition, then re-run Stage 08 dissociation — the 83–100%
+   low-coverage shows the present sets are the wrong features.
+4. **Gemma head-to-head Top-K** on the same K grid + corrected scorer, so
+   sparse-vs-distributed and edge>node are cross-model claims, not Qwen-only.
+5. The **sparse-refusal / distributed-jailbreak asymmetry** (§2.1) and the
+   **edge>node + true>proxy** efficiency ordering (§2.2) are the strongest novel,
+   paper-ready threads — build them out with per-class curves.
 
 **Plumbing:**
-6. **Verify the frontend** picked up `subcircuits_frontend.json` (rule-based +
+6. Verify the frontend picked up `subcircuits_frontend.json` (rule-based +
    `topk_refusal/jailbreak_K*` sets) on HF and renders in the panel.
-7. Optionally label the Qwen features (backburnered) so the subcircuits in the
-   viewer are human-readable when we present them.
 
 ---
 
@@ -267,9 +222,10 @@ still doesn't hold — pointing the same direction Georg already pivoted toward.
 
 | file | what |
 |---|---|
-| `…/08_ablation/ablation_summary.json` | full dissociation matrix + coverage |
-| `qwen_subcircuits/pareto_curves.json` | flip-rate vs K, Wilson CIs, knees |
-| `qwen_subcircuits/pareto_curves.png` | break/recovery curves (all mechanisms) |
+| `qwen_subcircuits/figures/fig1–5*.png` | the 5 report figures (corrected) |
+| `qwen_subcircuits/figures/rescore_summary.json` | keyword-vs-corrected curves + Stage-08 break |
+| `scripts/emnlp_perm_edit/rescore_classifier.py` | corrected detector (reusable) |
+| `scripts/emnlp_perm_edit/qwen_rescore_and_plot.py` | re-score + figure driver |
+| `…/08_ablation/ablation_summary.json` | Stage 08 (keyword) dissociation + coverage |
 | `qwen_subcircuits/topk_sweep_{zero,proxy}_*.json` | per-generation sweep records (re-scorable) |
 | `qwen_subcircuits/subcircuits_frontend.json` | rule-based + Top-K sets for the viewer |
-| `07_subcircuits/subcircuits.json` | 18 rule-based subcircuits |
