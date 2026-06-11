@@ -766,33 +766,6 @@
     ]
   },
   "jb_vs_ctrl_contrast": {
-    "analytical": {
-      "jb_top50": 18,
-      "ctrl_top50": 16,
-      "intersection": 9,
-      "jb_specific": 9,
-      "ctrl_specific": 7,
-      "jb_specific_frac": 0.5,
-      "overlap_frac": 0.5
-    },
-    "completion": {
-      "jb_top50": 18,
-      "ctrl_top50": 17,
-      "intersection": 12,
-      "jb_specific": 6,
-      "ctrl_specific": 5,
-      "jb_specific_frac": 0.333,
-      "overlap_frac": 0.667
-    },
-    "cognitive_reframe": {
-      "jb_top50": 18,
-      "ctrl_top50": 17,
-      "intersection": 11,
-      "jb_specific": 7,
-      "ctrl_specific": 6,
-      "jb_specific_frac": 0.389,
-      "overlap_frac": 0.611
-    },
     "roleplay": {
       "jb_top50": 20,
       "ctrl_top50": 17,
@@ -810,6 +783,33 @@
       "ctrl_specific": 7,
       "jb_specific_frac": 0.45,
       "overlap_frac": 0.55
+    },
+    "cognitive_reframe": {
+      "jb_top50": 18,
+      "ctrl_top50": 17,
+      "intersection": 11,
+      "jb_specific": 7,
+      "ctrl_specific": 6,
+      "jb_specific_frac": 0.389,
+      "overlap_frac": 0.611
+    },
+    "completion": {
+      "jb_top50": 18,
+      "ctrl_top50": 17,
+      "intersection": 12,
+      "jb_specific": 6,
+      "ctrl_specific": 5,
+      "jb_specific_frac": 0.333,
+      "overlap_frac": 0.667
+    },
+    "analytical": {
+      "jb_top50": 18,
+      "ctrl_top50": 16,
+      "intersection": 9,
+      "jb_specific": 9,
+      "ctrl_specific": 7,
+      "jb_specific_frac": 0.5,
+      "overlap_frac": 0.5
     }
   }
 }

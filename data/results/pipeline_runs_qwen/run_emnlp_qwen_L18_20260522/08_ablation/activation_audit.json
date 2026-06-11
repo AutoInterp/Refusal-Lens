@@ -1,0 +1,333 @@
+{
+  "source": "pipeline_runs_qwen/run_emnlp_qwen_L18_20260522/02_attribution/attribution_results.json",
+  "n_prompts_per_condition": {
+    "bare": 50,
+    "ctrl_analytical": 50,
+    "ctrl_cognitive_reframe": 50,
+    "ctrl_completion": 50,
+    "ctrl_fiction": 50,
+    "ctrl_roleplay": 50,
+    "jb_analytical": 50,
+    "jb_cognitive_reframe": 50,
+    "jb_completion": 50,
+    "jb_fiction": 50,
+    "jb_roleplay": 50
+  },
+  "per_ablation": {
+    "universal_refusal_core": {
+      "n_features": 122,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 122,
+          "n_features": 122
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 122,
+          "n_features": 122
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 122,
+          "n_features": 122
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        }
+      }
+    },
+    "ctrl_shared_refusal": {
+      "n_features": 98,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 98,
+          "n_features": 98
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 98,
+          "n_features": 98
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 98,
+          "n_features": 98
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        }
+      }
+    },
+    "jb_fiction_specific_vs_ctrl": {
+      "n_features": 31,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 31,
+          "n_features": 31
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 31,
+          "n_features": 31
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 31,
+          "n_features": 31
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        }
+      }
+    },
+    "jb_roleplay_specific_vs_ctrl": {
+      "n_features": 25,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 25,
+          "n_features": 25
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 25,
+          "n_features": 25
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 25,
+          "n_features": 25
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        }
+      }
+    },
+    "jb_analytical_specific_vs_ctrl": {
+      "n_features": 31,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 31,
+          "n_features": 31
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 31,
+          "n_features": 31
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 31,
+          "n_features": 31
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        }
+      }
+    },
+    "jb_completion_specific_vs_ctrl": {
+      "n_features": 36,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 36,
+          "n_features": 36
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 36,
+          "n_features": 36
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 36,
+          "n_features": 36
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        }
+      }
+    },
+    "jb_cognitive_reframe_specific_vs_ctrl": {
+      "n_features": 33,
+      "by_class_group": {
+        "bare": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 33,
+          "n_features": 33
+        },
+        "jb_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 33,
+          "n_features": 33
+        },
+        "ctrl_*": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0,
+          "n_features_never_in_top50": 33,
+          "n_features": 33
+        }
+      },
+      "by_jb_class": {
+        "jb_analytical": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_cognitive_reframe": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_completion": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_fiction": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        },
+        "jb_roleplay": {
+          "mean_top50_hit_rate": 0.0,
+          "mean_attr_per_prompt": 0.0
+        }
+      }
+    }
+  }
+}

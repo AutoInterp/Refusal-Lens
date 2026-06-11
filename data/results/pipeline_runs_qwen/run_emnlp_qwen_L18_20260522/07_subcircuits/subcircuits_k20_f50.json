@@ -40,14 +40,14 @@
       "name": "universal_refusal_core",
       "size": 8,
       "features": [
-        "L16:F45664",
-        "L12:F140175",
-        "L15:F63157",
-        "L7:F96498",
         "L17:F83241",
         "L0:F116505",
+        "L13:F135532",
+        "L7:F96498",
         "L14:F97787",
-        "L13:F135532"
+        "L15:F63157",
+        "L12:F140175",
+        "L16:F45664"
       ],
       "by_layer": [
         1,
@@ -724,8 +724,8 @@
       "name": "analytical_exclusive",
       "size": 2,
       "features": [
-        "L7:F34044",
-        "L13:F116941"
+        "L13:F116941",
+        "L7:F34044"
       ],
       "by_layer": [
         0,
@@ -786,9 +786,9 @@
       "name": "cognitive_reframe_exclusive",
       "size": 3,
       "features": [
+        "L4:F64237",
         "L5:F15544",
-        "L10:F160355",
-        "L4:F64237"
+        "L10:F160355"
       ],
       "by_layer": [
         0,
@@ -917,9 +917,9 @@
       "name": "fiction_exclusive",
       "size": 5,
       "features": [
-        "L6:F21972",
-        "L5:F30818",
         "L13:F101420",
+        "L5:F30818",
+        "L6:F21972",
         "L17:F111317",
         "L14:F28942"
       ],
@@ -1587,33 +1587,6 @@
     }
   },
   "jb_vs_ctrl_contrast": {
-    "analytical": {
-      "jb_top50": 18,
-      "ctrl_top50": 16,
-      "intersection": 9,
-      "jb_specific": 9,
-      "ctrl_specific": 7,
-      "jb_specific_frac": 0.5,
-      "overlap_frac": 0.5
-    },
-    "completion": {
-      "jb_top50": 18,
-      "ctrl_top50": 17,
-      "intersection": 12,
-      "jb_specific": 6,
-      "ctrl_specific": 5,
-      "jb_specific_frac": 0.333,
-      "overlap_frac": 0.667
-    },
-    "cognitive_reframe": {
-      "jb_top50": 18,
-      "ctrl_top50": 17,
-      "intersection": 11,
-      "jb_specific": 7,
-      "ctrl_specific": 6,
-      "jb_specific_frac": 0.389,
-      "overlap_frac": 0.611
-    },
     "roleplay": {
       "jb_top50": 20,
       "ctrl_top50": 17,
@@ -1631,6 +1604,33 @@
       "ctrl_specific": 7,
       "jb_specific_frac": 0.45,
       "overlap_frac": 0.55
+    },
+    "cognitive_reframe": {
+      "jb_top50": 18,
+      "ctrl_top50": 17,
+      "intersection": 11,
+      "jb_specific": 7,
+      "ctrl_specific": 6,
+      "jb_specific_frac": 0.389,
+      "overlap_frac": 0.611
+    },
+    "completion": {
+      "jb_top50": 18,
+      "ctrl_top50": 17,
+      "intersection": 12,
+      "jb_specific": 6,
+      "ctrl_specific": 5,
+      "jb_specific_frac": 0.333,
+      "overlap_frac": 0.667
+    },
+    "analytical": {
+      "jb_top50": 18,
+      "ctrl_top50": 16,
+      "intersection": 9,
+      "jb_specific": 9,
+      "ctrl_specific": 7,
+      "jb_specific_frac": 0.5,
+      "overlap_frac": 0.5
     }
   }
 }
