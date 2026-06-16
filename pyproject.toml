@@ -37,6 +37,17 @@ dev = [
   "pytest-cov >=3",
 ]
 
+# Refusal LLM judge — light by default. The API/Ollama path needs only litellm;
+# in-process GPU inference is opt-in (transformers via `steering`, or vllm).
+judge = [
+  "litellm >= 1.40",          # ApiBackend: OpenRouter / OpenAI / Anthropic / served-vLLM / Ollama
+]
+
+judge-vllm = [
+  "litellm >= 1.40",
+  "vllm >= 0.6",              # LocalBackend in-process GPU (heavy; Blackwell needs a recent build)
+]
+
 steering = [
   "torch >= 2.0",
   "transformers >= 4.50.0",
