@@ -1,0 +1,32 @@
+{
+  "model": "google/gemma-3-4b-it",
+  "layer": 15,
+  "position": -2,
+  "r_hat_norm": 3101.1982421875,
+  "categories": {
+    "harmless": {
+      "n": 100,
+      "act_norm_mean": 36475.484375,
+      "act_norm_std": 1414.055908203125,
+      "proj_mean": -32967.8359375,
+      "proj_std": 1278.4727783203125,
+      "proj_absmean": 32967.8359375
+    },
+    "harmful": {
+      "n": 50,
+      "act_norm_mean": 33217.3125,
+      "act_norm_std": 854.4520263671875,
+      "proj_mean": -29467.474609375,
+      "proj_std": 796.0364990234375,
+      "proj_absmean": 29467.474609375
+    },
+    "harmful+jb": {
+      "n": 150,
+      "act_norm_mean": 35042.7109375,
+      "act_norm_std": 1184.8148193359375,
+      "proj_mean": -31237.517578125,
+      "proj_std": 1151.9688720703125,
+      "proj_absmean": 31237.517578125
+    }
+  }
+}

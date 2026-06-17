@@ -1,0 +1,28 @@
+{
+  "model": "Qwen/Qwen3-4B",
+  "layer": 18,
+  "position": -1,
+  "r_hat_norm": 15.135361671447754,
+  "cosines": {
+    "harmless": {
+      "n": 100,
+      "cos_meanact_rhat": 0.03156613931059837,
+      "mean_act_norm": 48.27374267578125
+    },
+    "harmful": {
+      "n": 50,
+      "cos_meanact_rhat": 0.3100943863391876,
+      "mean_act_norm": 51.769866943359375
+    },
+    "harmful+jb": {
+      "n": 150,
+      "cos_meanact_rhat": 0.22334739565849304,
+      "mean_act_norm": 49.360477447509766
+    },
+    "overall": {
+      "n": 300,
+      "cos_meanact_rhat": 0.17786355316638947,
+      "mean_act_norm": 48.89027404785156
+    }
+  }
+}

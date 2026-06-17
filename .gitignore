@@ -173,3 +173,11 @@ Thumbs.db
 data/results/pipeline_runs_qwen/**/graph_data/
 data/results/pipeline_runs_qwen/**/01_direction/
 data/results/pipeline_runs_qwen/**/02_attribution/graphs/
+
+# Redundant Stage-02 resume state (duplicates attribution_results.json)
+**/02_attribution/attribution_checkpoint*.json
+
+# Per-variant Stage-2 attribution_results.json (~7MB each, regenerable from the
+# gitignored graphs). The distilled net values live in {model}_var_nets.json.
+data/results/pipeline_runs/*_var_*/02_attribution/attribution_results.json
+data/results/pipeline_runs_qwen/*_var_*/02_attribution/attribution_results.json

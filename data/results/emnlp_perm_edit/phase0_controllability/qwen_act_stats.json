@@ -1,0 +1,32 @@
+{
+  "model": "Qwen/Qwen3-4B",
+  "layer": 18,
+  "position": -1,
+  "r_hat_norm": 15.135361671447754,
+  "categories": {
+    "harmless": {
+      "n": 100,
+      "act_norm_mean": 50.227020263671875,
+      "act_norm_std": 1.2807978391647339,
+      "proj_mean": 1.5238158702850342,
+      "proj_std": 3.253249168395996,
+      "proj_absmean": 2.9741055965423584
+    },
+    "harmful": {
+      "n": 50,
+      "act_norm_mean": 52.266605377197266,
+      "act_norm_std": 0.7037464380264282,
+      "proj_mean": 16.053546905517578,
+      "proj_std": 1.462690830230713,
+      "proj_absmean": 16.053546905517578
+    },
+    "harmful+jb": {
+      "n": 150,
+      "act_norm_mean": 50.48176956176758,
+      "act_norm_std": 0.819183886051178,
+      "proj_mean": 11.0245361328125,
+      "proj_std": 3.0156710147857666,
+      "proj_absmean": 11.0245361328125
+    }
+  }
+}

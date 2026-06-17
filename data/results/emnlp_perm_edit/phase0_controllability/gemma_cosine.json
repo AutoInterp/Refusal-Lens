@@ -1,0 +1,28 @@
+{
+  "model": "google/gemma-3-4b-it",
+  "layer": 15,
+  "position": -2,
+  "r_hat_norm": 3101.1982421875,
+  "cosines": {
+    "harmless": {
+      "n": 100,
+      "cos_meanact_rhat": -0.9040880799293518,
+      "mean_act_norm": 36465.27734375
+    },
+    "harmful": {
+      "n": 50,
+      "cos_meanact_rhat": -0.8872279524803162,
+      "mean_act_norm": 33212.96484375
+    },
+    "harmful+jb": {
+      "n": 150,
+      "cos_meanact_rhat": -0.8915876150131226,
+      "mean_act_norm": 35035.83203125
+    },
+    "overall": {
+      "n": 300,
+      "cos_meanact_rhat": -0.89533931016922,
+      "mean_act_norm": 35203.71875
+    }
+  }
+}

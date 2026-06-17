@@ -1,0 +1,90 @@
+{
+  "model": "Qwen/Qwen3-4B",
+  "layer": 18,
+  "position": -1,
+  "outlier_dim": 22,
+  "norms": {
+    "full": 15.135361671447754,
+    "outlier": 1.4186652898788452,
+    "complement": 15.06872844696045
+  },
+  "directions": {
+    "full": {
+      "norm": 15.135361671447754,
+      "per_category": {
+        "harmless": {
+          "proj_mean": 1.523815631866455,
+          "proj_std": 3.253249406814575,
+          "cos_meanact": 0.031566161662340164
+        },
+        "harmful": {
+          "proj_mean": 16.05354881286621,
+          "proj_std": 1.4626904726028442,
+          "cos_meanact": 0.31009435653686523
+        },
+        "harmful+jb": {
+          "proj_mean": 11.0245361328125,
+          "proj_std": 3.0156712532043457,
+          "cos_meanact": 0.22334742546081543
+        }
+      },
+      "cos_meanact_overall": 0.17786355316638947
+    },
+    "outlier": {
+      "norm": 1.4186652898788452,
+      "per_category": {
+        "harmless": {
+          "proj_mean": -0.08729822933673859,
+          "proj_std": 0.7188349962234497,
+          "cos_meanact": -0.0018083996837958694
+        },
+        "harmful": {
+          "proj_mean": 1.0448459386825562,
+          "proj_std": 0.30826857686042786,
+          "cos_meanact": 0.02018250711262226
+        },
+        "harmful+jb": {
+          "proj_mean": 0.4956456422805786,
+          "proj_std": 0.4301185607910156,
+          "cos_meanact": 0.010041346773505211
+        }
+      },
+      "cos_meanact_overall": 0.008035634644329548
+    },
+    "complement": {
+      "norm": 15.06872844696045,
+      "per_category": {
+        "harmless": {
+          "proj_mean": 1.5387730598449707,
+          "proj_std": 3.2302019596099854,
+          "cos_meanact": 0.03187599778175354
+        },
+        "harmful": {
+          "proj_mean": 16.026168823242188,
+          "proj_std": 1.4567464590072632,
+          "cos_meanact": 0.3095654845237732
+        },
+        "harmful+jb": {
+          "proj_mean": 11.026622772216797,
+          "proj_std": 3.002845525741577,
+          "cos_meanact": 0.22338971495628357
+        }
+      },
+      "cos_meanact_overall": 0.17789354920387268
+    }
+  },
+  "act_norm": {
+    "harmless": {
+      "mean": 50.227020263671875,
+      "std": 1.2807981967926025
+    },
+    "harmful": {
+      "mean": 52.266605377197266,
+      "std": 0.7037466764450073
+    },
+    "harmful+jb": {
+      "mean": 50.481773376464844,
+      "std": 0.8191837072372437
+    }
+  }
+}
