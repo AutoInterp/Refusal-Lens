@@ -60,6 +60,8 @@ def test_extract_and_compare_nets():
     print("PASS test_extract_and_compare_nets")
 
 
+from assemble_compare_frontend import parse_condition, build_compare_manifest  # noqa: E402
+
 import importlib.util  # noqa: E402
 
 
@@ -78,8 +80,34 @@ def test_resolve_run_name():
     print("PASS test_resolve_run_name")
 
 
+def test_parse_condition():
+    assert parse_condition("000_bare_single") == ("000", "bare")
+    assert parse_condition("012_jb_fiction_single") == ("012", "jb_fiction")
+    assert parse_condition("003_ctrl_analytical") == ("003", "ctrl_analytical")
+    assert parse_condition("garbage") is None
+    print("PASS test_parse_condition")
+
+
+def test_build_compare_manifest_intersection():
+    colA = {"label": "G-cmpl", "dir": "run_gemma_complement_L15/05_frontend",
+            "model": "gemma", "target": "complement",
+            "graphs": [{"slug": "000_bare_single", "prompt": "p0"},
+                       {"slug": "000_jb_fiction_single", "prompt": "p0"}]}
+    colB = {"label": "Qwen", "dir": "run_emnlp_qwen_L18_20260522/05_frontend",
+            "model": "qwen", "target": "full",
+            "graphs": [{"slug": "000_bare_single", "prompt": "p0"}]}  # no jb_fiction
+    m = build_compare_manifest([colA, colB], title="t")
+    assert [p["idx"] for p in m["prompts"]] == ["000"]
+    assert m["conditions"] == ["bare"]                    # jb_fiction not in ALL columns
+    assert m["columns"][0]["slugmap"]["000_bare"] == "000_bare_single"
+    assert "000_jb_fiction" not in m["columns"][0]["slugmap"]
+    print("PASS test_build_compare_manifest_intersection")
+
+
 if __name__ == "__main__":
     test_build_variant_directions()
     test_extract_and_compare_nets()
     test_resolve_run_name()
+    test_parse_condition()
+    test_build_compare_manifest_intersection()
     print("ALL PASS")
