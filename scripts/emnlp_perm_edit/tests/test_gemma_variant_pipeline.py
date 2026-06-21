@@ -60,7 +60,26 @@ def test_extract_and_compare_nets():
     print("PASS test_extract_and_compare_nets")
 
 
+import importlib.util  # noqa: E402
+
+
+def _load_push_module():
+    path = HERE.parents[2] / "pipeline" / "push_graph_data.py"
+    spec = importlib.util.spec_from_file_location("push_graph_data", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_resolve_run_name():
+    push = _load_push_module()
+    assert push.resolve_run_name("run_gemma_complement_L15", Path("/x/gemma_var_complement")) == "run_gemma_complement_L15"
+    assert push.resolve_run_name(None, Path("/x/gemma_var_complement")) == "gemma_var_complement"
+    print("PASS test_resolve_run_name")
+
+
 if __name__ == "__main__":
     test_build_variant_directions()
     test_extract_and_compare_nets()
+    test_resolve_run_name()
     print("ALL PASS")

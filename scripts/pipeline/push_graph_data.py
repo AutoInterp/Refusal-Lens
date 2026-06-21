@@ -57,6 +57,10 @@ def parse_args():
     p.add_argument("--subcircuits-run", type=Path, default=None,
                    help="Different run for subcircuits.json (default: --run-dir)")
     p.add_argument("--dataset-repo", type=str, default=DEFAULT_DATASET_REPO)
+    p.add_argument("--run-name", type=str, default=None,
+                   help="Override the HF run-id (default: run-dir basename). "
+                        "Use when the local run-dir name differs from the desired "
+                        "HF run id, e.g. gemma_var_complement -> run_gemma_complement_L15.")
     p.add_argument("--dry-run", action="store_true",
                    help="Gzip + stage only; do not upload")
     p.add_argument("--keep-staging", action="store_true",
@@ -114,12 +118,17 @@ def preflight_auth(api, dataset_repo: str, dry_run: bool) -> None:
         sys.exit(1)
 
 
+def resolve_run_name(run_name_arg, run_dir):
+    """HF run-id = explicit --run-name override, else the run-dir basename."""
+    return run_name_arg or Path(run_dir).name
+
+
 def main():
     from huggingface_hub import HfApi, create_repo
 
     args = parse_args()
     run_dir = args.run_dir.resolve()
-    run_name = run_dir.name
+    run_name = resolve_run_name(args.run_name, run_dir)
     sc_run = (args.subcircuits_run or run_dir).resolve()
 
     # Required sources — resolved from --source choice.
