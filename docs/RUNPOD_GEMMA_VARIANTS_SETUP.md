@@ -11,17 +11,23 @@ to HF `moon70/refusal-lens-graphs`.
 Three variants × 50 prompts each at L15, float32 + save-graphs, plus 05 pack
 and HF push per variant:
 
+Grounded in observed smoke throughput (A40, batch 64: attribution ≈15–19 s/graph,
+05 pack ≈9 s/graph CPU). Each variant = 550 graphs (50 prompts × 11 conditions);
+three variants = 1,650 graphs.
+
 | step | est. wall |
 |---|---|
-| setup + model/circuit-tracer fork download | ~0.5 h |
+| setup + model/circuit-tracer fork download (one-time, cached on volume) | ~0.5 h |
 | ensure_gemma_variant_directions (CPU) | < 1 min |
-| complement attribution (50 prompts, A40) | ~1–1.5 h |
-| full attribution (50 prompts) | ~1–1.5 h |
-| outlier attribution (50 prompts) | ~0.5–1 h |
-| 05 pack + HF push × 3 | ~0.2 h |
-| **Total** | **~3–5 h** |
+| attribution × 3 variants (550 graphs each, ~15–19 s/graph; batch 128 helps) | ~7–9 h |
+| 05 pack × 3 (550 graphs each, ~9 s/graph, CPU-bound — does not speed up on a bigger GPU) | ~3.5–4 h |
+| HF push × 3 + .pt purge | ~0.3 h |
+| **Total** | **~9–14 h** |
 
-≈ **$2–6** at ~$0.79–1.19/h (A40/A6000 community). Smoke test ≈ 15 min ≈ $0.20.
+≈ **$8–16** at ~$0.79–1.19/h (A40/A6000 community). Smoke test ≈ 15 min ≈ $0.20.
+Fully resumable on the network volume (already-pushed variants are skipped on
+re-run), so a long run survives disconnects/preemption. To cut attribution wall
+time, an H100 speeds up the GPU steps but **not** the ~4 h CPU packing floor.
 
 **VRAM**: Gemma-3-4B in float32 (~16 GB) + gemma-scope transcoders +
 circuit-tracer transformer-lens backend + attribution buffers. Fits comfortably
