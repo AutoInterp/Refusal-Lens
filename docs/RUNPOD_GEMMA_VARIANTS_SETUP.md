@@ -92,6 +92,21 @@ python3 -c "import circuit_tracer, transformers, huggingface_hub; print('imports
 > If `uv` is not available: `pip install uv -q` first, or fall back to
 > `pip install -e vendor/circuit-tracer -q`.
 
+> **CUDA driver mismatch (common on RunPod).** If the CUDA sanity check errors
+> with *"NVIDIA driver on your system is too old (found version 120NN)"*, the
+> fresh venv pulled the default PyPI torch (built for a newer CUDA, e.g. 12.8)
+> than the pod's driver supports. This happens on any template — `pip install -e .`
+> re-pulls the latest torch regardless. Check the driver's CUDA with `nvidia-smi`
+> (top-right, e.g. *CUDA Version: 12.4*), then install a matching torch build:
+> ```bash
+> pip uninstall -y torch torchvision
+> pip install torch --index-url https://download.pytorch.org/whl/cu124   # use cuNNN matching the driver (cu121 if unsure)
+> ```
+> The fork needs only `torch>=2.0` and no torchvision, so this is safe; re-run the
+> two sanity checks. Alternative: create the venv with
+> `python3 -m venv .venv --system-site-packages` (and use plain `pip`, not `uv`,
+> for the fork) to reuse the template's driver-matched torch instead of downloading one.
+
 ## 4. Preflight checks (run ALL before spending GPU time)
 
 ```bash
