@@ -23,9 +23,9 @@ and HF push per variant:
 
 ≈ **$2–6** at ~$0.79–1.19/h (A40/A6000 community). Smoke test ≈ 15 min ≈ $0.20.
 
-**VRAM**: Gemma-2-2B (~4 GB bf16) + circuit-tracer transformer-lens backend;
-float32 attribution buffers. Fits comfortably on a **48 GB card**. An H100 80 GB
-also works but is overkill and more expensive.
+**VRAM**: Gemma-3-4B in float32 (~16 GB) + gemma-scope transcoders +
+circuit-tracer transformer-lens backend + attribution buffers. Fits comfortably
+on a **48 GB card**. An H100 80 GB also works but is overkill and more expensive.
 
 **Disk**: **150 GB network volume** at `/workspace`. Actual footprint ≈ 30 GB
 (HF cache ~20 GB + venv ~5 GB + repo ~3 GB + `.pt` graphs per variant ~1–2 GB
