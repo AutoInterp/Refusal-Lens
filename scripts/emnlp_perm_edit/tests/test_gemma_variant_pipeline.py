@@ -29,11 +29,10 @@ def test_build_variant_directions():
     assert nz == [443], nz
     # complement zeros dim 443
     assert float(v["complement"][443]) == 0.0
-    # outlier carries ~90% of the (magnitude) norm of full
-    # NOTE: with spike=-2790.53 and scale=3.0 the synthetic ratio is ~0.9985 not ~0.90;
-    # tolerance widened to 0.11 so the assertion covers both synthetic (~0.9985) and
-    # real-data (~0.90) regimes while still catching a non-dominant outlier.
-    assert abs(r[443].abs().item() / r.norm().item() - 0.90) < 0.11
+    # the outlier is the dominant direction (on real Gemma data ‖outlier‖/‖full‖ ≈ 0.90;
+    # the synthetic fixture's exact ratio depends on the noise scale, so assert dominance
+    # rather than pinning to 0.90 — this is the real invariant build_variant_directions relies on).
+    assert r[443].abs().item() / r.norm().item() > 0.85
     print("PASS test_build_variant_directions")
 
 
