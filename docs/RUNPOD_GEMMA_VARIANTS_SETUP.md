@@ -214,9 +214,12 @@ assembly step for that variant without investigating.
 - A failed step does NOT abort the run — the orchestrator continues to the next
   variant. Failures are recorded in `.GEMMA_VARIANTS_FAILED.txt`.
 - **To resume after a crash/preemption: just re-run the launcher.**
-  Attribution uses `--resume` (incremental checkpoints). Already-pushed variants
-  are not re-pushed (their run-dirs' `02_attribution/attribution_results.json`
-  will be present, so the gate step will re-run and skip the attribution).
+  Re-running skips any variant that already completed and was pushed to HF
+  (detected via a per-variant `.VARIANT_PUSHED` marker written after the purge
+  step), so it will NOT hit the Stage-05 missing-graphs error on a completed
+  variant. Only incomplete variants are resumed; their attribution uses
+  `--resume` (incremental checkpoints). To force a re-run of a completed
+  variant: `rm data/results/pipeline_runs/gemma_var_<v>/.VARIANT_PUSHED`.
 - If only the watcher died, re-run it — if the DONE marker already exists it
   commits/pushes immediately.
 

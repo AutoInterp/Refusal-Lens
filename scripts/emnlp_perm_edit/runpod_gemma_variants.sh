@@ -28,6 +28,10 @@ $PY scripts/emnlp_perm_edit/ensure_gemma_variant_directions.py || { echo "direct
 
 for v in $VARIANTS; do
   RD=$RUNS/gemma_var_$v
+  if [ -f "$RD/.VARIANT_PUSHED" ]; then
+    echo "[$v] already pushed (marker present); skipping. rm $RD/.VARIANT_PUSHED to force a re-run."
+    continue
+  fi
   echo "############ VARIANT=$v  $(date) ############"
   ATTR="$PY scripts/pipeline/02_run_attribution.py --run-dir $RD \
     --n-prompts $NPROMPTS --skip-multi-graph --target-layer 15 \
@@ -67,6 +71,7 @@ for v in $VARIANTS; do
 
   echo "---- $v purge .pt to free disk ----"
   rm -rf "$RD/02_attribution/graphs"
+  touch "$RD/.VARIANT_PUSHED"
   echo "$v DONE $(date)"
 done
 
