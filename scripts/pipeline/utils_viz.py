@@ -461,6 +461,8 @@ def stage_frontend(
             f'<script src="./overlap-annotate.js{_v("overlap-annotate.js")}" defer></script>\n'
             f'<script src="./subcircuit-panel.js{_v("subcircuit-panel.js")}" defer></script>\n'
             f'<script src="./feature-cart.js{_v("feature-cart.js")}" defer></script>\n'
+            f'<link rel="stylesheet" href="./compact-mode.css{_v("compact-mode.css")}">\n'
+            f'<script src="./compact-mode.js{_v("compact-mode.js")}" defer></script>\n'
         )
         marker = "<script src='./util.js'></script>"
         # Re-inject if the marker is present and an existing injection (any
@@ -480,6 +482,7 @@ def stage_frontend(
                 "overlap-colors.css", "subcircuit-panel.css", "feature-cart.css",
                 "fetch-override.js", "gzip-fetch.js", "overlap-annotate.js",
                 "subcircuit-panel.js", "feature-cart.js",
+                "compact-mode.css", "compact-mode.js",
             ):
                 v = _v(name)
                 if not v:

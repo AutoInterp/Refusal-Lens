@@ -1,0 +1,8 @@
+/* Compact column mode for the N-way compare harness. Activated when the viewer
+   is loaded with ?compact=1 (compact-mode.js sets html.rl-compact). The parent
+   compare bar drives prompt/condition selection, so the per-iframe nav chrome
+   is hidden and the gridsnap graph container fills the column. */
+html.rl-compact { height: 100%; }
+html.rl-compact body { margin: 0; height: 100%; }
+html.rl-compact .nav { display: none !important; }
+html.rl-compact .cg { height: 100vh; width: 100%; }
