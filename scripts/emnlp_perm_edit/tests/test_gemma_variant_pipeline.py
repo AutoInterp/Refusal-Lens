@@ -9,6 +9,7 @@ sys.path.insert(0, str(HERE.parents[1]))                 # scripts/emnlp_perm_ed
 sys.path.insert(0, str(HERE.parents[2] / "pipeline"))    # scripts/pipeline
 
 from ensure_gemma_variant_directions import build_variant_directions  # noqa: E402
+from verify_variant_nets import extract_nets, compare_nets  # noqa: E402
 
 
 def _fake_r_full(d=2560, spike_dim=443, spike=-2790.53):
@@ -36,6 +37,30 @@ def test_build_variant_directions():
     print("PASS test_build_variant_directions")
 
 
+def test_extract_and_compare_nets():
+    attribution = {"results": [
+        {"prompt_idx": 0, "conditions": {
+            "bare": {"graphs": {"single": {"net": 900.0}}},
+            "jb_fiction": {"graphs": {"single": {"net": 500.0}}}}},
+        {"prompt_idx": 1, "conditions": {
+            "bare": {"graphs": {"single": {"net": 920.0}}}}},
+    ]}
+    recs = extract_nets(attribution)
+    assert {"prompt_idx": 0, "condition": "bare", "net": 900.0} in recs
+    assert len(recs) == 3
+    ref = [{"prompt_idx": 0, "condition": "bare", "net": 908.0},
+           {"prompt_idx": 0, "condition": "jb_fiction", "net": 480.0},
+           {"prompt_idx": 1, "condition": "bare", "net": 915.0}]
+    good = compare_nets(recs, ref)
+    assert good["ok"] is True, good
+    # a sign-flipped / wrong-magnitude run must fail the gate
+    bad = compare_nets([{"prompt_idx": 0, "condition": "bare", "net": -48000.0},
+                        {"prompt_idx": 1, "condition": "bare", "net": -47000.0}], ref)
+    assert bad["ok"] is False, bad
+    print("PASS test_extract_and_compare_nets")
+
+
 if __name__ == "__main__":
     test_build_variant_directions()
+    test_extract_and_compare_nets()
     print("ALL PASS")
