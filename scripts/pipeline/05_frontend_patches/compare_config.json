@@ -1,0 +1,10 @@
+{
+  "title": "Refusal circuit: Gemma variants vs Qwen",
+  "dataset_repo": "moon70/refusal-lens-graphs",
+  "columns": [
+    {"label": "Gemma · complement (no #443)", "run": "run_gemma_complement_L15", "model": "gemma", "target": "complement"},
+    {"label": "Gemma · full (+#443)",          "run": "run_gemma_full_L15",       "model": "gemma", "target": "full"},
+    {"label": "Gemma · outlier #443 only",     "run": "run_gemma_outlier_L15",    "model": "gemma", "target": "outlier"},
+    {"label": "Qwen (L18)",                     "run": "run_emnlp_qwen_L18_20260522", "model": "qwen", "target": "full"}
+  ]
+}

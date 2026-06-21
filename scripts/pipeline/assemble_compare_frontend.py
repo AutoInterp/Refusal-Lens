@@ -63,3 +63,57 @@ def build_compare_manifest(columns: list[dict], title: str) -> dict:
         "prompts": [{"idx": i, "text": ptext0.get(i, "")} for i in idxs],
         "conditions": conds,
     }
+
+
+def _fetch_run(run: str, dataset_repo: str, out_base: Path) -> None:
+    """Shell out to fetch_graph_data.py so each column is a self-contained viewer."""
+    cmd = [sys.executable, str(Path(__file__).resolve().parent / "fetch_graph_data.py"),
+           "--run", run, "--dataset-repo", dataset_repo, "--out-base", str(out_base)]
+    print("  $", " ".join(cmd))
+    subprocess.run(cmd, check=True)
+
+
+def _load_column_graphs(run_dir: Path) -> list[dict]:
+    """Read a fetched column's data/graph-metadata.json -> [{slug, prompt}]."""
+    md = run_dir / "05_frontend" / "data" / "graph-metadata.json"
+    meta = json.loads(md.read_text())
+    return [{"slug": g["slug"], "prompt": g.get("prompt", "")} for g in meta["graphs"]]
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Assemble the N-column compare site")
+    ap.add_argument("--config", type=Path, default=PATCHES / "compare_config.json")
+    ap.add_argument("--out", type=Path,
+                    default=Path(__file__).resolve().parents[2] / "data/results/compare_3way")
+    ap.add_argument("--skip-fetch", action="store_true",
+                    help="Reuse already-fetched columns under --out (no HF download)")
+    args = ap.parse_args()
+
+    cfg = json.loads(args.config.read_text())
+    args.out.mkdir(parents=True, exist_ok=True)
+
+    columns = []
+    for col in cfg["columns"]:
+        run = col["run"]
+        if not args.skip_fetch:
+            _fetch_run(run, cfg["dataset_repo"], args.out)
+        run_dir = args.out / run
+        if not (run_dir / "05_frontend" / "data" / "graph-metadata.json").exists():
+            print(f"ERROR: no graph-metadata for column '{run}' under {run_dir}")
+            sys.exit(1)
+        columns.append({"label": col["label"], "dir": f"{run}/05_frontend",
+                        "model": col["model"], "target": col["target"],
+                        "graphs": _load_column_graphs(run_dir)})
+
+    manifest = build_compare_manifest(columns, title=cfg.get("title", "compare"))
+    (args.out / "compare_manifest.json").write_text(json.dumps(manifest, indent=2))
+    shutil.copy2(PATCHES / "compare_multi.html", args.out / "compare.html")
+
+    print(f"\nAssembled {len(columns)} columns; "
+          f"{len(manifest['prompts'])} shared prompts x {len(manifest['conditions'])} conditions.")
+    print(f"Serve:\n  cd {args.out}\n  python3 -m http.server 8000")
+    print(f"  open http://localhost:8000/compare.html")
+
+
+if __name__ == "__main__":
+    main()
