@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -66,11 +67,19 @@ def build_compare_manifest(columns: list[dict], title: str) -> dict:
 
 
 def _fetch_run(run: str, dataset_repo: str, out_base: Path) -> None:
-    """Shell out to fetch_graph_data.py so each column is a self-contained viewer."""
+    """Shell out to fetch_graph_data.py so each column is a self-contained viewer.
+
+    Each run is ~551 small files; HF's Xet backend requests a read-token per file,
+    which blows the 1000-requests/5-min API quota across 4 runs. Disable Xet
+    (regular CDN download path) to cut the per-file token requests, and pass the
+    HF token through so we get the authenticated (higher) rate-limit tier.
+    """
+    env = dict(os.environ)
+    env.setdefault("HF_HUB_DISABLE_XET", "1")
     cmd = [sys.executable, str(Path(__file__).resolve().parent / "fetch_graph_data.py"),
            "--run", run, "--dataset-repo", dataset_repo, "--out-base", str(out_base)]
     print("  $", " ".join(cmd))
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, env=env)
 
 
 def _load_column_graphs(run_dir: Path) -> list[dict]:
@@ -95,10 +104,24 @@ def main():
     columns = []
     for col in cfg["columns"]:
         run = col["run"]
-        if not args.skip_fetch:
-            _fetch_run(run, cfg["dataset_repo"], args.out)
         run_dir = args.out / run
-        if not (run_dir / "05_frontend" / "data" / "graph-metadata.json").exists():
+        md_path = run_dir / "05_frontend" / "data" / "graph-metadata.json"
+        # Idempotent/resumable: a run that already finished fetching (its
+        # graph-metadata.json exists) is skipped, so re-running after an HF
+        # rate-limit pause only fetches what's still missing.
+        if not args.skip_fetch and not md_path.exists():
+            try:
+                _fetch_run(run, cfg["dataset_repo"], args.out)
+            except subprocess.CalledProcessError:
+                print(f"\nERROR: fetch for '{run}' failed (often HF 429 rate limit — "
+                      f"1000 requests/5 min). Cached progress is saved. Wait ~5 minutes "
+                      f"and re-run this script: already-fetched runs are skipped and the "
+                      f"partial run resumes from cache. Ensure HF_TOKEN is exported for the "
+                      f"higher authenticated limit.")
+                sys.exit(1)
+        elif md_path.exists():
+            print(f"  [{run}] already fetched (graph-metadata.json present); skipping.")
+        if not md_path.exists():
             print(f"ERROR: no graph-metadata for column '{run}' under {run_dir}")
             sys.exit(1)
         columns.append({"label": col["label"], "dir": f"{run}/05_frontend",
