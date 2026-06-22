@@ -6,3 +6,8 @@ html.rl-compact { height: 100%; }
 html.rl-compact body { margin: 0; height: 100%; }
 html.rl-compact .nav { display: none !important; }
 html.rl-compact .cg { height: 100vh; width: 100%; }
+/* Hide the Stage-07 subcircuit panel + Stage-08 ablation cart overlays — they
+   float over the graph and aren't part of the 3/4-way comparison view. (The
+   normal single-graph viewer, loaded without ?compact=1, still shows them.) */
+html.rl-compact .subcircuit-panel,
+html.rl-compact .feature-cart-panel { display: none !important; }
