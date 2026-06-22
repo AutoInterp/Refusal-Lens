@@ -13,8 +13,18 @@
   .toolbar select { padding: 4px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; background: #fff; }
   .toolbar .status { margin-left: auto; color: #666; font-size: 12px; font-family: ui-monospace, monospace; }
   .cols { display: flex; height: calc(100vh - 50px); overflow-x: auto; }
-  .col { flex: 1 0 460px; display: flex; flex-direction: column; min-width: 460px; border-left: 1px solid #ddd; }
+  .col { flex: 0 0 auto; width: 480px; min-width: 460px; display: flex; flex-direction: column;
+    position: relative; border-left: 1px solid #ddd; }
   .col:first-child { border-left: none; }
+  /* Drag-to-widen handle on each column's right edge. Columns are fixed-width
+     (flex: 0 0 auto), so widening one grows the total row width — the .cols row
+     scrolls horizontally — and leaves the other columns at their width. */
+  .col-resizer { position: absolute; top: 0; right: 0; width: 7px; height: 100%;
+    cursor: col-resize; z-index: 20; }
+  .col-resizer:hover { background: rgba(33, 150, 243, 0.25); }
+  body.col-resizing { cursor: col-resize; user-select: none; }
+  /* While dragging, stop the iframes from swallowing the mousemove. */
+  body.col-resizing iframe { pointer-events: none; }
   .col-label { padding: 6px 12px; font-size: 12px; font-weight: 600; text-transform: uppercase;
     letter-spacing: .03em; background: #eceff1; color: #263238; border-bottom: 1px solid #ddd;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -36,6 +46,29 @@
 
 <script>
 let M;
+
+// Append a right-edge drag handle that resizes only its own column. Iframes
+// swallow mousemove, so we disable their pointer-events for the drag duration.
+function addResizer(colEl) {
+  const h = document.createElement('div');
+  h.className = 'col-resizer';
+  colEl.appendChild(h);
+  h.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = colEl.getBoundingClientRect().width;
+    document.body.classList.add('col-resizing');
+    const onMove = ev => { colEl.style.width = Math.max(460, startW + ev.clientX - startX) + 'px'; };
+    const onUp = () => {
+      document.body.classList.remove('col-resizing');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
 async function init() {
   const resp = await fetch('./compare_manifest.json');
   if (!resp.ok) throw new Error('compare_manifest.json fetch failed: ' + resp.status);
@@ -61,8 +94,14 @@ async function init() {
     d.className = 'col ' + col.model + '_' + col.target;
     d.innerHTML = `<div class="col-label" title="${col.label}">${col.label}</div>`
                 + `<iframe id="frame-${i}" title="${col.label}"></iframe>`;
+    addResizer(d);
     cols.appendChild(d);
   });
+  // Default each column to an equal share of the viewport (>= its min-width);
+  // from there each is independently widenable via its right-edge handle.
+  const colEls = [...cols.querySelectorAll('.col')];
+  const initW = Math.max(460, Math.floor(cols.clientWidth / Math.max(1, colEls.length)));
+  colEls.forEach(c => { c.style.width = initW + 'px'; });
 
   ps.addEventListener('change', update);
   cs.addEventListener('change', update);
