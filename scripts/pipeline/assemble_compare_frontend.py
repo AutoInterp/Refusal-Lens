@@ -9,6 +9,7 @@ CLI (main) does fetch + filesystem assembly.
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import os
 import re
@@ -19,6 +20,15 @@ from pathlib import Path
 
 PATCHES = Path(__file__).resolve().parent / "05_frontend_patches"
 _SLUG_RE = re.compile(r"^(\d+)_(.+)$")
+
+# Uniform gridsnap layout baked into every column's graphs so the per-column
+# subviews stack consistently for side-by-side reading: attribution graph on top
+# (full width), then Input/Output features, then Token Predictions, then Subgraph.
+# Format is circuit-tracer's serializeGrid: "<class><xxyyWWhh>" (each 2 digits),
+# joined by "_". maxX is 14 (from init-cg.js default gridData), so w=14 = full width.
+# initGridsnap reads this from each graph's qParams.gridsnap (init-cg.js).
+STACK_GRIDSNAP = ("link-graph00001410_node-connections00101405"
+                  "_feature-detail00151407_subgraph00221403")
 
 
 def parse_condition(slug: str, mode_suffixes=("single", "multi")):
@@ -89,13 +99,41 @@ def _load_column_graphs(run_dir: Path) -> list[dict]:
     return [{"slug": g["slug"], "prompt": g.get("prompt", "")} for g in meta["graphs"]]
 
 
+def _apply_gridsnap_layout(run_dir: Path, layout: str) -> int:
+    """Bake qParams.gridsnap=<layout> into every packed graph JSON of a column so
+    all columns render the same stacked subview layout. Idempotent; handles both
+    .json and .json.gz. Returns the number of graphs updated."""
+    gd = run_dir / "05_frontend" / "graph_data"
+    n = 0
+    for f in sorted(gd.glob("*.json*")):
+        if f.name == "graph-metadata.json":
+            continue
+        if f.suffix == ".gz":
+            with gzip.open(f, "rt", encoding="utf-8") as fh:
+                d = json.load(fh)
+            d.setdefault("qParams", {})["gridsnap"] = layout
+            with gzip.open(f, "wt", encoding="utf-8") as fh:
+                json.dump(d, fh)
+        else:
+            d = json.loads(f.read_text())
+            d.setdefault("qParams", {})["gridsnap"] = layout
+            f.write_text(json.dumps(d))
+        n += 1
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser(description="Assemble the N-column compare site")
     ap.add_argument("--config", type=Path, default=PATCHES / "compare_config.json")
     ap.add_argument("--out", type=Path,
                     default=Path(__file__).resolve().parents[2] / "data/results/compare_3way")
     ap.add_argument("--skip-fetch", action="store_true",
-                    help="Reuse already-fetched columns under --out (no HF download)")
+                    help="Reuse already-fetched columns under --out (no HF download). "
+                         "Combine with the default gridsnap baking to re-layout columns "
+                         "already on disk without re-downloading.")
+    ap.add_argument("--no-gridsnap", action="store_true",
+                    help="Do not bake the uniform stacked subview layout into the graphs "
+                         "(leave circuit-tracer's default graph-left layout).")
     args = ap.parse_args()
 
     cfg = json.loads(args.config.read_text())
@@ -127,6 +165,9 @@ def main():
         columns.append({"label": col["label"], "dir": f"{run}/05_frontend",
                         "model": col["model"], "target": col["target"],
                         "graphs": _load_column_graphs(run_dir)})
+        if not args.no_gridsnap:
+            n = _apply_gridsnap_layout(run_dir, STACK_GRIDSNAP)
+            print(f"  [{run}] applied stacked gridsnap layout to {n} graphs")
 
     manifest = build_compare_manifest(columns, title=cfg.get("title", "compare"))
     (args.out / "compare_manifest.json").write_text(json.dumps(manifest, indent=2))
