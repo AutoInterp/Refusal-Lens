@@ -24,5 +24,5 @@ def test_trace_html_structure():
     html = (PATCHES / "trace.html").read_text()
     for needle in ["trace_manifest.json", "frame-bare", "frame-jb",
                    "compact=1", "Refusal-centric", "Suppression", "Amplification",
-                   "evidence"]:
+                   "evidence", "overlap_bucket", "overlap"]:
         assert needle in html, needle

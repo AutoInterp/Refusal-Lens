@@ -84,6 +84,45 @@ def test_classify_suppression_amplification_and_neutral():
     assert feats[(3, 20)]["class"] == "amplification"
 
 
+def test_suppression_evidence_shows_raw_jb_edge_not_gated():
+    """A suppression feature whose jb edge is ranked outside top-N must still show
+    its raw aggregated jb edge in the evidence row (not the gated 0.0)."""
+    L = {"node_id": "L", "feature_type": "logit"}
+    # (1,10): bare edge +50 (top-1 in bare).  In jb its raw edge is +3 but ranked #2
+    # (2,20): jb edge -100 (top-1 in jb), absent from bare
+    bare = _graph(
+        [_feat("1_10_2", 10, 1, 2, 10.0), L],
+        [{"source": "1_10_2", "target": "L", "weight": 50.0}])
+    jb = _graph(
+        [_feat("1_10_5", 10, 1, 5, 2.0), _feat("2_20_5", 20, 2, 5, 8.0), L],
+        [{"source": "1_10_5", "target": "L", "weight": 3.0},   # raw +3, ranked #2
+         {"source": "2_20_5", "target": "L", "weight": -100.0}])  # ranked #1
+    out = classify_pair(bare, jb, top_n=1, delta=0.30)
+    feats = {(r["layer"], r["feature"]): r for r in out["evidence"]}
+    # (1,10) should be suppression: is_refusal from bare +50 (top-1), act drops 10->2
+    assert (1, 10) in feats, "suppression feature must appear in evidence"
+    assert feats[(1, 10)]["class"] == "suppression"
+    # edge_bare must be the raw +50, not zero
+    assert feats[(1, 10)]["edge_bare"] == 50.0
+    # edge_jb must be the raw +3, NOT the gated 0.0
+    assert feats[(1, 10)]["edge_jb"] == 3.0, (
+        f"expected raw jb edge 3.0, got {feats[(1, 10)]['edge_jb']}")
+
+
+def test_evidence_rows_include_overlap_bucket():
+    """Evidence rows must carry overlap_bucket (empty string when absent from nodes)."""
+    L = {"node_id": "L", "feature_type": "logit"}
+    n_ob = {**_feat("1_10_2", 10, 1, 2, 10.0), "overlap_bucket": "high"}
+    bare = _graph([n_ob, L], [{"source": "1_10_2", "target": "L", "weight": 50.0}])
+    jb = _graph([_feat("1_10_5", 10, 1, 5, 2.0), L],
+                [{"source": "1_10_5", "target": "L", "weight": 50.0}])
+    out = classify_pair(bare, jb, top_n=20, delta=0.30)
+    feats = {(r["layer"], r["feature"]): r for r in out["evidence"]}
+    assert (1, 10) in feats
+    assert "overlap_bucket" in feats[(1, 10)]
+    assert feats[(1, 10)]["overlap_bucket"] == "high"
+
+
 from trace_classifier import bake_trace_classes  # noqa: E402
 
 

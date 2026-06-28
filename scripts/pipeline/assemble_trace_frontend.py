@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
-import re
 import shutil
 from pathlib import Path
 
@@ -87,8 +86,14 @@ def main():
             with gzip.open(gd / f"{slug}.json.gz", "wt", encoding="utf-8") as fh:
                 json.dump(baked, fh)
         pairs.append(pair)
-        n = sum(1 for r in pair["evidence"] if r["class"] != "neutral")
-        print(f"  [{idx} {jbc}] {n} classified features")
+        feat_counts: dict[str, int] = {}
+        for r in pair["evidence"]:
+            feat_counts[r["class"]] = feat_counts.get(r["class"], 0) + 1
+        total = sum(feat_counts.values())
+        breakdown = ", ".join(f"{feat_counts[k]} {k}"
+                              for k in ("refusal_centric", "suppression", "amplification")
+                              if k in feat_counts)
+        print(f"  [{idx} {jbc}] {total} features ({breakdown})")
 
     # 4. manifest + trace.html
     manifest = {"title": cfg.get("title", "Bare→Comply Trace"), "viewer": "viewer", "pairs": pairs}

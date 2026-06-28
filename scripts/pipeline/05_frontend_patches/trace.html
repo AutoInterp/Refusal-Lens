@@ -54,7 +54,7 @@ async function init() {
     sel.appendChild(o);
   });
   sel.addEventListener("change", () => show(+sel.value));
-  show(0);
+  if (M.pairs.length) show(0);
 }
 function show(i) {
   const p = M.pairs[i];
@@ -64,10 +64,11 @@ function show(i) {
   document.getElementById("jb-lab").textContent = "Jailbroken · " + p.jb_class;
   const rows = (p.evidence || []).map(e =>
     `<tr class="${e.class}"><td>L${e.layer}</td><td>#${e.feature}</td>` +
-    `<td class="cls">${e.class}</td><td>${e.edge_bare.toFixed(1)}</td><td>${e.edge_jb.toFixed(1)}</td>` +
-    `<td>${e.act_bare.toFixed(1)}</td><td>${e.act_jb.toFixed(1)}</td></tr>`).join("");
+    `<td class="cls">${e.class}</td><td>${(e.edge_bare ?? 0).toFixed(1)}</td><td>${(e.edge_jb ?? 0).toFixed(1)}</td>` +
+    `<td>${(e.act_bare ?? 0).toFixed(1)}</td><td>${(e.act_jb ?? 0).toFixed(1)}</td>` +
+    `<td>${e.overlap_bucket || ""}</td></tr>`).join("");
   document.getElementById("evidence").innerHTML =
-    `<table><thead><tr><th>layer</th><th>feature</th><th>class</th><th>edge(bare)</th><th>edge(jb)</th><th>act(bare)</th><th>act(jb)</th></tr></thead><tbody>${rows}</tbody></table>`;
+    `<table><thead><tr><th>layer</th><th>feature</th><th>class</th><th>edge(bare)</th><th>edge(jb)</th><th>act(bare)</th><th>act(jb)</th><th>overlap</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 init().catch(e => { document.getElementById("evidence").textContent = "error: " + e.message; });
 </script>

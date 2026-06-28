@@ -1,9 +1,8 @@
-"""Pure classifier for the bare→comply trace view.
+"""Aggregate feature edges from circuit-tracer graphs and classify features for
+the bare→comply trace view.
 
-Given parsed circuit-tracer graph dicts (bare + jailbroken) for one prompt,
-classify each feature node as refusal_centric / suppression / amplification /
-neutral, using the signed edge into the refusal logit and the bare↔jb activation
-delta. Pure and unit-tested; the assembler does I/O.
+Provides aggregation (aggregate_features), classification (classify_pair), and
+class-baking (bake_trace_classes). Pure and unit-tested; the assembler does I/O.
 """
 from __future__ import annotations
 
@@ -11,14 +10,23 @@ FEATURE_TYPE = "cross layer transcoder"
 
 
 def find_refusal_logit_id(graph) -> str | None:
+    """Return node_id of the refusal logit node.
+
+    Prefers the node whose ``is_target_logit`` is truthy; falls back to the
+    first node whose ``feature_type`` is ``"logit"``.
+    """
+    first_logit = None
     for n in graph["nodes"]:
         if n.get("feature_type") == "logit":
-            return n["node_id"]
-    return None
+            if n.get("is_target_logit"):
+                return n["node_id"]
+            if first_logit is None:
+                first_logit = n["node_id"]
+    return first_logit
 
 
 def aggregate_features(graph) -> dict:
-    """key (layer:int, feature:int) -> {edge: float, act: float, node_ids: [str]}."""
+    """key (layer:int, feature:int) -> {edge, act, node_ids, overlap_bucket}."""
     logit_id = find_refusal_logit_id(graph)
     # node_id -> (layer, feature) for feature nodes only
     nid_to_key = {}
@@ -28,17 +36,19 @@ def aggregate_features(graph) -> dict:
             continue
         key = (int(n["layer"]), int(n["feature"]))
         nid_to_key[n["node_id"]] = key
-        e = agg.setdefault(key, {"edge": 0.0, "act": 0.0, "node_ids": []})
+        e = agg.setdefault(key, {"edge": 0.0, "act": 0.0, "node_ids": [], "overlap_bucket": ""})
         e["act"] = max(e["act"], float(n.get("activation") or 0.0))
         e["node_ids"].append(n["node_id"])
+        if not e["overlap_bucket"]:
+            e["overlap_bucket"] = n.get("overlap_bucket", "")
     if logit_id is not None:
-        for l in graph["links"]:
-            if l.get("target") != logit_id:
+        for link in graph["links"]:
+            if link.get("target") != logit_id:
                 continue
-            key = nid_to_key.get(l.get("source"))
+            key = nid_to_key.get(link.get("source"))
             if key is None:
                 continue
-            agg[key]["edge"] += float(l.get("weight") or 0.0)
+            agg[key]["edge"] += float(link.get("weight") or 0.0)
     return agg
 
 
@@ -59,6 +69,7 @@ def _signed(agg, top_n):
 
 def classify_pair(bare, jb, *, top_n=20, delta=0.30, model_token_gate=False) -> dict:
     agg_b, agg_j = aggregate_features(bare), aggregate_features(jb)
+    # sign_b / sign_j are the TOP-N gated maps used ONLY for the classification decision
     sign_b, sign_j = _signed(agg_b, top_n), _signed(agg_j, top_n)
 
     gate_pos = model_token_positions(bare) if model_token_gate else None
@@ -72,6 +83,7 @@ def classify_pair(bare, jb, *, top_n=20, delta=0.30, model_token_gate=False) -> 
     for key in keys:
         eb = agg_b.get(key, {}).get("act", 0.0)
         ej = agg_j.get(key, {}).get("act", 0.0)
+        # Gated edges — used ONLY for classification (top-N sign gate)
         edge_b = sign_b.get(key, 0.0)
         edge_j = sign_j.get(key, 0.0)
         pro_edge = edge_b if edge_b > 0 else (edge_j if (key not in agg_b and edge_j > 0) else 0.0)
@@ -96,12 +108,19 @@ def classify_pair(bare, jb, *, top_n=20, delta=0.30, model_token_gate=False) -> 
         for nid in agg_b.get(key, {}).get("node_ids", []):
             bare_cls[nid] = bcls
         for nid in agg_j.get(key, {}).get("node_ids", []):
-            jb_cls[nid] = cls if cls != "neutral" else ("refusal_centric" if is_refusal else "neutral")
+            jb_cls[nid] = cls
 
-        if cls != "neutral" or is_refusal:
+        # cls=="neutral" implies is_refusal is False, so the two conditions are equivalent
+        if cls != "neutral":
+            # Use raw aggregated edges (not gated) so evidence shows true contribution
+            raw_edge_b = agg_b.get(key, {}).get("edge", 0.0)
+            raw_edge_j = agg_j.get(key, {}).get("edge", 0.0)
+            ob = ((agg_b.get(key) or {}).get("overlap_bucket")
+                  or (agg_j.get(key) or {}).get("overlap_bucket", ""))
             evidence.append({"layer": key[0], "feature": key[1], "class": cls,
-                             "edge_bare": edge_b, "edge_jb": edge_j,
-                             "act_bare": eb, "act_jb": ej})
+                             "edge_bare": raw_edge_b, "edge_jb": raw_edge_j,
+                             "act_bare": eb, "act_jb": ej,
+                             "overlap_bucket": ob})
     evidence.sort(key=lambda r: ({"amplification": 0, "suppression": 1,
                                   "refusal_centric": 2, "neutral": 3}[r["class"]],
                                  -max(r["act_bare"], r["act_jb"])))
