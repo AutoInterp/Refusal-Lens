@@ -18,3 +18,11 @@ def test_trace_highlight_css_colors_all_classes():
     for needle in ['data-rl-trace="refusal_centric"', 'data-rl-trace="suppression"',
                    'data-rl-trace="amplification"', 'data-rl-trace="neutral"']:
         assert needle in css, needle
+
+
+def test_trace_html_structure():
+    html = (PATCHES / "trace.html").read_text()
+    for needle in ["trace_manifest.json", "frame-bare", "frame-jb",
+                   "compact=1", "Refusal-centric", "Suppression", "Amplification",
+                   "evidence"]:
+        assert needle in html, needle

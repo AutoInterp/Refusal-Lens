@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Refusal-Lens · Bare→Comply Trace</title>
+<style>
+  html, body { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #222; }
+  .toolbar { display: flex; gap: 14px; align-items: center; padding: 10px 18px; background: #fafafa; border-bottom: 1px solid #ddd; font-size: 13px; }
+  .toolbar h1 { margin: 0; padding-right: 16px; font-size: 14px; font-weight: 600; border-right: 1px solid #ccc; }
+  .toolbar select { padding: 4px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
+  .legend { display: flex; gap: 12px; margin-left: auto; font-size: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+  .panels { display: flex; height: 60vh; }
+  .panel { flex: 1; display: flex; flex-direction: column; border-left: 1px solid #ddd; }
+  .panel:first-child { border-left: none; }
+  .panel .lab { padding: 6px 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; background: #eceff1; border-bottom: 1px solid #ddd; }
+  .panel.bare .lab { background: #eceff1; color: #37474f; }
+  .panel.jb .lab { background: #fff3e0; color: #bf360c; }
+  iframe { flex: 1; border: none; background: #fff; }
+  .evidence { height: calc(40vh - 50px); overflow: auto; padding: 8px 18px; }
+  table { border-collapse: collapse; font-size: 12px; width: 100%; }
+  th, td { border: 1px solid #e0e0e0; padding: 3px 7px; text-align: right; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  tr.refusal_centric td.cls { color: #d32f2f; } tr.suppression td.cls { color: #1565c0; } tr.amplification td.cls { color: #2e7d32; }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <h1>Refusal-Lens · Trace</h1>
+    <label>Prompt: <select id="pair-select"></select></label>
+    <span class="legend">
+      <span><i class="sw" style="background:#d32f2f"></i>Refusal-centric</span>
+      <span><i class="sw" style="background:#1565c0"></i>Suppression</span>
+      <span><i class="sw" style="background:#2e7d32"></i>Amplification</span>
+    </span>
+  </div>
+  <div class="panels">
+    <div class="panel bare"><div class="lab">Bare (refused)</div><iframe id="frame-bare" title="bare"></iframe></div>
+    <div class="panel jb"><div class="lab" id="jb-lab">Jailbroken</div><iframe id="frame-jb" title="jb"></iframe></div>
+  </div>
+  <div class="evidence" id="evidence">loading…</div>
+<script>
+let M;
+async function init() {
+  const r = await fetch("./trace_manifest.json");
+  if (!r.ok) throw new Error("trace_manifest.json: " + r.status);
+  M = await r.json();
+  const sel = document.getElementById("pair-select");
+  M.pairs.forEach((p, i) => {
+    const o = document.createElement("option");
+    o.value = i; o.text = `idx ${p.idx} · ${p.jb_class} · ${p.request.slice(0, 50)}`;
+    sel.appendChild(o);
+  });
+  sel.addEventListener("change", () => show(+sel.value));
+  show(0);
+}
+function show(i) {
+  const p = M.pairs[i];
+  const base = "./" + M.viewer + "/index.html";
+  document.getElementById("frame-bare").src = `${base}?slug=${encodeURIComponent(p.bare_slug)}&compact=1`;
+  document.getElementById("frame-jb").src = `${base}?slug=${encodeURIComponent(p.jb_slug)}&compact=1`;
+  document.getElementById("jb-lab").textContent = "Jailbroken · " + p.jb_class;
+  const rows = (p.evidence || []).map(e =>
+    `<tr class="${e.class}"><td>L${e.layer}</td><td>#${e.feature}</td>` +
+    `<td class="cls">${e.class}</td><td>${e.edge_bare.toFixed(1)}</td><td>${e.edge_jb.toFixed(1)}</td>` +
+    `<td>${e.act_bare.toFixed(1)}</td><td>${e.act_jb.toFixed(1)}</td></tr>`).join("");
+  document.getElementById("evidence").innerHTML =
+    `<table><thead><tr><th>layer</th><th>feature</th><th>class</th><th>edge(bare)</th><th>edge(jb)</th><th>act(bare)</th><th>act(jb)</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+init().catch(e => { document.getElementById("evidence").textContent = "error: " + e.message; });
+</script>
+</body>
+</html>
