@@ -82,3 +82,16 @@ def test_classify_suppression_amplification_and_neutral():
     assert feats[(1, 10)]["class"] == "suppression"
     assert feats[(1, 10)]["act_bare"] == 10.0 and feats[(1, 10)]["act_jb"] == 1.0
     assert feats[(3, 20)]["class"] == "amplification"
+
+
+from trace_classifier import bake_trace_classes  # noqa: E402
+
+
+def test_bake_sets_class_and_defaults_neutral():
+    g = _graph([_feat("1_10_2", 10, 1, 2, 5.0), _feat("1_11_2", 11, 1, 2, 5.0),
+                {"node_id": "L", "feature_type": "logit"}], [])
+    bake_trace_classes(g, {"1_10_2": "refusal_centric"})
+    by_id = {n["node_id"]: n for n in g["nodes"]}
+    assert by_id["1_10_2"]["rl_trace_class"] == "refusal_centric"
+    assert by_id["1_11_2"]["rl_trace_class"] == "neutral"      # default
+    assert "rl_trace_class" not in by_id["L"]                  # logit untouched

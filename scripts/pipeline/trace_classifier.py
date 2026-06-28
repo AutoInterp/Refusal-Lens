@@ -106,3 +106,10 @@ def classify_pair(bare, jb, *, top_n=20, delta=0.30, model_token_gate=False) -> 
                                   "refusal_centric": 2, "neutral": 3}[r["class"]],
                                  -max(r["act_bare"], r["act_jb"])))
     return {"bare": bare_cls, "jb": jb_cls, "evidence": evidence}
+
+
+def bake_trace_classes(graph, node_class_map):
+    for n in graph["nodes"]:
+        if n.get("feature_type") == FEATURE_TYPE:
+            n["rl_trace_class"] = node_class_map.get(n["node_id"], "neutral")
+    return graph
