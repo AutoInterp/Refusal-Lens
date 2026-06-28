@@ -47,3 +47,38 @@ def test_aggregate_feature_without_logit_link_has_zero_edge():
     agg = aggregate_features(_graph(nodes, []))
     assert agg[(1, 10)]["edge"] == 0.0
     assert agg[(1, 10)]["act"] == 5.0
+
+
+from trace_classifier import classify_pair, model_token_positions  # noqa: E402
+
+
+def test_model_token_positions():
+    g = _graph([], [], tokens=["<bos>", "user", "model", "\n"])
+    # last 'model' at index 2 -> positions {2, 3}
+    assert model_token_positions(g) == {2, 3}
+
+
+def test_classify_suppression_amplification_and_neutral():
+    L = {"node_id": "L", "feature_type": "logit"}
+    # A: pro-refusal (edge +50), active in bare (10) drops in jb (1) -> suppression on jb side
+    # B: anti-refusal (edge -40), absent in bare, active in jb (8) -> amplification
+    # F: jb-only, small edge (-5) ranked OUT by top_n=2 -> unsigned -> neutral (tests the gate)
+    bare = _graph(
+        [_feat("1_10_2", 10, 1, 2, 10.0), L],
+        [{"source": "1_10_2", "target": "L", "weight": 50.0}])
+    jb = _graph(
+        [_feat("1_10_5", 10, 1, 5, 1.0), _feat("3_20_5", 20, 3, 5, 8.0),
+         _feat("4_40_5", 40, 4, 5, 8.0), L],
+        [{"source": "1_10_5", "target": "L", "weight": 50.0},
+         {"source": "3_20_5", "target": "L", "weight": -40.0},
+         {"source": "4_40_5", "target": "L", "weight": -5.0}])
+    out = classify_pair(bare, jb, top_n=2, delta=0.30)
+    assert out["bare"]["1_10_2"] == "refusal_centric"
+    assert out["jb"]["1_10_5"] == "suppression"
+    assert out["jb"]["3_20_5"] == "amplification"
+    assert out["jb"]["4_40_5"] == "neutral"          # ranked out of top_n -> unsigned
+    # evidence has one row per non-neutral feature, with both edges/acts
+    feats = {(r["layer"], r["feature"]): r for r in out["evidence"]}
+    assert feats[(1, 10)]["class"] == "suppression"
+    assert feats[(1, 10)]["act_bare"] == 10.0 and feats[(1, 10)]["act_jb"] == 1.0
+    assert feats[(3, 20)]["class"] == "amplification"
