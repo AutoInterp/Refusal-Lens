@@ -181,3 +181,6 @@ data/results/pipeline_runs_qwen/**/02_attribution/graphs/
 # gitignored graphs). The distilled net values live in {model}_var_nets.json.
 data/results/pipeline_runs/*_var_*/02_attribution/attribution_results.json
 data/results/pipeline_runs_qwen/*_var_*/02_attribution/attribution_results.json
+
+# Assembled trace-viewer build artifact — regenerable via assemble_trace_frontend.py
+data/results/trace_bare_to_comply/
