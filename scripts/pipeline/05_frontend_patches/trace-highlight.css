@@ -1,0 +1,11 @@
+/* Trace view node coloring. trace-highlight.js sets data-rl-trace on each
+   rendered feature node; these rules paint it. !important beats the vendor's
+   overlap-annotate coloring so the trace view shows a clean 3-color + gray scheme. */
+.link-graph text.node[data-rl-trace="refusal_centric"],
+.link-graph circle[data-rl-trace="refusal_centric"] { fill: #d32f2f !important; }
+.link-graph text.node[data-rl-trace="suppression"],
+.link-graph circle[data-rl-trace="suppression"] { fill: #1565c0 !important; }
+.link-graph text.node[data-rl-trace="amplification"],
+.link-graph circle[data-rl-trace="amplification"] { fill: #2e7d32 !important; }
+.link-graph text.node[data-rl-trace="neutral"],
+.link-graph circle[data-rl-trace="neutral"] { fill: #b0bec5 !important; }
