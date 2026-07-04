@@ -76,18 +76,31 @@ of seed `s`, split the change in `u`'s contribution to `s` into two first-order 
 where  Δa_u = a^J_u − a^B_u ,  Δw = w^J − w^B ,  B = bare graph, J = jb graph.
 ```
 
-Deeper-than-one-hop upstream features get the same split applied along the depth-capped path
-(product rule, first order): the path's Δ is attributed to whichever single edge on the dominant
-path changed most — v2 keeps this to **direct parents (hop 1) for the passive/active label** and
-reports deeper contributors only with their signed Δ and hop (no passive/active label past hop 1,
-to stay strict). **Mechanism label** (hop-1):
+**Per-edge mechanism (the atomic unit), for any depth.** The clean two-term split above is a
+property of a *single edge*. So we classify **each edge** on a path by which term dominates its
+contribution-change:
 
-- **passive_cascade** — the **activation-change** term dominates (|Δa·w| ≥ (1+margin)·|a·Δw|) and
-  `u` moved consistently with the seed's change (a refusal driver that switched off for a
-  suppression seed; an anti-refusal driver that switched on for an amplification seed).
-- **active_inhibitor** — the **edge-weight-change** term dominates, or `u` is newly active in jb
-  with an opposing-sign edge (`a^B_u≈0, a^J_u>0`).
-- **mixed** — neither term dominates by `margin`.
+- edge is **passive** — the **activation-change** term dominates (`|Δa_u · w| ≥ (1+margin)·|a_u · Δw|`):
+  the upstream feature itself switched off/on, the connection is unchanged.
+- edge is **active** — the **edge-weight-change** term dominates, or the source is newly active in jb
+  with an opposing-sign edge (`a^B ≈ 0, a^J > 0`): the connection strength/sign itself changed.
+
+**Feature mechanism = propagate along the dominant path, for hops 1…k (general in k).** For a
+depth-`k` path `u ⇝ s`, the feature's mechanism is the composition of its edges' labels along its
+**dominant path** (the path carrying the largest |contribution| to `s`):
+
+- **passive_cascade** — every edge on the dominant path is *passive*. The seed's change genuinely
+  cascades upstream through features switching off/on, connections intact. (This is the
+  "does it cascade?" signal: a passive_cascade at hop 3 means the chain stayed passive all the way.)
+- **active_inhibitor** — the dominant path contains an *active* edge; the mechanism becomes active at
+  the **first** (closest-to-seed) active edge — that link is where an active mechanism breaks into an
+  otherwise-passive chain.
+- **mixed** — a feature reaches `s` by two or more paths of comparable |contribution| whose composed
+  labels disagree (e.g. one passive_cascade, one active_inhibitor). Reported explicitly, never
+  silently collapsed.
+
+At hop 1 this reduces exactly to the single-edge split. The per-edge labels are the same clean,
+two-term determinations at every depth — we never try to collapse a whole path's Δ into one split.
 
 ### 4.3 Strictness levers (defaults; all in config)
 
@@ -118,8 +131,8 @@ stays legible:
 
 - **hue** = the seed class the feature feeds (red / blue / green),
 - **fill-opacity** = hop-distance gradient (`opacity = 1/(1+hop)`; fainter = deeper upstream),
-- **border** = mechanism: solid = seed or `passive_cascade`; dashed = `active_inhibitor`;
-  (idea-2 refusal/amplification upstream with no delta role → solid).
+- **border** = mechanism: solid = seed or `passive_cascade`; dashed = `active_inhibitor`; dotted =
+  `mixed`; idea-2 `refusal_centric` upstream (no delta role, mechanism `none`) → solid.
 
 The baked node fields: v1's `rl_trace_class` (seeds) is kept; v2 adds `rl_trace_upstream_class`
 (dominant seed-class it feeds, or absent), `rl_trace_hop` (int, 0 for seeds), `rl_trace_mechanism`
@@ -191,9 +204,11 @@ The UI states plainly that highlights are **hypotheses, not proven** (attributio
 
 - **Pure unit tests** `scripts/emnlp_perm_edit/tests/test_trace_propagate.py` on synthetic DAGs:
   two-hop signed path-sum (`w1·w2`), depth cap (a hop-4 path excluded at `k=3`), `tau` threshold,
-  the completeness invariant (`kept + dropped + error-leakage == total`), the Δa·w vs a·Δw split and
-  `passive_cascade`/`active_inhibitor`/`mixed` assignment incl. the `margin` boundary,
-  dominant-class resolution under sign cancellation, and `bake_upstream_classes` field-setting.
+  the completeness invariant (`kept + dropped + error-leakage == total`), the per-edge Δa·w vs a·Δw
+  split incl. the `margin` boundary, **multi-hop mechanism propagation** (an all-passive hop-3 chain
+  → `passive_cascade`; an active edge at an intermediate hop → `active_inhibitor` from that edge; two
+  disagreeing strong paths → `mixed`), dominant-class resolution under sign cancellation, and
+  `bake_upstream_classes` field-setting.
 - **Structural tests** (append to `test_trace_patches.py`): the depth slider element, the new
   evidence columns, and the hop/opacity/mechanism CSS classes.
 - **Integration smoke** `test_trace_assemble.py` (extend): on the real 4 graphs, assert upstream
