@@ -16,7 +16,10 @@
 - Seed→analysis mapping (fixed): `refusal_centric` → idea 2; `suppression` & `amplification` → idea 3. Each seed uses exactly one.
 - Classes/strings: seed classes unchanged (`refusal_centric`/`suppression`/`amplification`/`neutral`). New node fields: `rl_trace_upstream_class` (one of the three seed classes, or absent), `rl_trace_hop` (int; 0 for seeds), `rl_trace_mechanism` (`seed`|`passive_cascade`|`active_inhibitor`|`mixed`|`none`).
 - Edge labels (idea 3 atomic): `passive` (activation-change term dominates), `active` (weight-change term dominates, or newly-active source), `ambiguous` (neither dominates by `margin`).
-- Defaults in `trace_config.json`: `k=3`, `tau=0.10`, `margin=0.25`, opacity `1/(1+hop)`.
+- **Normalized propagation (required):** propagate `norm(s→t) = weight / (Σ_s' |weight(s'→t)| + error_into[t])`, NOT raw weights (raw path-products explode ~1e7 on real graphs). Contributions are bounded fractional influences.
+- **Threshold is an ABSOLUTE floor:** keep an ancestor iff `|contrib| ≥ tau` (default `tau=0.05`), NOT relative-to-total.
+- Per-feature aggregation across seeds = **max-|contrib|** (keep its sign), hop = min.
+- Defaults in `trace_config.json`: `k=3`, `tau=0.05`, `margin=0.25`, `top_n_display=25`, opacity `1/(1+hop)`.
 - Tests: CPU-only, pytest, `sys.path` insert of `scripts/pipeline` (test files at `scripts/emnlp_perm_edit/tests/` → repo root is `parents[3]`; the pipeline dir for imports is `parents[3]/"scripts/pipeline"`). Run with `.venv/bin/pytest`.
 - Depth 0 of the slider MUST reproduce the exact v1 view.
 
@@ -155,13 +158,14 @@ git commit -m "feat(trace-v2): feature-key digraph builder (positions aggregated
 **Interfaces:**
 - Consumes `build_key_graph` output.
 - Produces:
-  - `path_sums(parents, seed_key, k) -> {ancestor_key: (signed_contrib, hop)}` — sum over directed paths (length ≤ k) of the product of edge weights from ancestor to `seed_key`; `hop` = shortest edge-distance. Excludes the seed itself.
-  - `upstream_contributions(kg, seed_keys, *, k, tau) -> {"per_feature": {key: {"contrib": float, "hop": int}}, "coverage": float, "error_frac": float}` — aggregates `path_sums` across `seed_keys` (contrib summed, hop min), keeps only features with `|contrib| >= tau * total_abs_contrib`; `coverage` = kept_abs / total_abs; `error_frac` = Σ error_into over seeds / (Σ |direct feature-parent weights| over seeds + Σ error_into over seeds).
+  - `path_sums(parents, seed_key, k) -> {ancestor_key: (signed_contrib, hop)}` — sum over directed paths (length ≤ k) of the product of edge weights from ancestor to `seed_key`; `hop` = shortest edge-distance. Excludes the seed itself. Generic over any parents dict (raw or normalized).
+  - `normalized_parents(kg) -> {dst_key: {src_key: norm_weight}}` — per-target normalization `norm(s→t) = weight / (Σ_s' |weight(s'→t)| + error_into[t])`. **Required** so path-products stay bounded fractional influences.
+  - `upstream_contributions(kg, seed_keys, *, k, tau) -> {"per_feature": {key: {"contrib": float, "hop": int}}, "coverage": float, "error_frac": float}` — path-sums on the NORMALIZED parents, aggregates across `seed_keys` by **max-|contrib|** (keeping sign; hop = min), keeps features with `|contrib| >= tau` (**ABSOLUTE floor**, not relative); `coverage` = Σ kept |contrib| / Σ all |contrib|; `error_frac` = Σ error_into over seeds / (Σ |direct feature-parent weights| over seeds + Σ error_into over seeds).
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
-from trace_propagate import path_sums, upstream_contributions  # noqa: E402
+from trace_propagate import path_sums, normalized_parents, upstream_contributions  # noqa: E402
 
 
 def test_path_sums_products_and_hops():
@@ -178,15 +182,32 @@ def test_path_sums_respects_depth_cap():
     assert (0, 5) not in path_sums(parents, (2, 20), k=1)   # hop-2 path excluded at k=1
 
 
-def test_upstream_contributions_threshold_and_coverage():
-    parents = {(2, 20): {(1, 10): 4.0, (0, 5): -3.0, (9, 9): 0.5}, (1, 10): {(0, 5): 5.0}}
-    kg = {"parents": parents, "act": {}, "error_into": {(2, 20): 0.0}}
-    out = upstream_contributions(kg, [(2, 20)], k=3, tau=0.10)
-    # contribs: (1,10)=4, (0,5)=17, (9,9)=0.5 ; total=21.5 ; tau*total=2.15 -> drop (9,9)
+def test_normalized_parents_shares_and_error_dilution():
+    # (2,20) incoming |3|+|-1| = 4 -> shares 0.75 / -0.25
+    kg = {"parents": {(2, 20): {(1, 10): 3.0, (0, 5): -1.0}}, "act": {}, "error_into": {}}
+    npar = normalized_parents(kg)
+    assert npar[(2, 20)][(1, 10)] == 0.75 and npar[(2, 20)][(0, 5)] == -0.25
+    # error leakage dilutes the feature shares: 3 / (3 + 1) = 0.75
+    kg2 = {"parents": {(2, 20): {(1, 10): 3.0}}, "act": {}, "error_into": {(2, 20): 1.0}}
+    assert normalized_parents(kg2)[(2, 20)][(1, 10)] == 0.75
+
+
+def test_upstream_contributions_absolute_floor_and_coverage():
+    kg = {"parents": {(2, 20): {(1, 10): 3.0, (0, 5): -1.0}, (1, 10): {(0, 5): 2.0}},
+          "act": {}, "error_into": {}}
+    # normalized: (2,20)->(1,10)=0.75, (0,5)=-0.25 ; (1,10)->(0,5)=1.0
+    # path-sums: (1,10)=0.75 ; (0,5) = -0.25 + 0.75*1.0 = 0.5
+    out = upstream_contributions(kg, [(2, 20)], k=3, tau=0.6)   # absolute floor
     pf = out["per_feature"]
-    assert set(pf) == {(1, 10), (0, 5)}
-    assert pf[(0, 5)]["contrib"] == 17.0
-    assert abs(out["coverage"] - 21.0 / 21.5) < 1e-9
+    assert set(pf) == {(1, 10)}                                  # keep 0.75, drop 0.5
+    assert abs(pf[(1, 10)]["contrib"] - 0.75) < 1e-9
+    assert abs(out["coverage"] - 0.75 / 1.25) < 1e-9             # kept / (0.75+0.5)
+
+
+def test_upstream_contributions_error_frac():
+    kg = {"parents": {(2, 20): {(1, 10): 3.0}}, "act": {}, "error_into": {(2, 20): 1.0}}
+    out = upstream_contributions(kg, [(2, 20)], k=3, tau=0.1)
+    assert abs(out["error_frac"] - 0.25) < 1e-9                  # 1 / (3 + 1)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -219,19 +240,30 @@ def path_sums(parents, seed_key, k) -> dict:
     return {kk: (contrib[kk], hop[kk]) for kk in contrib}
 
 
+def normalized_parents(kg) -> dict:
+    """Per-target normalized parent weights: w / (Σ|feature incoming w| + error_into[t])."""
+    out: dict = {}
+    for dst, srcs in kg["parents"].items():
+        denom = sum(abs(w) for w in srcs.values()) + kg["error_into"].get(dst, 0.0)
+        if denom > 0:
+            out[dst] = {s: w / denom for s, w in srcs.items()}
+    return out
+
+
 def upstream_contributions(kg, seed_keys, *, k, tau) -> dict:
-    parents = kg["parents"]
+    nparents = normalized_parents(kg)
     agg_c: dict = {}
     agg_h: dict = {}
     for s in seed_keys:
-        for akey, (c, h) in path_sums(parents, s, k).items():
-            agg_c[akey] = agg_c.get(akey, 0.0) + c
+        for akey, (c, h) in path_sums(nparents, s, k).items():
+            if abs(c) > abs(agg_c.get(akey, 0.0)):      # aggregate by MAX-|contrib| (keep sign)
+                agg_c[akey] = c
             agg_h[akey] = min(agg_h.get(akey, h), h)
     total = sum(abs(v) for v in agg_c.values())
-    keep = {kk for kk, v in agg_c.items() if total > 0 and abs(v) >= tau * total}
+    keep = {kk for kk, v in agg_c.items() if abs(v) >= tau}   # ABSOLUTE floor
     per_feature = {kk: {"contrib": agg_c[kk], "hop": agg_h[kk]} for kk in keep}
     kept = sum(abs(agg_c[kk]) for kk in keep)
-    direct = sum(abs(w) for s in seed_keys for w in parents.get(s, {}).values())
+    direct = sum(abs(w) for s in seed_keys for w in kg["parents"].get(s, {}).values())
     err = sum(kg["error_into"].get(s, 0.0) for s in seed_keys)
     return {"per_feature": per_feature,
             "coverage": (kept / total) if total > 0 else 0.0,
@@ -241,13 +273,13 @@ def upstream_contributions(kg, seed_keys, *, k, tau) -> dict:
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `.venv/bin/pytest scripts/emnlp_perm_edit/tests/test_trace_propagate.py -v`
-Expected: PASS (4 tests).
+Expected: PASS (7 tests: build_key_graph + 2 path_sums + normalized_parents + 2 upstream_contributions).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add scripts/pipeline/trace_propagate.py scripts/emnlp_perm_edit/tests/test_trace_propagate.py
-git commit -m "feat(trace-v2): signed path-sum + idea-2 upstream contributions (threshold+coverage)"
+git commit -m "feat(trace-v2): normalized path-sum + idea-2 upstream contributions (absolute floor, coverage)"
 ```
 
 ---
