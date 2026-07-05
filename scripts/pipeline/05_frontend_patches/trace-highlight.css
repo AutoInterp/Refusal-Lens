@@ -9,3 +9,15 @@
 .link-graph circle[data-rl-trace="amplification"] { fill: #2e7d32 !important; }
 .link-graph text.node[data-rl-trace="neutral"],
 .link-graph circle[data-rl-trace="neutral"] { fill: #b0bec5 !important; }
+
+/* v2 upstream coloring: hue = upstream_class, opacity set inline by hop, border = mechanism. */
+.link-graph text.node[data-rl-upstream="refusal_centric"],
+.link-graph circle[data-rl-upstream="refusal_centric"] { fill: #d32f2f !important; }
+.link-graph text.node[data-rl-upstream="suppression"],
+.link-graph circle[data-rl-upstream="suppression"] { fill: #1565c0 !important; }
+.link-graph text.node[data-rl-upstream="amplification"],
+.link-graph circle[data-rl-upstream="amplification"] { fill: #2e7d32 !important; }
+.link-graph circle[data-rl-mech="active_inhibitor"] { stroke: #000; stroke-dasharray: 2 2; stroke-width: 1.5px; }
+.link-graph circle[data-rl-mech="mixed"] { stroke: #000; stroke-dasharray: 1 3; stroke-width: 1.5px; }
+.link-graph circle[data-rl-mech="passive_cascade"] { stroke: #000; stroke-width: 1px; }
+.rl-hop-hidden { display: none !important; }

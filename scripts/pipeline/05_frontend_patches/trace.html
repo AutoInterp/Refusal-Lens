@@ -24,12 +24,14 @@
   th, td { border: 1px solid #e0e0e0; padding: 3px 7px; text-align: right; }
   th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
   tr.refusal_centric td.cls { color: #d32f2f; } tr.suppression td.cls { color: #1565c0; } tr.amplification td.cls { color: #2e7d32; }
+  #coverage-line { padding: 4px 18px 10px; font-size: 12px; color: #555; }
 </style>
 </head>
 <body>
   <div class="toolbar">
     <h1>Refusal-Lens · Trace</h1>
     <label>Prompt: <select id="pair-select"></select></label>
+    <label>Depth: <input type="range" id="depth-slider" min="0" max="3" value="0" oninput="document.getElementById('depth-val').textContent=this.value; if(window.frames){for(const f of window.frames){try{f.rlSetDepth&&f.rlSetDepth(this.value)}catch(e){}}}"><span id="depth-val">0</span></label>
     <span class="legend">
       <span><i class="sw" style="background:#d32f2f"></i>Refusal-centric</span>
       <span><i class="sw" style="background:#1565c0"></i>Suppression</span>
@@ -41,6 +43,7 @@
     <div class="panel jb"><div class="lab" id="jb-lab">Jailbroken</div><iframe id="frame-jb" title="jb"></iframe></div>
   </div>
   <div class="evidence" id="evidence">loading…</div>
+  <div id="coverage-line"></div>
 <script>
 let M;
 async function init() {
@@ -64,11 +67,20 @@ function show(i) {
   document.getElementById("jb-lab").textContent = "Jailbroken · " + p.jb_class;
   const rows = (p.evidence || []).map(e =>
     `<tr class="${e.class}"><td>L${e.layer}</td><td>#${e.feature}</td>` +
-    `<td class="cls">${e.class}</td><td>${(e.edge_bare ?? 0).toFixed(1)}</td><td>${(e.edge_jb ?? 0).toFixed(1)}</td>` +
-    `<td>${(e.act_bare ?? 0).toFixed(1)}</td><td>${(e.act_jb ?? 0).toFixed(1)}</td>` +
-    `<td>${e.overlap_bucket || ""}</td></tr>`).join("");
+    `<td class="cls">${e.class}</td><td>${(e.edge_bare ?? 0).toFixed(1)}</td>` +
+    `<td>${(e.edge_jb ?? 0).toFixed(1)}</td><td>${(e.act_bare ?? 0).toFixed(1)}</td>` +
+    `<td>${(e.act_jb ?? 0).toFixed(1)}</td><td>${e.overlap_bucket || ""}</td>` +
+    `<td>${e.hop ?? 0}</td><td>${e.mechanism || "seed"}</td></tr>`).join("");
   document.getElementById("evidence").innerHTML =
-    `<table><thead><tr><th>layer</th><th>feature</th><th>class</th><th>edge(bare)</th><th>edge(jb)</th><th>act(bare)</th><th>act(jb)</th><th>overlap</th></tr></thead><tbody>${rows}</tbody></table>`;
+    `<table><thead><tr><th>layer</th><th>feature</th><th>class</th><th>edge(bare)</th><th>edge(jb)</th><th>act(bare)</th><th>act(jb)</th><th>overlap</th><th>hop</th><th>mechanism</th></tr></thead><tbody>${rows}</tbody></table>`;
+  // render the coverage/error honesty line (kept features explain X% of influence)
+  const cov = p.coverage || {}, ef = p.error_frac || {};
+  const covTxt = ["refusal_centric", "suppression", "amplification"]
+    .filter(c => c in cov)
+    .map(c => `${c}: coverage ${(cov[c] * 100).toFixed(0)}% · error ${((ef[c] || 0) * 100).toFixed(0)}%`)
+    .join("  |  ");
+  document.getElementById("coverage-line").textContent =
+    covTxt ? `Upstream influence explained — ${covTxt}` : "";
 }
 init().catch(e => { document.getElementById("evidence").textContent = "error: " + e.message; });
 </script>
