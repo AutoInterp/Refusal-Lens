@@ -7,6 +7,7 @@ sys.path.insert(0, str(HERE.parents[3] / "scripts/pipeline"))
 
 from trace_propagate import build_key_graph  # noqa: E402
 from trace_propagate import path_sums, normalized_parents, upstream_contributions  # noqa: E402
+from trace_propagate import edge_delta_label  # noqa: E402
 
 
 def _feat(node_id, feature, layer, activation):
@@ -74,3 +75,18 @@ def test_upstream_contributions_error_frac():
     kg = {"parents": {(2, 20): {(1, 10): 3.0}}, "act": {}, "error_into": {(2, 20): 1.0}}
     out = upstream_contributions(kg, [(2, 20)], k=3, tau=0.1)
     assert abs(out["error_frac"] - 0.25) < 1e-9                  # 1 / (3 + 1)
+
+
+def test_edge_delta_label_passive_active_ambiguous_newlyactive():
+    # passive: activation up, weight barely moves
+    r = edge_delta_label(10.0, 12.0, 2.0, 3.0, margin=0.25)
+    assert r["act_term"] == 5.0 and r["label"] == "passive"     # |5| >= 1.25*|-3|=3.75
+    # active: activation flat, weight drops
+    r = edge_delta_label(10.0, 4.0, 2.0, 2.0, margin=0.25)
+    assert r["act_term"] == 0.0 and r["label"] == "active"
+    # newly active source
+    r = edge_delta_label(0.0, 8.0, 0.0, 1.0, margin=0.25)
+    assert r["label"] == "active" and r["delta"] == 8.0
+    # ambiguous: neither term dominates by margin
+    r = edge_delta_label(10.0, 19.5, 2.0, 3.0, margin=0.25)   # act=5, edge=4.5
+    assert r["label"] == "ambiguous"

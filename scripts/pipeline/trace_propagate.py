@@ -100,3 +100,22 @@ def upstream_contributions(kg, seed_keys, *, k, tau) -> dict:
     return {"per_feature": per_feature,
             "coverage": (kept / total) if total > 0 else 0.0,
             "error_frac": (err / (direct + err)) if (direct + err) > 0 else 0.0}
+
+
+def edge_delta_label(w_bare, w_jb, a_bare, a_jb, *, margin, eps=1e-9) -> dict:
+    delta = w_jb - w_bare
+    if a_bare <= eps:
+        # source was inactive in bare; any jb connection is a new (active) mechanism
+        if a_jb > eps:
+            return {"delta": delta, "act_term": 0.0, "edge_term": delta, "label": "active"}
+        return {"delta": delta, "act_term": 0.0, "edge_term": delta, "label": "active"}
+    act_term = w_bare * (a_jb / a_bare - 1.0)
+    edge_term = delta - act_term
+    a, e = abs(act_term), abs(edge_term)
+    if a >= (1 + margin) * e:
+        label = "passive"
+    elif e >= (1 + margin) * a:
+        label = "active"
+    else:
+        label = "ambiguous"
+    return {"delta": delta, "act_term": act_term, "edge_term": edge_term, "label": label}
