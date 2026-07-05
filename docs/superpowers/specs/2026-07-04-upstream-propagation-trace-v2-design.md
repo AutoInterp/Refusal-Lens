@@ -52,22 +52,44 @@ seed is analyzed by both, so each upstream feature gets one unambiguous role.
 
 ### 4.1 Idea 2 — class-conditional upstream contribution (refusal_centric seeds)
 
-A seed's *incoming* edges are its input attribution. For upstream feature `u` and seed `s`, define
-the **depth-capped signed path-sum**:
+**Normalized edge weights (required — validated on real graphs).** Raw circuit-tracer weights are
+large and signed; multiplying them along paths *explodes* combinatorially (real 3-hop products
+reached ~10⁷ and a few huge paths dominated everything — coverage collapsed to 2 features / 23%).
+So we propagate **normalized** weights, matching circuit-tracer's own `influence` semantics. For each
+target `t`, normalize its incoming edges by the total incoming magnitude *including error leakage*:
 
 ```
-contrib(u → s) = Σ over directed paths u ⇝ s of length ≤ k   ( Π edge weights along the path )
+norm(s → t) = weight(s → t) / ( Σ_{s'} |weight(s' → t)|  +  error_into[t] )
 ```
 
-Computed by a single backward pass over `s`'s ancestor sub-DAG (process nodes in reverse
-topological order; `val[s]=1`; `val[u] += w(u→m)·val[m]` for each child edge `u→m`, only to depth
-`k`). `u` **inherits the seed's class with the path sign**: `contrib>0` → `u` supports the seed's
-role; `contrib<0` → `u` opposes it. Record `hop(u,s)` = shortest edge-distance `u`→`s`.
+Then a **signed path-sum of normalized weights** is a bounded **fractional influence** (the direct
+feature-parents' shares sum to ≤ 1; the remainder is the error/unexplained fraction):
+
+```
+contrib(u → s) = Σ over directed paths u ⇝ s of length ≤ k   ( Π norm weights along the path )
+```
+
+Computed by a single backward pass over `s`'s ancestor sub-DAG (`val[s]=1`;
+`val[u] += norm(u→m)·val[m]` for each child edge `u→m`, only to depth `k`). `u` **inherits the
+seed's class with the path sign**: `contrib>0` → `u` supports the seed's role; `contrib<0` → opposes
+it. Record `hop(u,s)` = shortest edge-distance `u`→`s`.
+
+**Empirical note — the pruned CLT graphs are shallow.** Because cross-layer transcoders write across
+many layers, early-layer (L0–L11) features are *direct* (hop-1) parents of the L14/L15 refusal seeds;
+on the real graphs hop 2 holds only a handful of ~0.001-magnitude ancestors and hop 3 is empty. v2's
+value is therefore realized mostly at **hop 1** (which already contains the early-layer non-refusal
+features of interest). The depth slider + 1…k mechanism machinery are still built and correct; deep
+cascades would require regenerating denser (less-pruned) graphs — out of scope, a future effort.
 
 ### 4.2 Idea 3 — delta decomposition (suppression & amplification seeds)
 
-Suppression/amplification are bare→jb *deltas*, so propagate the delta. For each upstream parent `u`
-of seed `s`, split the change in `u`'s contribution to `s` into two first-order terms:
+Suppression/amplification are bare→jb *deltas*, so propagate the delta. **Two separated concerns:**
+the **contribution magnitude / threshold** uses the *normalized* fractional influence of §4.1 —
+`Δ(u→s) = contrib_jb(u→s) − contrib_bare(u→s)` (difference of two bounded normalized path-sums,
+0 where the feature is absent from a graph). The **mechanism label** below is a property of the
+*raw* edge (did the activation or the connection change?), so the per-edge split uses raw weights and
+activations. For each upstream parent `u` of seed `s`, split the change in `u`'s raw contribution to
+`s` into two first-order terms:
 
 ```
 Δ(u → s)  =  Δa_u · w^B(u→s)        (activation-change term)
@@ -105,23 +127,34 @@ two-term determinations at every depth — we never try to collapse a whole path
 ### 4.3 Strictness levers (defaults; all in config)
 
 - **Depth cap** `k = 3`.
-- **Contribution threshold** `tau = 0.10`: keep `u` for seed `s` only if `|contrib(u→s)|` (idea 2)
-  or `|Δ(u→s)|` (idea 3) ≥ `tau ·` (seed's total incoming |attribution| resp. total |Δ|).
+- **Contribution threshold — ABSOLUTE floor** `tau = 0.05`: keep `u` for seed `s` only if
+  `|contrib(u→s)| ≥ tau` (idea 2) or `|Δ(u→s)| ≥ tau` (idea 3). Because contributions are now bounded
+  *fractional* influences, an absolute floor is meaningful ("explains ≥ 5 % of the seed's normalized
+  input"); a relative-to-total threshold is NOT used (with ~380 tiny contributors it kept nothing).
+  Validated on real graphs: `tau=0.05` keeps ~6–10 features/seed-set (tight, high-precision).
 - **Passive/active margin** `margin = 0.25`.
 - **Activation gating:** traversal only through features active in the relevant graph (graphs are
   already active-pruned; additionally require nonzero activation).
+- **Overflow handling (bias-free, no new data).** Hop-1 has hundreds of low-attribution ancestors.
+  The dashboard shows the **top-N by |normalized contrib|** (default `top_n_display = 25`) and
+  collapses the rest into an **expandable "M more — X % of seed influence" bucket** — never a silent
+  drop. Selection/ranking is by attribution + bare→jb delta only (mechanism-agnostic); no semantic
+  gate (that would bake in the hypothesis about what the mechanism looks like — see §11).
 - **Coverage / honesty:** per seed report `coverage = Σ kept |contrib| / total |contrib|` and
-  `unexplained_error_frac` = fraction of the seed's incoming attribution arriving via
-  `mlp reconstruction error` nodes. Surfaced in the UI and the ledger.
+  `error_frac` = fraction of the seed's incoming attribution arriving via `mlp reconstruction error`
+  nodes. Surfaced in the UI and the ledger.
 - **Sign-cancellation / multi-membership:** a feature may feed several seeds, possibly with opposite
-  signs. Give each feature a **net signed score per seed-class** = Σ over seeds of its signed
-  contribution; label it by the **dominant** class (max |net score|); keep every (seed, contrib,
-  hop, mechanism) membership in the ledger row.
+  signs. Aggregate per feature by the **max-|contribution|** single-seed influence (keeping its
+  sign) for the node label; label by the **dominant** seed-class; keep every (seed, contrib, hop,
+  mechanism) membership as a ledger row.
 
 ### 4.4 Completeness invariant (a testable guarantee)
 
-Because the graph is linear, `Σ_u contrib(u→s) over ALL ancestors (uncapped) + residual = seed's
-total input`. The unit tests assert `kept + dropped + error-leakage == total` on synthetic DAGs.
+With normalized weights the invariant is per-seed and directly interpretable: a seed's **direct**
+(hop-1) normalized feature-parent shares plus its `error_frac` sum to **1** (they are fractions of
+the seed's total input). Deeper hops redistribute those shares. The unit tests assert the direct
+normalized shares + error fraction ≈ 1, and that `coverage = Σ kept |contrib| / Σ all |contrib|`
+on synthetic DAGs with hand-computed normalized values.
 
 ## 5. Output classes & visual encoding
 
@@ -153,18 +186,25 @@ scripts/pipeline/
     trace_config.json        # EXTEND: k, tau, margin
 ```
 
-**`trace_propagate.py` (pure, unit-tested) — interfaces:**
-- `build_ancestors(graph) -> dict` — child→parents adjacency with signed weights over feature/error/
-  embedding/logit nodes, plus a topological order.
-- `upstream_contributions(graph, seed_feature_keys, *, k, tau) -> {seed_key: {u_key: {contrib, hop}}, coverage, error_frac}`
-  — idea 2 backward path-sum, thresholded. Called with the **refusal_centric** seeds.
-- `delta_decompose(bare, jb, seed_feature_keys, *, k, tau, margin) -> {seed_key: {u_key: {delta, act_term, edge_term, mechanism, hop}}, coverage, error_frac}`
-  — idea 3.
-- `assign_upstream_classes(contrib_map, delta_map, seed_classes) -> {feature_key: {upstream_class, hop, mechanism, memberships:[...]}}`
-  — dominant-class resolution + membership list.
-- `bake_upstream_classes(graph, feature_class_map) -> graph` — set `rl_trace_upstream_class`,
-  `rl_trace_hop`, `rl_trace_mechanism` on the graph's feature nodes (keyed via `(layer,feature)`),
-  leaving v1's `rl_trace_class` (seeds) intact.
+**`trace_propagate.py` (pure, unit-tested) — interfaces (see the plan for exact signatures):**
+- `build_key_graph(graph)` → feature-key digraph `{parents, act, error_into}` (positions summed,
+  error tracked as leakage).
+- `normalized_parents(kg)` → per-target normalized parent weights (§4.1 formula).
+- `path_sums(parents, seed_key, k)` → `{ancestor_key: (signed_contrib, hop)}` backward path-sum
+  (used on normalized parents).
+- `upstream_contributions(kg, seed_keys, *, k, tau)` → `{per_feature: {key:{contrib,hop}}, coverage,
+  error_frac}` — idea 2 on **refusal_centric** seeds; absolute `tau` floor; per-feature aggregate by
+  max-|contrib|.
+- `edge_delta_label(w_bare, w_jb, a_bare, a_jb, *, margin)` → per-edge passive/active/ambiguous on
+  **raw** weights (idea-3 atomic unit).
+- `dominant_path(parents_jb, seed_key, k)` → each ancestor's max-|Π norm| path (seed-adjacent first).
+- `delta_decompose(bare_kg, jb_kg, seed_keys, *, k, tau, margin)` → `{per_feature:{key:{delta,hop,
+  mechanism}}, coverage, error_frac}` — idea 3; delta = normalized jb path-sum − bare path-sum;
+  mechanism via `dominant_path` + `edge_delta_label`.
+- `assign_upstream_classes(contrib_by_class, delta_by_class)` → `{key:{upstream_class,hop,mechanism}}`
+  — dominant-class resolution.
+- `bake_upstream_classes(graph, feature_class_map)` → sets `rl_trace_upstream_class`, `rl_trace_hop`,
+  `rl_trace_mechanism` on feature nodes, leaving v1 seed `rl_trace_class` intact.
 
 **Assembler flow (per prompt pair):** v1 `classify_pair` → seed keys per class →
 `upstream_contributions` (refusal_centric seeds) + `delta_decompose` (suppression + amplification
@@ -188,8 +228,10 @@ row per (upstream-feature → seed) hypothesis:
   "prompt_idx": 4, "jb_class": "jb_roleplay",
   "feature": {"layer": 9, "feature": 12345}, "target_seed": {"layer": 15, "feature": 67890},
   "role": "upstream_refusal|upstream_suppression|upstream_amplification",
-  "hop": 2, "signed_contribution": -3.14,
-  "predicted_effect": -3.14,        // linear prediction: zeroing this feature shifts the seed by this
+  "hop": 2, "signed_contribution": -0.12,
+  "predicted_effect": -0.12,        // normalized fractional influence: zeroing u removes ~this
+                                    // fraction of the seed's (normalized) input — the falsifiable
+                                    // prediction the ablation/steering test compares against
   "mechanism": "passive_cascade|active_inhibitor|mixed|none",
   "coverage": 0.71, "verification_status": "unverified"
 }
@@ -202,21 +244,43 @@ The UI states plainly that highlights are **hypotheses, not proven** (attributio
 
 ## 8. Testing
 
-- **Pure unit tests** `scripts/emnlp_perm_edit/tests/test_trace_propagate.py` on synthetic DAGs:
-  two-hop signed path-sum (`w1·w2`), depth cap (a hop-4 path excluded at `k=3`), `tau` threshold,
-  the completeness invariant (`kept + dropped + error-leakage == total`), the per-edge Δa·w vs a·Δw
-  split incl. the `margin` boundary, **multi-hop mechanism propagation** (an all-passive hop-3 chain
-  → `passive_cascade`; an active edge at an intermediate hop → `active_inhibitor` from that edge; two
-  disagreeing strong paths → `mixed`), dominant-class resolution under sign cancellation, and
-  `bake_upstream_classes` field-setting.
-- **Structural tests** (append to `test_trace_patches.py`): the depth slider element, the new
-  evidence columns, and the hop/opacity/mechanism CSS classes.
+- **Pure unit tests** `scripts/emnlp_perm_edit/tests/test_trace_propagate.py` on synthetic DAGs with
+  hand-computed **normalized** values: `normalized_parents` (shares of `Σ|w|+error` sum to 1),
+  two-hop normalized path-sum, depth cap (hop-4 path excluded at `k=3`), the **absolute** `tau` floor,
+  `coverage = Σ kept / Σ all`, the per-edge Δa·w vs a·Δw split (raw weights) incl. the `margin`
+  boundary, **multi-hop mechanism propagation** (all-passive chain → `passive_cascade`; active edge
+  at an intermediate hop → `active_inhibitor` from that edge; disagreeing paths → `mixed`),
+  dominant-class resolution under sign cancellation, and `bake_upstream_classes` field-setting.
+- **Real-graph smoke (E2E, required per task).** Each pure-function task is additionally exercised on
+  an actual Gemma graph by the controller: contributions must be **bounded** (|contrib| ≤ ~1), not
+  exploding; `coverage` and `error_frac` sane; kept-count in the expected 6–10 range at `tau=0.05`.
+- **Structural tests** (append to `test_trace_patches.py`): depth slider, overflow "M more" control,
+  new evidence columns, hop/opacity/mechanism CSS classes.
 - **Integration smoke** `test_trace_assemble.py` (extend): on the real 4 graphs, assert upstream
-  features are found at `hop ≥ 1`, per-seed `coverage` is reported, and `trace_hypotheses.json`
-  exists with rows whose `verification_status == "unverified"` and a numeric `predicted_effect`.
-- **Manual visual smoke:** serve, drag the depth slider 0→k, confirm depth 0 matches v1 and deeper
-  settings reveal fainter upstream nodes with correct hue/border.
+  features found (hop ≥ 1), per-seed `coverage`/`error_frac` reported, and `trace_hypotheses.json`
+  exists with `verification_status == "unverified"` and a numeric `predicted_effect` in [−1, 1].
+- **Browser E2E (Playwright, Task 7 + final).** Serve, drive `trace.html`: depth slider at 0 matches
+  v1; dragging reveals fainter upstream nodes; the "M more" bucket expands; the evidence table shows
+  hop/mechanism.
 
 ## 9. Defaults to confirm during implementation
-`k=3`, `tau=0.10`, `margin=0.25`, opacity `1/(1+hop)` — all in `trace_config.json`, tunable in the
-visual smoke without code changes.
+`k=3`, `tau=0.05` (absolute floor), `margin=0.25`, `top_n_display=25`, opacity `1/(1+hop)` — all in
+`trace_config.json`, tunable in the visual smoke without code changes.
+
+## 10. v2.1 follow-on (out of scope here; flagged) — feature semantics
+
+v2 ships without any semantic content because the graph artifacts have none (`clerp` is empty, the
+only logit target is the refusal direction, no local top-activation data). v2.1 is a **coupled**
+data-generation + annotation effort:
+
+1. **`clerp` generation** — harvest each transcoder feature's top-activating examples (remote feature
+   DB if one exists, else a GPU pass over a corpus) and **LLM-label** the feature space, filling the
+   empty `clerp` field. This is independently valuable for reading any of our graphs.
+2. **Semantic annotation layer** — use those labels as a **reversible lens, never a gate**:
+   (a) annotate/rank, never remove features; (b) *surface* the strong-attribution +
+   semantically-*unexpected* features as **novel-mechanism candidates** (e.g. a role-play feature
+   suppressing refusal — exactly Georg's target, which a keyword filter would discard); (c) rank
+   primarily by attribution + bare→jb delta (mechanism-agnostic), semantics secondary; (d) always
+   report hidden mass; (e) open-vocabulary tags, no hard-coded harm/legality/completion categories.
+
+Both share the same top-activation harvest, so they are specced and built together after v2 lands.
