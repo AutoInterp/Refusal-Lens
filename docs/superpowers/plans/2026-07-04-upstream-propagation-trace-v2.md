@@ -368,7 +368,7 @@ git commit -m "feat(trace-v2): per-edge activation-vs-weight delta split (passiv
 - Consumes `path_sums`, `edge_delta_label`, two key-graphs.
 - Produces:
   - `dominant_path(parents_jb, seed_key, k) -> {ancestor_key: [(src_key, dst_key), ...]}` — for each ancestor reachable ≤ k, the edge list of its max-|Σweight-product| path to `seed_key` (path with the largest `Π|w_jb|`), ordered seed-adjacent edge FIRST.
-  - `delta_decompose(bare_kg, jb_kg, seed_keys, *, k, tau, margin) -> {"per_feature": {key: {"delta": float, "hop": int, "mechanism": str}}, "coverage": float, "error_frac": float}`. `delta(u) = contrib_jb(u→seed) − contrib_bare(u→seed)` summed over seeds (bare contrib = 0 where absent). Threshold on `|delta|` vs total `|delta|`. `mechanism` per feature from its dominant jb path: label every edge via `edge_delta_label` (using each graph's weight for that key-pair, 0 if absent; source activations from each graph, 0 if absent); then **`passive_cascade`** if all edges `passive`; **`active_inhibitor`** if any edge `active` (scanning seed-adjacent → outward, the first active edge sets it); **`mixed`** if an `ambiguous` edge appears before any `active` edge. `coverage`/`error_frac` computed like Task 2 but on jb parents/error.
+  - `delta_decompose(bare_kg, jb_kg, seed_keys, *, k, tau, margin) -> {"per_feature": {key: {"delta": float, "hop": int, "mechanism": str}}, "coverage": float, "error_frac": float}`. `delta(u) = contrib_jb(u→seed) − contrib_bare(u→seed)` where both contribs are **NORMALIZED** path-sums (via `normalized_parents`) — so `delta` is the change in `u`'s *fractional influence share* on the seed (bounded; captures the jailbreak rewiring which features feed the seed). Aggregate across seeds by **max-|delta|** (keep sign), hop = min. Threshold is an **ABSOLUTE floor**: keep iff `|delta| >= tau`. `mechanism` per feature from its dominant **normalized-jb** path (`dominant_path(normalized_parents(jb_kg), ...)`): label every edge via `edge_delta_label` on the **RAW** weights + activations of each graph (0 if absent); then **`passive_cascade`** if all edges `passive`; **`active_inhibitor`** if any edge `active` (seed-adjacent → outward, first active sets it); **`mixed`** if an `ambiguous` edge appears before any `active`. `coverage = Σ kept |delta| / Σ all |delta|`; `error_frac` from jb parents/error.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -383,28 +383,30 @@ def test_dominant_path_picks_largest_product():
     assert dp[(0, 5)] == [((1, 10), (2, 20)), ((0, 5), (1, 10))]  # seed-adjacent edge first
 
 
-def test_delta_decompose_passive_cascade_and_active():
-    # topology identical in both graphs: (0,5)->(1,10)->S
-    topo = {(2, 20): {(1, 10): None}, (1, 10): {(0, 5): None}}  # placeholder, weights set below
-    # PASSIVE CASCADE: both edges activation-driven
-    bare = {"parents": {(2, 20): {(1, 10): 4.0}, (1, 10): {(0, 5): 5.0}},
-            "act": {(1, 10): 2.0, (0, 5): 2.0}, "error_into": {}}
-    jb = {"parents": {(2, 20): {(1, 10): 6.0}, (1, 10): {(0, 5): 7.5}},
-          "act": {(1, 10): 3.0, (0, 5): 3.0}, "error_into": {}}
-    #   edge (0,5)->(1,10): w_bare5,w_jb7.5,a 2->3 -> act_term=2.5, delta=2.5, edge_term=0 -> passive
-    #   edge (1,10)->S:     w_bare4,w_jb6,  a 2->3 -> act_term=2.0, delta=2.0, edge_term=0 -> passive
-    out = delta_decompose(bare, jb, [(2, 20)], k=3, tau=0.01, margin=0.25)
-    assert out["per_feature"][(0, 5)]["mechanism"] == "passive_cascade"
-    assert out["per_feature"][(0, 5)]["hop"] == 2
+def test_delta_decompose_active_redistribution():
+    # seed (2,20) inputs REWIRED: (1,10) share 0.75->0.25 (lost), (1,11) 0.25->0.75 (gained).
+    # activations flat -> the change is weight-driven -> active_inhibitor.
+    bare = {"parents": {(2, 20): {(1, 10): 3.0, (1, 11): 1.0}},
+            "act": {(1, 10): 2.0, (1, 11): 2.0}, "error_into": {}}
+    jb = {"parents": {(2, 20): {(1, 10): 1.0, (1, 11): 3.0}},
+          "act": {(1, 10): 2.0, (1, 11): 2.0}, "error_into": {}}
+    out = delta_decompose(bare, jb, [(2, 20)], k=3, tau=0.1, margin=0.25)
+    pf = out["per_feature"]
+    assert abs(pf[(1, 10)]["delta"] - (-0.5)) < 1e-9   # 0.25 - 0.75
+    assert abs(pf[(1, 11)]["delta"] - (0.5)) < 1e-9    # 0.75 - 0.25
+    assert pf[(1, 10)]["mechanism"] == "active_inhibitor" and pf[(1, 10)]["hop"] == 1
 
-    # ACTIVE: seed-adjacent edge is weight-driven (activation flat, weight drops)
-    bare2 = {"parents": {(2, 20): {(1, 10): 4.0}, (1, 10): {(0, 5): 5.0}},
-             "act": {(1, 10): 2.0, (0, 5): 2.0}, "error_into": {}}
-    jb2 = {"parents": {(2, 20): {(1, 10): 1.0}, (1, 10): {(0, 5): 7.5}},
-           "act": {(1, 10): 2.0, (0, 5): 3.0}, "error_into": {}}
-    #   edge (1,10)->S: w 4->1, a flat 2 -> act_term 0, edge_term -3 -> active (seed-adjacent)
-    out2 = delta_decompose(bare2, jb2, [(2, 20)], k=3, tau=0.01, margin=0.25)
-    assert out2["per_feature"][(0, 5)]["mechanism"] == "active_inhibitor"
+
+def test_delta_decompose_passive_redistribution():
+    # (1,10) gains share (0.5->0.75) via activation 1->3, weight tracks it 2->6 -> passive.
+    bare = {"parents": {(2, 20): {(1, 10): 2.0, (1, 11): 2.0}},
+            "act": {(1, 10): 1.0, (1, 11): 1.0}, "error_into": {}}
+    jb = {"parents": {(2, 20): {(1, 10): 6.0, (1, 11): 2.0}},
+          "act": {(1, 10): 3.0, (1, 11): 1.0}, "error_into": {}}
+    out = delta_decompose(bare, jb, [(2, 20)], k=3, tau=0.1, margin=0.25)
+    pf = out["per_feature"]
+    assert abs(pf[(1, 10)]["delta"] - 0.25) < 1e-9     # 0.75 - 0.5
+    assert pf[(1, 10)]["mechanism"] == "passive_cascade"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -453,28 +455,29 @@ def _mechanism_for_path(edges, bare_kg, jb_kg, margin):
 
 
 def delta_decompose(bare_kg, jb_kg, seed_keys, *, k, tau, margin) -> dict:
+    npar_j = normalized_parents(jb_kg)          # NORMALIZED: delta = change in fractional share
+    npar_b = normalized_parents(bare_kg)
     agg_d: dict = {}
     agg_h: dict = {}
     for s in seed_keys:
-        cj = path_sums(jb_kg["parents"], s, k)
-        cb = path_sums(bare_kg["parents"], s, k)
-        akeys = set(cj) | set(cb)
-        for a in akeys:
+        cj = path_sums(npar_j, s, k)
+        cb = path_sums(npar_b, s, k)
+        for a in set(cj) | set(cb):
             d = cj.get(a, (0.0, None))[0] - cb.get(a, (0.0, None))[0]
-            agg_d[a] = agg_d.get(a, 0.0) + d
+            if abs(d) > abs(agg_d.get(a, 0.0)):     # aggregate by MAX-|delta| (keep sign)
+                agg_d[a] = d
             h = cj.get(a, (None, 10**9))[1]
             hb = cb.get(a, (None, 10**9))[1]
             agg_h[a] = min(agg_h.get(a, 10**9), h, hb)
     total = sum(abs(v) for v in agg_d.values())
-    keep = {kk for kk, v in agg_d.items() if total > 0 and abs(v) >= tau * total}
-    per_feature = {}
-    # dominant path (mechanism) computed per seed on the jb graph; first seed to reach a
-    # feature wins its path (features are aggregated across seeds by |delta| above):
+    keep = {kk for kk, v in agg_d.items() if abs(v) >= tau}     # ABSOLUTE floor
+    # dominant path (mechanism) on the NORMALIZED jb parents; first seed to reach a feature wins:
     dpaths: dict = {}
     for s in seed_keys:
-        for a, edges in dominant_path(jb_kg["parents"], s, k).items():
+        for a, edges in dominant_path(npar_j, s, k).items():
             if a not in dpaths:
                 dpaths[a] = edges
+    per_feature = {}
     for kk in keep:
         edges = dpaths.get(kk, [])
         mech = _mechanism_for_path(edges, bare_kg, jb_kg, margin) if edges else "none"
@@ -487,16 +490,18 @@ def delta_decompose(bare_kg, jb_kg, seed_keys, *, k, tau, margin) -> dict:
             "error_frac": (err / (direct + err)) if (direct + err) > 0 else 0.0}
 ```
 
+Note: `_mechanism_for_path` reads **raw** `bare_kg["parents"]`/`jb_kg["parents"]` (mechanism is a raw-edge property); only path *selection* and the delta magnitude use normalized weights.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `.venv/bin/pytest scripts/emnlp_perm_edit/tests/test_trace_propagate.py -v`
-Expected: PASS (7 tests). (Remove the unused `topo` placeholder line if the linter objects; it is only illustrative.)
+Expected: PASS (10 tests: 1 build_key_graph + 2 path_sums + 1 normalized_parents + 2 upstream + 1 edge_delta + 1 dominant_path + 2 delta_decompose).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add scripts/pipeline/trace_propagate.py scripts/emnlp_perm_edit/tests/test_trace_propagate.py
-git commit -m "feat(trace-v2): delta decomposition + dominant-path mechanism (passive_cascade/active_inhibitor/mixed)"
+git commit -m "feat(trace-v2): delta decomposition (normalized redistribution) + dominant-path mechanism"
 ```
 
 ---
