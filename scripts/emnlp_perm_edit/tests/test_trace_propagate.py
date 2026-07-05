@@ -124,3 +124,32 @@ def test_delta_decompose_passive_redistribution():
     pf = out["per_feature"]
     assert abs(pf[(1, 10)]["delta"] - 0.25) < 1e-9     # 0.75 - 0.5
     assert pf[(1, 10)]["mechanism"] == "passive_cascade"
+
+
+from trace_propagate import assign_upstream_classes, bake_upstream_classes  # noqa: E402
+
+
+def test_assign_dominant_class_and_bake():
+    contrib = {"refusal_centric": {"per_feature": {(1, 10): {"contrib": 8.0, "hop": 1}},
+                                   "coverage": 1.0, "error_frac": 0.0}}
+    delta = {"suppression": {"per_feature": {(1, 10): {"delta": -3.0, "hop": 2,
+                                                       "mechanism": "passive_cascade"}},
+                             "coverage": 1.0, "error_frac": 0.0},
+             "amplification": {"per_feature": {}, "coverage": 1.0, "error_frac": 0.0}}
+    fam = assign_upstream_classes(contrib, delta)
+    # |8| (refusal) > |-3| (suppression) -> dominant refusal_centric, mechanism none
+    assert fam[(1, 10)]["upstream_class"] == "refusal_centric"
+    assert fam[(1, 10)]["hop"] == 1 and fam[(1, 10)]["mechanism"] == "none"
+
+    nodes = [{"node_id": "1_10_0", "feature": 10, "layer": "1",
+              "feature_type": "cross layer transcoder", "rl_trace_class": "neutral"},
+             {"node_id": "3_30_0", "feature": 30, "layer": "3",
+              "feature_type": "cross layer transcoder", "rl_trace_class": "refusal_centric"}]
+    g = {"metadata": {}, "nodes": nodes, "links": []}
+    bake_upstream_classes(g, fam)
+    by = {n["node_id"]: n for n in g["nodes"]}
+    assert by["1_10_0"]["rl_trace_upstream_class"] == "refusal_centric"
+    assert by["1_10_0"]["rl_trace_hop"] == 1 and by["1_10_0"]["rl_trace_mechanism"] == "none"
+    # a v1 seed keeps its class and gets hop 0 / seed mechanism, not an upstream_class overwrite
+    assert by["3_30_0"].get("rl_trace_upstream_class") is None
+    assert by["3_30_0"]["rl_trace_hop"] == 0 and by["3_30_0"]["rl_trace_mechanism"] == "seed"

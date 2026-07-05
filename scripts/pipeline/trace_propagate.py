@@ -192,3 +192,42 @@ def delta_decompose(bare_kg, jb_kg, seed_keys, *, k, tau, margin) -> dict:
     return {"per_feature": per_feature,
             "coverage": (kept / total) if total > 0 else 0.0,
             "error_frac": (err / (direct + err)) if (direct + err) > 0 else 0.0}
+
+
+SEED_CLASSES = ("refusal_centric", "suppression", "amplification")
+
+
+def assign_upstream_classes(contrib_by_class, delta_by_class) -> dict:
+    # gather per-feature score/hop/mechanism per seed-class
+    per_key: dict = {}
+    def add(cls, key, score, hop, mech):
+        per_key.setdefault(key, {})[cls] = {"score": score, "hop": hop, "mechanism": mech}
+    for cls, out in contrib_by_class.items():
+        for key, d in out["per_feature"].items():
+            add(cls, key, d["contrib"], d["hop"], "none")
+    for cls, out in delta_by_class.items():
+        for key, d in out["per_feature"].items():
+            add(cls, key, d["delta"], d["hop"], d["mechanism"])
+    result = {}
+    for key, byc in per_key.items():
+        dom = max(byc, key=lambda c: abs(byc[c]["score"]))
+        result[key] = {"upstream_class": dom, "hop": byc[dom]["hop"],
+                       "mechanism": byc[dom]["mechanism"]}
+    return result
+
+
+def bake_upstream_classes(graph, feature_class_map):
+    for n in graph["nodes"]:
+        if n.get("feature_type") != FEATURE_TYPE:
+            continue
+        if n.get("rl_trace_class") in SEED_CLASSES:
+            n["rl_trace_hop"] = 0
+            n["rl_trace_mechanism"] = "seed"
+            continue
+        key = (int(n["layer"]), int(n["feature"]))
+        info = feature_class_map.get(key)
+        if info is not None:
+            n["rl_trace_upstream_class"] = info["upstream_class"]
+            n["rl_trace_hop"] = info["hop"]
+            n["rl_trace_mechanism"] = info["mechanism"]
+    return graph
