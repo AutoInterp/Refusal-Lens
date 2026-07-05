@@ -106,8 +106,6 @@ def edge_delta_label(w_bare, w_jb, a_bare, a_jb, *, margin, eps=1e-9) -> dict:
     delta = w_jb - w_bare
     if a_bare <= eps:
         # source was inactive in bare; any jb connection is a new (active) mechanism
-        if a_jb > eps:
-            return {"delta": delta, "act_term": 0.0, "edge_term": delta, "label": "active"}
         return {"delta": delta, "act_term": 0.0, "edge_term": delta, "label": "active"}
     act_term = w_bare * (a_jb / a_bare - 1.0)
     edge_term = delta - act_term
@@ -208,9 +206,16 @@ def assign_upstream_classes(contrib_by_class, delta_by_class) -> dict:
     for cls, out in delta_by_class.items():
         for key, d in out["per_feature"].items():
             add(cls, key, d["delta"], d["hop"], d["mechanism"])
+    # per-class max|score| so idea-2 (level) and idea-3 (delta) are commensurable
+    def _maxabs(out):
+        vals = [abs(d.get("contrib", d.get("delta", 0.0))) for d in out["per_feature"].values()]
+        return max(vals) if vals else 1.0
+    class_norm = {}
+    for cls, out in contrib_by_class.items(): class_norm[cls] = _maxabs(out) or 1.0
+    for cls, out in delta_by_class.items():   class_norm[cls] = _maxabs(out) or 1.0
     result = {}
     for key, byc in per_key.items():
-        dom = max(byc, key=lambda c: abs(byc[c]["score"]))
+        dom = max(byc, key=lambda c: abs(byc[c]["score"]) / (class_norm.get(c, 1.0) or 1.0))
         result[key] = {"upstream_class": dom, "hop": byc[dom]["hop"],
                        "mechanism": byc[dom]["mechanism"]}
     return result

@@ -20,4 +20,4 @@
 .link-graph circle[data-rl-mech="active_inhibitor"] { stroke: #000; stroke-dasharray: 2 2; stroke-width: 1.5px; }
 .link-graph circle[data-rl-mech="mixed"] { stroke: #000; stroke-dasharray: 1 3; stroke-width: 1.5px; }
 .link-graph circle[data-rl-mech="passive_cascade"] { stroke: #000; stroke-width: 1px; }
-.rl-hop-hidden { display: none !important; }
+.link-graph circle[data-rl-mech="seed"] { stroke: #000; stroke-width: 1px; }

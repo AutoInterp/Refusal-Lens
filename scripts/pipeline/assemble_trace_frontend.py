@@ -55,11 +55,22 @@ def build_pair_entry(idx, jb_class, request, bare_graph, jb_graph, cfg):
     for r in out["evidence"]:
         r["hop"] = 0
         r["mechanism"] = "seed"
+    seed_keys_set = {(r["layer"], r["feature"]) for r in out["evidence"]}
+    for key, info in fam.items():
+        if key in seed_keys_set:
+            continue
+        cls = info["upstream_class"]
+        src = (contrib_by_class if cls == "refusal_centric" else delta_by_class).get(cls, {})
+        score = src.get("per_feature", {}).get(key, {}).get("contrib",
+                src.get("per_feature", {}).get(key, {}).get("delta", 0.0))
+        out["evidence"].append({
+            "layer": key[0], "feature": key[1], "class": "upstream_" + cls,
+            "edge_bare": 0.0, "edge_jb": round(score, 3), "act_bare": 0.0, "act_jb": 0.0,
+            "overlap_bucket": "", "hop": info["hop"], "mechanism": info["mechanism"]})
     ROLE = {"refusal_centric": "upstream_refusal", "suppression": "upstream_suppression",
             "amplification": "upstream_amplification"}
     hyps = []
     for key, info in fam.items():
-        score = None
         cls = info["upstream_class"]
         src = (contrib_by_class if cls == "refusal_centric" else delta_by_class).get(cls)
         d = src["per_feature"].get(key, {})

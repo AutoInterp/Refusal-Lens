@@ -20,23 +20,29 @@
     let count = 0;
     d3.selectAll(".link-graph text.node, .link-graph circle").each(function (d) {
       if (!d) return;
-      const seed = d.rl_trace_class;                 // v1 seed class (may be neutral)
-      const up = d.rl_trace_upstream_class;          // v2 upstream class
+      const seed = d.rl_trace_class;
+      const up = d.rl_trace_upstream_class;
       const hop = (typeof d.rl_trace_hop === "number") ? d.rl_trace_hop : null;
       const mech = d.rl_trace_mechanism || null;
-      if (seed && seed !== "neutral") {
+      const seedColored = seed && seed !== "neutral";
+      const showUp = up && hop !== null && hop <= maxHop;   // reveal upstream color only within depth
+      if (seedColored) {
         if (this.getAttribute("data-rl-trace") !== seed) this.setAttribute("data-rl-trace", seed);
-      } else if (up) {
+        this.removeAttribute("data-rl-upstream");
+        this.style.opacity = "";
+      } else if (showUp) {
         if (this.getAttribute("data-rl-upstream") !== up) this.setAttribute("data-rl-upstream", up);
-      } else if (seed) {
-        if (this.getAttribute("data-rl-trace") !== seed) this.setAttribute("data-rl-trace", seed);
+        this.removeAttribute("data-rl-trace");
+        this.style.opacity = String(1 / (1 + hop));         // depth opacity gradient
+      } else {
+        const nv = seed || "neutral";                        // beyond depth OR neutral -> v1 gray
+        if (this.getAttribute("data-rl-trace") !== nv) this.setAttribute("data-rl-trace", nv);
+        this.removeAttribute("data-rl-upstream");
+        this.style.opacity = "";
       }
-      if (mech) this.setAttribute("data-rl-mech", mech);
-      if (hop !== null) {
-        this.setAttribute("data-rl-hop", String(hop));
-        this.style.opacity = String(1 / (1 + hop));
-        this.classList.toggle("rl-hop-hidden", hop > maxHop);
-      }
+      if (mech && (seedColored || showUp)) this.setAttribute("data-rl-mech", mech);
+      else this.removeAttribute("data-rl-mech");
+      if (hop !== null) this.setAttribute("data-rl-hop", String(hop));
       count++;
     });
     return count;
