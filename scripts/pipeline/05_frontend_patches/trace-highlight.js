@@ -13,7 +13,7 @@
    toolbar #depth-slider input calls rlSetDepth(this.value) on each iframe's
    window so the slider progressively reveals upstream hops in both panels. */
 (function () {
-  let maxHop = 99;
+  let maxHop = 0;
   window.rlSetDepth = function (d) { maxHop = +d; paint(); };
   function paint() {
     if (typeof d3 === "undefined") return 0;
@@ -28,6 +28,8 @@
         if (this.getAttribute("data-rl-trace") !== seed) this.setAttribute("data-rl-trace", seed);
       } else if (up) {
         if (this.getAttribute("data-rl-upstream") !== up) this.setAttribute("data-rl-upstream", up);
+      } else if (seed) {
+        if (this.getAttribute("data-rl-trace") !== seed) this.setAttribute("data-rl-trace", seed);
       }
       if (mech) this.setAttribute("data-rl-mech", mech);
       if (hop !== null) {

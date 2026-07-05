@@ -31,7 +31,7 @@
   <div class="toolbar">
     <h1>Refusal-Lens · Trace</h1>
     <label>Prompt: <select id="pair-select"></select></label>
-    <label>Depth: <input type="range" id="depth-slider" min="0" max="3" value="0" oninput="document.getElementById('depth-val').textContent=this.value; if(window.frames){for(const f of window.frames){try{f.rlSetDepth&&f.rlSetDepth(this.value)}catch(e){}}}"><span id="depth-val">0</span></label>
+    <label>Depth: <input type="range" id="depth-slider" min="0" max="3" value="0" oninput="rlApplyDepth()"><span id="depth-val">0</span></label>
     <span class="legend">
       <span><i class="sw" style="background:#d32f2f"></i>Refusal-centric</span>
       <span><i class="sw" style="background:#1565c0"></i>Suppression</span>
@@ -46,6 +46,13 @@
   <div id="coverage-line"></div>
 <script>
 let M;
+function rlApplyDepth() {
+  const v = document.getElementById('depth-slider').value;
+  document.getElementById('depth-val').textContent = v;
+  for (let i = 0; i < window.frames.length; i++) {
+    try { window.frames[i].rlSetDepth && window.frames[i].rlSetDepth(v); } catch (e) {}
+  }
+}
 async function init() {
   const r = await fetch("./trace_manifest.json");
   if (!r.ok) throw new Error("trace_manifest.json: " + r.status);
@@ -62,8 +69,12 @@ async function init() {
 function show(i) {
   const p = M.pairs[i];
   const base = "./" + M.viewer + "/index.html";
-  document.getElementById("frame-bare").src = `${base}?slug=${encodeURIComponent(p.bare_slug)}&compact=1`;
-  document.getElementById("frame-jb").src = `${base}?slug=${encodeURIComponent(p.jb_slug)}&compact=1`;
+  const frameBare = document.getElementById("frame-bare");
+  const frameJb = document.getElementById("frame-jb");
+  frameBare.onload = rlApplyDepth;
+  frameJb.onload = rlApplyDepth;
+  frameBare.src = `${base}?slug=${encodeURIComponent(p.bare_slug)}&compact=1`;
+  frameJb.src = `${base}?slug=${encodeURIComponent(p.jb_slug)}&compact=1`;
   document.getElementById("jb-lab").textContent = "Jailbroken · " + p.jb_class;
   const rows = (p.evidence || []).map(e =>
     `<tr class="${e.class}"><td>L${e.layer}</td><td>#${e.feature}</td>` +
