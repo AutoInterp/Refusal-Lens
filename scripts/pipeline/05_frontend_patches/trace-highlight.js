@@ -9,9 +9,10 @@
    v2: upstream-propagated nodes (not themselves a seed class) are colored by
    `rl_trace_upstream_class` instead, faded by hop distance via inline opacity
    (1/(1+hop)), and bordered by `rl_trace_mechanism` (active_inhibitor / mixed /
-   passive_cascade). window.rlSetDepth(d) hides nodes with hop > d; trace.html's
-   toolbar #depth-slider input calls rlSetDepth(this.value) on each iframe's
-   window so the slider progressively reveals upstream hops in both panels. */
+   passive_cascade). window.rlSetDepth(d) reveals upstream color only up to hop d
+   — nodes beyond the current depth stay v1 neutral-gray (never hidden), so depth 0
+   reproduces the exact v1 view; trace.html's toolbar #depth-slider input calls
+   rlSetDepth(this.value) on each iframe's window to color deeper hops in both panels. */
 (function () {
   let maxHop = 0;
   window.rlSetDepth = function (d) { maxHop = +d; paint(); };

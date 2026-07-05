@@ -232,9 +232,12 @@ row per (upstream-feature → seed) hypothesis:
   "feature": {"layer": 9, "feature": 12345}, "target_seed": {"layer": 15, "feature": 67890},
   "role": "upstream_refusal|upstream_suppression|upstream_amplification",
   "hop": 2, "signed_contribution": -0.12,
-  "predicted_effect": -0.12,        // normalized fractional influence: zeroing u removes ~this
-                                    // fraction of the seed's (normalized) input — the falsifiable
-                                    // prediction the ablation/steering test compares against
+  "predicted_effect": -0.12,        // normalized fractional influence (idea-2) or fractional-share
+                                    // delta (idea-3). A FIRST-ORDER estimate of u's effect on the
+                                    // seed, not a strict partition — multi-hop path-sums can double-
+                                    // count across hops, so |value| is typically <1 but not bounded.
+                                    // It is the falsifiable magnitude the ablation/steering test
+                                    // compares its measured effect against (sign + relative size).
   "mechanism": "passive_cascade|active_inhibitor|mixed|none",
   "coverage": 0.71, "verification_status": "unverified"
 }
