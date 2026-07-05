@@ -8,6 +8,7 @@ sys.path.insert(0, str(HERE.parents[3] / "scripts/pipeline"))
 from trace_propagate import build_key_graph  # noqa: E402
 from trace_propagate import path_sums, normalized_parents, upstream_contributions  # noqa: E402
 from trace_propagate import edge_delta_label  # noqa: E402
+from trace_propagate import dominant_path, delta_decompose  # noqa: E402
 
 
 def _feat(node_id, feature, layer, activation):
@@ -90,3 +91,36 @@ def test_edge_delta_label_passive_active_ambiguous_newlyactive():
     # ambiguous: neither term dominates by margin
     r = edge_delta_label(10.0, 19.5, 2.0, 3.0, margin=0.25)   # act=5, edge=4.5
     assert r["label"] == "ambiguous"
+
+
+def test_dominant_path_picks_largest_product():
+    # (0,5)->(1,10)->S and a weaker direct (0,5)->S ; dominant is the 2-hop (5*4=20 > 1)
+    parents = {(2, 20): {(1, 10): 4.0, (0, 5): 1.0}, (1, 10): {(0, 5): 5.0}}
+    dp = dominant_path(parents, (2, 20), k=3)
+    assert dp[(0, 5)] == [((1, 10), (2, 20)), ((0, 5), (1, 10))]  # seed-adjacent edge first
+
+
+def test_delta_decompose_active_redistribution():
+    # seed (2,20) inputs REWIRED: (1,10) share 0.75->0.25 (lost), (1,11) 0.25->0.75 (gained).
+    # activations flat -> the change is weight-driven -> active_inhibitor.
+    bare = {"parents": {(2, 20): {(1, 10): 3.0, (1, 11): 1.0}},
+            "act": {(1, 10): 2.0, (1, 11): 2.0}, "error_into": {}}
+    jb = {"parents": {(2, 20): {(1, 10): 1.0, (1, 11): 3.0}},
+          "act": {(1, 10): 2.0, (1, 11): 2.0}, "error_into": {}}
+    out = delta_decompose(bare, jb, [(2, 20)], k=3, tau=0.1, margin=0.25)
+    pf = out["per_feature"]
+    assert abs(pf[(1, 10)]["delta"] - (-0.5)) < 1e-9   # 0.25 - 0.75
+    assert abs(pf[(1, 11)]["delta"] - (0.5)) < 1e-9    # 0.75 - 0.25
+    assert pf[(1, 10)]["mechanism"] == "active_inhibitor" and pf[(1, 10)]["hop"] == 1
+
+
+def test_delta_decompose_passive_redistribution():
+    # (1,10) gains share (0.5->0.75) via activation 1->3, weight tracks it 2->6 -> passive.
+    bare = {"parents": {(2, 20): {(1, 10): 2.0, (1, 11): 2.0}},
+            "act": {(1, 10): 1.0, (1, 11): 1.0}, "error_into": {}}
+    jb = {"parents": {(2, 20): {(1, 10): 6.0, (1, 11): 2.0}},
+          "act": {(1, 10): 3.0, (1, 11): 1.0}, "error_into": {}}
+    out = delta_decompose(bare, jb, [(2, 20)], k=3, tau=0.1, margin=0.25)
+    pf = out["per_feature"]
+    assert abs(pf[(1, 10)]["delta"] - 0.25) < 1e-9     # 0.75 - 0.5
+    assert pf[(1, 10)]["mechanism"] == "passive_cascade"

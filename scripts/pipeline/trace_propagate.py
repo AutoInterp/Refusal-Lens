@@ -119,3 +119,76 @@ def edge_delta_label(w_bare, w_jb, a_bare, a_jb, *, margin, eps=1e-9) -> dict:
     else:
         label = "ambiguous"
     return {"delta": delta, "act_term": act_term, "edge_term": edge_term, "label": label}
+
+
+def dominant_path(parents_jb, seed_key, k) -> dict:
+    """For each ancestor (<=k hops), the edge list of its max Π|w| path to the seed,
+    ordered SEED-ADJACENT edge FIRST. Double-buffered so a path grows at most one edge
+    per round -> length capped at k."""
+    best = {seed_key: (1.0, [])}          # node -> (max_abs_product, [edges seed-adjacent-first])
+    for _ in range(k):
+        prev = dict(best)                 # read last round, write this round: +1 edge/round
+        for dst, srcs in parents_jb.items():
+            if dst not in prev:
+                continue
+            prod_dst, path_dst = prev[dst]
+            for src, w in srcs.items():
+                if src == seed_key:
+                    continue
+                cand = abs(w) * prod_dst
+                if cand > best.get(src, (0.0, None))[0] + 1e-15:
+                    best[src] = (cand, path_dst + [(src, dst)])   # append -> seed-adjacent stays first
+    return {kk: v[1] for kk, v in best.items() if kk != seed_key}
+
+
+def _mechanism_for_path(edges, bare_kg, jb_kg, margin):
+    """edges seed-adjacent-first. Scan from seed outward; first 'active' -> active_inhibitor;
+    an 'ambiguous' before any active -> mixed; all 'passive' -> passive_cascade."""
+    seen_ambiguous = False
+    for (src, dst) in edges:
+        wb = bare_kg["parents"].get(dst, {}).get(src, 0.0)
+        wj = jb_kg["parents"].get(dst, {}).get(src, 0.0)
+        ab = bare_kg["act"].get(src, 0.0)
+        aj = jb_kg["act"].get(src, 0.0)
+        lab = edge_delta_label(wb, wj, ab, aj, margin=margin)["label"]
+        if lab == "active":
+            return "active_inhibitor"
+        if lab == "ambiguous":
+            seen_ambiguous = True
+    return "mixed" if seen_ambiguous else "passive_cascade"
+
+
+def delta_decompose(bare_kg, jb_kg, seed_keys, *, k, tau, margin) -> dict:
+    npar_j = normalized_parents(jb_kg)          # NORMALIZED: delta = change in fractional share
+    npar_b = normalized_parents(bare_kg)
+    agg_d: dict = {}
+    agg_h: dict = {}
+    for s in seed_keys:
+        cj = path_sums(npar_j, s, k)
+        cb = path_sums(npar_b, s, k)
+        for a in set(cj) | set(cb):
+            d = cj.get(a, (0.0, None))[0] - cb.get(a, (0.0, None))[0]
+            if abs(d) > abs(agg_d.get(a, 0.0)):     # aggregate by MAX-|delta| (keep sign)
+                agg_d[a] = d
+            h = cj.get(a, (None, 10**9))[1]
+            hb = cb.get(a, (None, 10**9))[1]
+            agg_h[a] = min(agg_h.get(a, 10**9), h, hb)
+    total = sum(abs(v) for v in agg_d.values())
+    keep = {kk for kk, v in agg_d.items() if abs(v) >= tau}     # ABSOLUTE floor
+    # dominant path (mechanism) on the NORMALIZED jb parents; first seed to reach a feature wins:
+    dpaths: dict = {}
+    for s in seed_keys:
+        for a, edges in dominant_path(npar_j, s, k).items():
+            if a not in dpaths:
+                dpaths[a] = edges
+    per_feature = {}
+    for kk in keep:
+        edges = dpaths.get(kk, [])
+        mech = _mechanism_for_path(edges, bare_kg, jb_kg, margin) if edges else "none"
+        per_feature[kk] = {"delta": agg_d[kk], "hop": agg_h[kk], "mechanism": mech}
+    kept = sum(abs(agg_d[kk]) for kk in keep)
+    direct = sum(abs(w) for s in seed_keys for w in jb_kg["parents"].get(s, {}).values())
+    err = sum(jb_kg["error_into"].get(s, 0.0) for s in seed_keys)
+    return {"per_feature": per_feature,
+            "coverage": (kept / total) if total > 0 else 0.0,
+            "error_frac": (err / (direct + err)) if (direct + err) > 0 else 0.0}
