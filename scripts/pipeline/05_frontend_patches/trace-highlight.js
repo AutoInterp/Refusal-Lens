@@ -34,7 +34,7 @@
       } else if (showUp) {
         if (this.getAttribute("data-rl-upstream") !== up) this.setAttribute("data-rl-upstream", up);
         this.removeAttribute("data-rl-trace");
-        this.style.opacity = String(1 / (1 + hop));         // depth opacity gradient
+        this.style.opacity = String(1 / hop);               // hop-1 fully opaque; deeper hops fade
       } else {
         const nv = seed || "neutral";                        // beyond depth OR neutral -> v1 gray
         if (this.getAttribute("data-rl-trace") !== nv) this.setAttribute("data-rl-trace", nv);

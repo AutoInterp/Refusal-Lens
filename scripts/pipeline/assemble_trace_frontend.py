@@ -95,8 +95,15 @@ def build_pair_entry(idx, jb_class, request, bare_graph, jb_graph, cfg):
 
 def _inject_patch(index_html: Path):
     html = index_html.read_text()
-    inj = ('<link rel="stylesheet" href="./trace-highlight.css">\n'
-           '<script src="./trace-highlight.js" defer></script>\n')
+    # ?v=<mtime> cache-buster so iterating on the patch JS/CSS isn't masked by a stale
+    # browser cache (the viewer assets otherwise have no cache-busting).
+    viewer = index_html.parent
+
+    def _v(name):
+        f = viewer / name
+        return f"?v={int(f.stat().st_mtime)}" if f.exists() else ""
+    inj = (f'<link rel="stylesheet" href="./trace-highlight.css{_v("trace-highlight.css")}">\n'
+           f'<script src="./trace-highlight.js{_v("trace-highlight.js")}" defer></script>\n')
     if "trace-highlight.js" in html:
         return
     marker = "<script src='./util.js'></script>"

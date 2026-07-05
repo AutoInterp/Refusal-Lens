@@ -166,7 +166,7 @@ green. Upstream features (hop ≥ 1) are encoded on three independent visual cha
 stays legible:
 
 - **hue** = the seed class the feature feeds (red / blue / green),
-- **fill-opacity** = hop-distance gradient (`opacity = 1/(1+hop)`; fainter = deeper upstream),
+- **fill-opacity** = hop-distance gradient (`opacity = 1/hop`; fainter = deeper upstream),
 - **border** = mechanism: solid = seed or `passive_cascade`; dashed = `active_inhibitor`; dotted =
   `mixed`; idea-2 `refusal_centric` upstream (no delta role, mechanism `none`) → solid.
 
@@ -270,7 +270,7 @@ The UI states plainly that highlights are **hypotheses, not proven** (attributio
   hop/mechanism.
 
 ## 9. Defaults to confirm during implementation
-`k=3`, `tau=0.05` (absolute floor), `margin=0.25`, `top_n_display=25`, opacity `1/(1+hop)` — all in
+`k=3`, `tau=0.05` (absolute floor), `margin=0.25`, `top_n_display=25`, opacity `1/hop` (hop-1 fully opaque, deeper hops fade) — all in
 `trace_config.json`, tunable in the visual smoke without code changes.
 
 ## 10. v2.1 follow-on (out of scope here; flagged) — feature semantics
