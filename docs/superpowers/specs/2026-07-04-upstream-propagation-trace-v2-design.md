@@ -135,11 +135,14 @@ two-term determinations at every depth — we never try to collapse a whole path
 - **Passive/active margin** `margin = 0.25`.
 - **Activation gating:** traversal only through features active in the relevant graph (graphs are
   already active-pruned; additionally require nonzero activation).
-- **Overflow handling (bias-free, no new data).** Hop-1 has hundreds of low-attribution ancestors.
-  The dashboard shows the **top-N by |normalized contrib|** (default `top_n_display = 25`) and
-  collapses the rest into an **expandable "M more — X % of seed influence" bucket** — never a silent
-  drop. Selection/ranking is by attribution + bare→jb delta only (mechanism-agnostic); no semantic
-  gate (that would bake in the hypothesis about what the mechanism looks like — see §11).
+- **Overflow handling (bias-free).** Hop-1 has hundreds of low-attribution ancestors, but the
+  absolute `tau` floor already cuts this to **~6–10 kept per seed-set** (validated), so no extra
+  top-N UI is needed at the default. The honesty signal is the reported **`coverage`** ("these kept
+  features explain X % of the seed's normalized influence") and **`error_frac`** — surfaced per
+  seed-set in the dashboard and ledger, so the sub-threshold remainder is never silently implied
+  away. Ranking is by attribution + bare→jb delta only (mechanism-agnostic); no semantic gate (that
+  would bake in the hypothesis about what the mechanism looks like — see §10). If `tau` is lowered
+  enough to reintroduce overflow, a top-N-with-hidden-mass control is a small follow-on.
 - **Coverage / honesty:** per seed report `coverage = Σ kept |contrib| / total |contrib|` and
   `error_frac` = fraction of the seed's incoming attribution arriving via `mlp reconstruction error`
   nodes. Surfaced in the UI and the ledger.
@@ -254,8 +257,8 @@ The UI states plainly that highlights are **hypotheses, not proven** (attributio
 - **Real-graph smoke (E2E, required per task).** Each pure-function task is additionally exercised on
   an actual Gemma graph by the controller: contributions must be **bounded** (|contrib| ≤ ~1), not
   exploding; `coverage` and `error_frac` sane; kept-count in the expected 6–10 range at `tau=0.05`.
-- **Structural tests** (append to `test_trace_patches.py`): depth slider, overflow "M more" control,
-  new evidence columns, hop/opacity/mechanism CSS classes.
+- **Structural tests** (append to `test_trace_patches.py`): depth slider, per-seed
+  coverage/error_frac display, new evidence columns, hop/opacity/mechanism CSS classes.
 - **Integration smoke** `test_trace_assemble.py` (extend): on the real 4 graphs, assert upstream
   features found (hop ≥ 1), per-seed `coverage`/`error_frac` reported, and `trace_hypotheses.json`
   exists with `verification_status == "unverified"` and a numeric `predicted_effect` in [−1, 1].
