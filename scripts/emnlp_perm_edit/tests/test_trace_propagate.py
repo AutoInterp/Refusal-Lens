@@ -6,7 +6,7 @@ HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[3] / "scripts/pipeline"))
 
 from trace_propagate import build_key_graph  # noqa: E402
-from trace_propagate import path_sums, upstream_contributions  # noqa: E402
+from trace_propagate import path_sums, normalized_parents, upstream_contributions  # noqa: E402
 
 
 def _feat(node_id, feature, layer, activation):
@@ -48,12 +48,29 @@ def test_path_sums_respects_depth_cap():
     assert (0, 5) not in path_sums(parents, (2, 20), k=1)   # hop-2 path excluded at k=1
 
 
-def test_upstream_contributions_threshold_and_coverage():
-    parents = {(2, 20): {(1, 10): 4.0, (0, 5): -3.0, (9, 9): 0.5}, (1, 10): {(0, 5): 5.0}}
-    kg = {"parents": parents, "act": {}, "error_into": {(2, 20): 0.0}}
-    out = upstream_contributions(kg, [(2, 20)], k=3, tau=0.10)
-    # contribs: (1,10)=4, (0,5)=17, (9,9)=0.5 ; total=21.5 ; tau*total=2.15 -> drop (9,9)
+def test_normalized_parents_shares_and_error_dilution():
+    # (2,20) incoming |3|+|-1| = 4 -> shares 0.75 / -0.25
+    kg = {"parents": {(2, 20): {(1, 10): 3.0, (0, 5): -1.0}}, "act": {}, "error_into": {}}
+    npar = normalized_parents(kg)
+    assert npar[(2, 20)][(1, 10)] == 0.75 and npar[(2, 20)][(0, 5)] == -0.25
+    # error leakage dilutes the feature shares: 3 / (3 + 1) = 0.75
+    kg2 = {"parents": {(2, 20): {(1, 10): 3.0}}, "act": {}, "error_into": {(2, 20): 1.0}}
+    assert normalized_parents(kg2)[(2, 20)][(1, 10)] == 0.75
+
+
+def test_upstream_contributions_absolute_floor_and_coverage():
+    kg = {"parents": {(2, 20): {(1, 10): 3.0, (0, 5): -1.0}, (1, 10): {(0, 5): 2.0}},
+          "act": {}, "error_into": {}}
+    # normalized: (2,20)->(1,10)=0.75, (0,5)=-0.25 ; (1,10)->(0,5)=1.0
+    # path-sums: (1,10)=0.75 ; (0,5) = -0.25 + 0.75*1.0 = 0.5
+    out = upstream_contributions(kg, [(2, 20)], k=3, tau=0.6)   # absolute floor
     pf = out["per_feature"]
-    assert set(pf) == {(1, 10), (0, 5)}
-    assert pf[(0, 5)]["contrib"] == 17.0
-    assert abs(out["coverage"] - 21.0 / 21.5) < 1e-9
+    assert set(pf) == {(1, 10)}                                  # keep 0.75, drop 0.5
+    assert abs(pf[(1, 10)]["contrib"] - 0.75) < 1e-9
+    assert abs(out["coverage"] - 0.75 / 1.25) < 1e-9             # kept / (0.75+0.5)
+
+
+def test_upstream_contributions_error_frac():
+    kg = {"parents": {(2, 20): {(1, 10): 3.0}}, "act": {}, "error_into": {(2, 20): 1.0}}
+    out = upstream_contributions(kg, [(2, 20)], k=3, tau=0.1)
+    assert abs(out["error_frac"] - 0.25) < 1e-9                  # 1 / (3 + 1)
