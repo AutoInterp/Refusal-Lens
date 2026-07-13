@@ -163,12 +163,25 @@ suffix token overlap), and, if the sweep ran, the K-vs-comply curve. Also emits
 ## 8. Compute & runbook (RunPod, mirrors Tejas)
 
 Authoring + CPU validation happen here; the two GPU steps + judge run on RunPod.
-`run_v5_runpod.sh` orchestrates:
+`run_v5_runpod.sh` runs in two phases — a mandatory end-to-end **smoke** on 2–3 bases
+across **all three classes** with a human-inspection gate, then the full comprehensive
+run only after the smoke output looks right.
 
 ```
 pip install transformers torch accelerate nanogcg litellm
 export HF_TOKEN=...
-python gcg_optimize.py --smoke                       # gate: nanoGCG↔Gemma-3
+
+# --- Phase A: end-to-end smoke (2-3 bases, ALL classes), then INSPECT before proceeding ---
+python gcg_optimize.py --smoke                        # (a) fast gate: nanoGCG↔Gemma-3 (2 steps)
+python gcg_optimize.py --mode both --limit 3 --out gcg_suffixes_smoke.json   # (b) real suffixes, 3 bases
+python build_dataset_v5.py --gcg-suffixes gcg_suffixes_smoke.json --limit 3 --out dataset_v5_smoke.json
+python generate.py --dataset dataset_v5_smoke.json --out v5_smoke_generations.json
+python report_v5.py --generations v5_smoke_generations.json --inspect
+#   ^ prints each (class, base, attack_text head, response head) so a HUMAN confirms every
+#     class produces a well-formed prompt AND a plausible response before the full run.
+#     STOP HERE and eyeball all 3 classes. Only continue if they look correct.
+
+# --- Phase B: full comprehensive run (all 50 bases, all classes, NO limit) ---
 python gcg_optimize.py --mode per_prompt --out gcg_suffixes.json
 python gcg_optimize.py --mode universal --append gcg_suffixes.json
 python build_dataset_v5.py --gcg-suffixes gcg_suffixes.json --out dataset_v5.json [--sweep]
@@ -176,6 +189,12 @@ python generate.py --dataset dataset_v5.json --out v5_generations.json
 # judge (ollama qwen3.6:35b-a3b, or litellm API) per eval_loop_README.md → v5_judged.json
 python report_v5.py --judged v5_judged.json          # per-class table + comparisons
 ```
+
+`--limit N` exists **only** to scope the Phase-A smoke (and `--mode both` runs per-prompt
++ universal together on that subset). The Phase-B full run takes no limit — the goal is
+one comprehensive dataset in a single pass. `report_v5.py --inspect` is the manual gate:
+it dumps the prompt→response head for every smoke pair so their well-formedness is
+confirmed by eye, not just by exit code.
 
 ## 9. File layout
 
@@ -208,8 +227,11 @@ Unit tests on `build_dataset_v5.py` (the only non-trivial pure logic):
   (K=4 ⊂ K=8 ⊂ …) so the curve isolates count.
 
 GPU pieces (nanoGCG, generate, judge) are validated by the smoke test + reusing Tejas's
-already-validated harness; no CPU unit test can exercise them. E2E on RunPod =
-smoke→per-prompt(2 bases)→build→generate(2)→judge sanity before the full 50.
+already-validated harness; no CPU unit test can exercise them. **The Phase-A end-to-end
+smoke (§8) is the required GPU gate:** it runs all three classes on 2–3 bases through the
+entire pipeline and `report_v5.py --inspect` dumps each prompt→response head for human
+confirmation that (a) every class produces a well-formed `attack_text` and (b) Gemma
+produces a plausible response, before the full 50-base run is launched.
 
 ## 11. Risks / open questions
 
@@ -222,5 +244,7 @@ smoke→per-prompt(2 bases)→build→generate(2)→judge sanity before the full
   train/eval split makes generalization measurable rather than assumed.
 - **Shot-pool topic skew** — 60 demos lean m2s/nested; the sampler mixes classes and can
   cap per-class share if skew hurts (tunable), but default is uniform random under seed.
-- **Compute budget** — 50 per-prompt GCG runs × ~500 steps is the dominant cost; the
-  runbook allows `--limit`/`--steps` to right-size to the RunPod budget.
+- **Compute budget** — 50 per-prompt GCG runs × ~500 steps is the dominant cost. Per the
+  user's decision the **full run is unlimited** (comprehensive dataset in one pass);
+  `--limit` is reserved for the Phase-A smoke only. The Phase-A gate is what protects the
+  budget: a broken pipeline is caught on 3 bases, not 50.
