@@ -7,7 +7,7 @@ def test_gcg_optimize_invariants():
     src = (PKG / "gcg_optimize.py").read_text()
     for needle in ['import nanogcg', "google/gemma-3-4b-it", "prune_suffix",
                    "suffix_len", "Sure, here are the detailed steps:",
-                   '"per_prompt"', '"smoke"']:
+                   '"per_prompt"', '"smoke"', '"--smoke"']:
         assert needle in src, needle
     # default L=30 per the spec (robust-alignment tier)
     assert "default=30" in src
