@@ -16,7 +16,7 @@ def test_gcg_optimize_invariants():
 
 def test_generate_matches_tejas_settings():
     src = (PKG / "generate.py").read_text()
-    for needle in ["google/gemma-3-4b-it", "torch.float32", "do_sample=False",
+    for needle in ["google/gemma-3-4b-it", "torch.bfloat16", "do_sample=False",
                    "max_new_tokens", "apply_chat_template", 'device_map="cuda"',
-                   "sweep_k"]:
+                   "sweep_k"]:   # bf16 (not Tejas's fp32): fp32 OOMs on 35k-token many-shot prompts
         assert needle in src, needle

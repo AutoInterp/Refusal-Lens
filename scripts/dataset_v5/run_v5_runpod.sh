@@ -3,6 +3,8 @@
 # human inspect gate; Phase B = full comprehensive run (all 50, no limit).
 set -euo pipefail
 : "${HF_TOKEN:?export HF_TOKEN first}"
+# Reduce CUDA fragmentation on the long (~35k-token) many_shot_icl generations.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 cd "$(dirname "$0")"
 OUT=../../new_dataset_results/refusal_results
 PY=${PY:-python}                       # RunPod: plain python (CUDA torch); dev box: unused
