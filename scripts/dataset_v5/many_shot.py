@@ -48,7 +48,9 @@ def assemble_many_shot(base_record: dict, pool: list[dict], k: int = 32,
     if len(eligible) < k:
         raise ValueError(f"pool has {len(eligible)} eligible demos, need k={k}")
     rng = random.Random(seed * 1000 + (bid or 0))
-    demos = rng.sample(eligible, k)          # nested-friendly: prefixes give K<k subsets
+    pool_copy = list(eligible)
+    rng.shuffle(pool_copy)
+    demos = pool_copy[:k]                     # nested-friendly: prefixes give K<k subsets
     blocks = []
     for p in demos:
         ans = p["response"] if demo_char_cap is None else p["response"][:demo_char_cap]
