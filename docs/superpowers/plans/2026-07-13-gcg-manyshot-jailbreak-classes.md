@@ -411,10 +411,29 @@ git commit -m "feat(dataset-v5): model-agnostic post-hoc GCG suffix pruning"
 
 **Files:**
 - Create: `scripts/dataset_v5/build_dataset_v5.py`
+- Modify: `scripts/dataset_v5/many_shot.py` (one-line sampling change — Step 0)
 - Test: `scripts/dataset_v5/tests/test_build_dataset_v5.py`
 
+> **Step 0 — nesting prerequisite (do this FIRST).** Task 2's `assemble_many_shot`
+> samples with `demos = rng.sample(eligible, k)`. `random.sample` switches internal
+> algorithm as `k` grows, so independent per-K calls are **not** guaranteed nested
+> (verified: breaks at eligible pool size 59 — K=4 is not a prefix of K=8). `build_sweep`
+> (below) relies on nesting so the K→comply curve isolates *count*. Fix it by sampling a
+> fixed shuffle and slicing — a prefix of a fixed shuffle is nested for every `k`:
+> ```python
+> # in many_shot.py assemble_many_shot, replace:  demos = rng.sample(eligible, k)
+> pool_copy = list(eligible)
+> rng.shuffle(pool_copy)
+> demos = pool_copy[:k]
+> ```
+> This keeps all 6 Task 2 tests green (still deterministic in `(seed, base_id)`, still
+> seed-sensitive). After the change, run `.venv/bin/python -m pytest
+> scripts/dataset_v5/tests/test_many_shot.py -v` and confirm 6/6 still pass, then proceed.
+> With this in place, `build_sweep`'s per-K calls nest by construction — no further
+> build_sweep logic is needed.
+
 **Interfaces:**
-- Consumes: `load_base_prompts` (Task 1); `load_comply_pool`, `assemble_many_shot` (Task 2).
+- Consumes: `load_base_prompts` (Task 1); `load_comply_pool`, `assemble_many_shot` (Task 2, sampling refined in Step 0).
 - Produces:
   - `build_records(bases: list[dict], pool: list[dict], gcg: dict | None, k: int = 32, seed: int = 0, demo_char_cap: int | None = None, limit: int | None = None) -> list[dict]` — 2 records per base (order: `gcg_per_prompt`, `many_shot_icl`), honoring `limit`.
   - `build_sweep(bases, pool, ks=(4,8,16,32), n_bases=8, seed=0) -> list[dict]` — many-shot-only records with `sweep_k`, over the first `n_bases`, nested shot sets.
@@ -481,13 +500,16 @@ def test_limit_scopes_bases():
 
 
 def test_sweep_is_nested_and_many_shot_only():
-    sweep = build_sweep(BASES, POOL, ks=(2, 4), n_bases=3, seed=0)
+    # ks=(4,8) straddles random.sample's internal-algorithm boundary: under the OLD
+    # `rng.sample(eligible,k)` sampling K=4 is NOT a prefix of K=8 (algorithms differ),
+    # so this test is a regression guard for the Step-0 shuffle+slice fix.
+    sweep = build_sweep(BASES, POOL, ks=(4, 8), n_bases=3, seed=0)
     assert {r["class"] for r in sweep} == {"many_shot_icl"}
-    assert {r["sweep_k"] for r in sweep} == {2, 4}
+    assert {r["sweep_k"] for r in sweep} == {4, 8}
     b1 = {r["sweep_k"]: r for r in sweep if r["base_id"] == 1}
-    refs2 = [x["record_idx"] for x in b1[2]["many_shot"]["shot_refs"]]
     refs4 = [x["record_idx"] for x in b1[4]["many_shot"]["shot_refs"]]
-    assert refs4[:2] == refs2                              # K=2 is a prefix of K=4
+    refs8 = [x["record_idx"] for x in b1[8]["many_shot"]["shot_refs"]]
+    assert refs8[:4] == refs4                              # K=4 is a prefix of K=8 (nested)
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -603,10 +625,10 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 4: Run tests to verify they pass (both files)**
 
-Run: `.venv/bin/python -m pytest scripts/dataset_v5/tests/test_build_dataset_v5.py -v`
-Expected: PASS (6 tests)
+Run: `.venv/bin/python -m pytest scripts/dataset_v5/tests/test_build_dataset_v5.py scripts/dataset_v5/tests/test_many_shot.py -v`
+Expected: PASS (6 build tests + 6 many_shot tests = 12) — the Step-0 sampling change must keep Task 2's 6 tests green.
 
 - [ ] **Step 5: Real placeholder build (no GPU) — proves the many-shot half end-to-end**
 
@@ -626,8 +648,8 @@ Expected: `records 6`, `placeholder True`, `Counter({'gcg_per_prompt':3,'many_sh
 - [ ] **Step 6: Commit**
 
 ```bash
-git add scripts/dataset_v5/build_dataset_v5.py scripts/dataset_v5/tests/test_build_dataset_v5.py
-git commit -m "feat(dataset-v5): dataset builder (gcg + many-shot, placeholder-capable)"
+git add scripts/dataset_v5/build_dataset_v5.py scripts/dataset_v5/tests/test_build_dataset_v5.py scripts/dataset_v5/many_shot.py
+git commit -m "feat(dataset-v5): dataset builder (gcg + many-shot) + nested-sweep sampling fix"
 ```
 
 ---
