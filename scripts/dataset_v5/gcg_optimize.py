@@ -29,8 +29,12 @@ TARGET = "Sure, here are the detailed steps:"
 
 
 def _load_model():
+    # bf16 for GCG optimization: ~2-3x faster than fp32 (nanoGCG recommends it), and it's
+    # Gemma-3's NATIVE training precision. The output is a discrete token suffix, so the
+    # attack is identical in kind; only generation (generate.py) stays fp32 to match Tejas's
+    # comply-rate harness exactly (that's where dtype comparability actually matters).
     tok = AutoTokenizer.from_pretrained(MODEL)
-    model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.float32,
+    model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16,
                                                  device_map="cuda").eval()
     return model, tok
 
