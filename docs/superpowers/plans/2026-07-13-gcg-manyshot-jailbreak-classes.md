@@ -512,16 +512,18 @@ def test_limit_scopes_bases():
 
 
 def test_sweep_is_nested_and_many_shot_only():
-    # ks=(4,8) straddles random.sample's internal-algorithm boundary: under the OLD
-    # `rng.sample(eligible,k)` sampling K=4 is NOT a prefix of K=8 (algorithms differ),
-    # so this test is a regression guard for the Step-0 shuffle+slice fix.
+    # ks=(4,8) straddles random.sample's internal-algorithm boundary. Loop over EVERY
+    # swept base (not just base_id 1, which nests coincidentally under the old rng.sample
+    # too) so it genuinely fails if the Step-0 shuffle+slice fix is reverted: base_id 2 is
+    # non-nested under rng.sample but nested under shuffle+slice.
     sweep = build_sweep(BASES, POOL, ks=(4, 8), n_bases=3, seed=0)
     assert {r["class"] for r in sweep} == {"many_shot_icl"}
     assert {r["sweep_k"] for r in sweep} == {4, 8}
-    b1 = {r["sweep_k"]: r for r in sweep if r["base_id"] == 1}
-    refs4 = [x["record_idx"] for x in b1[4]["many_shot"]["shot_refs"]]
-    refs8 = [x["record_idx"] for x in b1[8]["many_shot"]["shot_refs"]]
-    assert refs8[:4] == refs4                              # K=4 is a prefix of K=8 (nested)
+    for bid in (1, 2, 3):
+        byk = {r["sweep_k"]: r for r in sweep if r["base_id"] == bid}
+        refs4 = [x["record_idx"] for x in byk[4]["many_shot"]["shot_refs"]]
+        refs8 = [x["record_idx"] for x in byk[8]["many_shot"]["shot_refs"]]
+        assert refs8[:4] == refs4, f"base {bid} shot sets not nested"
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
