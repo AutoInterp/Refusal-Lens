@@ -29,14 +29,22 @@ Many-Shot ICL class.
 evaluate each with Tejas's *exact* harness, and report per-class comply rates comparable
 to his table.
 
-New classes:
+New classes (2):
 1. **`gcg_per_prompt`** — a unique GCG-optimized adversarial suffix per base prompt.
-2. **`gcg_universal`** — one shared suffix optimized jointly over a training subset of
-   the bases, applied to all 50. (Per-prompt vs universal is itself an analysis axis:
-   how do the attribution graphs of a bespoke vs a shared suffix differ?)
-3. **`many_shot_icl`** — the base request wrapped in K in-context demonstrations of
+2. **`many_shot_icl`** — the base request wrapped in K in-context demonstrations of
    compliant harmful answers (Agarwal et al. 2024, *Many-Shot In-Context Learning*;
    jailbreak variant Anil et al. 2024; empirical study arXiv:2505.19773).
+
+**Deferred — `gcg_universal` (future category, NOT in this effort).** A shared suffix
+optimized *jointly* over a training subset (the per-prompt-vs-universal contrast is a
+compelling analysis axis for the attribution graphs). It is deferred because our chosen
+optimizer, **nanoGCG, has no multi-prompt/universal API** (its `run`/`GCG` are strictly
+single-prompt, single-target). True universal GCG requires a custom multi-prompt loop
+(aggregating loss/gradients across prompts each step) on top of nanoGCG's internals — or
+a heavier lib (llm-attacks / HarmBench GCG-Multi). Adding it *correctly* needs a
+validated implementation with its own tests proving the joint objective actually
+optimizes transfer; that verification burden is why it is split out rather than rushed
+into this dataset. Revisit as `dataset_v5.1` or a dedicated GCG-universal effort.
 
 ## 2. Non-goals
 
@@ -63,7 +71,7 @@ beyond short truncated identifiers.
 
 ## 4. Dataset schema (compatible with v3/v4)
 
-All three classes are `class_type: "sota_transform"` — a single transformed `attack_text`
+Both classes are `class_type: "sota_transform"` — a single transformed `attack_text`
 with a `floor_ceiling` control, exactly like `m2s_multiturn` and `encoding_base64`. This
 means **generation reuses Tejas's generation logic unchanged** (via a clean copy,
 `generate.py`, §9): the transform is fully baked into `attack_text`, so there is no
@@ -79,15 +87,10 @@ Common fields (every record): `base_id`, `base`, `topic`, `class`, `class_type`,
   suffix_pruned, pruned_n_tokens, pruned_loss, prune_asr_held}`
 - `source: "GCG (Zou et al. 2023), per-prompt, L=30 + post-hoc prune"`, `faithful: true`
 
-**`gcg_universal`** (50 records):
-- `attack_text = base + " " + suffix_univ` (same suffix for all 50)
-- `gcg: {mode: "universal", suffix, ..., suffix_pruned, pruned_n_tokens, train_base_ids,
-  n_train}`
-- `source: "GCG universal (Zou et al. 2023), L=30 + post-hoc prune"`, `faithful: true`
-
-Both GCG classes store the **full L=30 suffix** and a **pruned** suffix (§5); `attack_text`
+The GCG class stores the **full L=30 suffix** and a **pruned** suffix (§5); `attack_text`
 uses the full suffix so the dataset's headline comply rate reflects the un-compressed
 attack, while `suffix_pruned` is retained for the downstream cleaner-graph comparison.
+Total: **100 records** (2 classes × 50 bases).
 
 **`many_shot_icl`** (50 records):
 - `attack_text` = the assembled single-turn blob (see §6)
@@ -119,14 +122,9 @@ GCG loop for any HF causal LM with an input-embedding layer.
   `prune_asr_held`. `attack_text` uses the **full** suffix; pruned is stored alongside.
 - **Modes:**
   - `--mode per_prompt`: 50 independent optimizations → `suffix_i` + `final_loss` +
-    pruned suffix each.
-  - `--mode universal`: one multi-prompt run over a train subset (default 25 of 50
-    bases, seeded split) minimizing summed loss → one `suffix_univ` (+ pruned); evaluated
-    on all 50.
-  - `--mode both`: per_prompt then universal (used by the Phase-A smoke, §8).
+    pruned suffix each. (`gcg_universal` is deferred — §1 — so there is no universal mode.)
 - **Output:** `gcg_suffixes.json` = `{per_prompt: {base_id: {suffix, suffix_pruned,
-  loss, ...}}, universal: {suffix, suffix_pruned, train_base_ids, loss, ...},
-  config: {...}}`.
+  loss, ...}}, config: {...}}`.
 - **Smoke mode** (`--smoke`): 2 steps, 1 prompt, asserts nanoGCG runs on Gemma-3
   (embedding access + chat template) before committing to the full run. This is the
   **first GPU action** in the runbook (§8), de-risking the Gemma-3 integration.
@@ -161,7 +159,7 @@ interference from the text checkpoint. The smoke test gates the full run.
 **`build_dataset_v5.py` (CPU, testable):**
 Inputs `gcg_suffixes.json` (from §5) + the judged files (for the shot pool) + the base
 set (base_id 1–50, extracted from `dataset_v4.json`). Emits `dataset_v5.json`
-(metadata + 150 records). If `--gcg-suffixes` is absent it writes GCG records with an
+(metadata + 100 records). If `--gcg-suffixes` is absent it writes GCG records with an
 empty suffix (`attack_text == base`) as placeholders, so the many-shot half can be built
 and inspected before the GPU run — the finalize pass re-runs with suffixes.
 
@@ -174,60 +172,57 @@ attributed copy of `generate_v4 (1).py`) pointed at `dataset_v5.json` →
 `refusal_llm_judge.judge_refusal` on `kind=="attack"` rows → `judge ∈ {REFUSE, COMPLY}`
 → `v5_judged.json`.
 
-**`report_v5.py` (CPU):** prints the per-class comply table next to Tejas's v3/v4 rates,
-the **gcg_per_prompt vs gcg_universal** comparison (comply rate + mean final-loss +
-suffix token overlap), and, if the sweep ran, the K-vs-comply curve. Also emits
-`v5_report.md`.
+**`report_v5.py` (CPU):** prints the per-class comply table (`gcg_per_prompt`,
+`many_shot_icl`) next to Tejas's v3/v4 rates, and, if the sweep ran, the K-vs-comply
+curve. Also emits `v5_report.md`.
 
 ## 8. Compute & runbook (RunPod, mirrors Tejas)
 
 Authoring + CPU validation happen here; the two GPU steps + judge run on RunPod.
 `run_v5_runpod.sh` runs in two phases — a mandatory end-to-end **smoke** on 2–3 bases
-across **all three classes** with a human-inspection gate, then the full comprehensive
-run only after the smoke output looks right.
+across **both classes** with a human-inspection gate, then the full comprehensive run
+only after the smoke output looks right.
 
 ```
 pip install transformers torch accelerate nanogcg litellm
 export HF_TOKEN=...
 
-# --- Phase A: end-to-end smoke (2-3 bases, ALL classes), then INSPECT before proceeding ---
+# --- Phase A: end-to-end smoke (2-3 bases, BOTH classes), then INSPECT before proceeding ---
 python gcg_optimize.py --smoke                        # (a) fast gate: nanoGCG↔Gemma-3 (2 steps)
-python gcg_optimize.py --mode both --limit 3 --out gcg_suffixes_smoke.json   # (b) real suffixes, 3 bases
+python gcg_optimize.py --mode per_prompt --limit 3 --out gcg_suffixes_smoke.json   # (b) real suffixes, 3 bases
 python build_dataset_v5.py --gcg-suffixes gcg_suffixes_smoke.json --limit 3 --out dataset_v5_smoke.json
 python generate.py --dataset dataset_v5_smoke.json --out v5_smoke_generations.json
 python report_v5.py --generations v5_smoke_generations.json --inspect
 #   ^ prints each (class, base, attack_text head, response head) so a HUMAN confirms every
 #     class produces a well-formed prompt AND a plausible response before the full run.
-#     STOP HERE and eyeball all 3 classes. Only continue if they look correct.
+#     STOP HERE and eyeball both classes. Only continue if they look correct.
 
-# --- Phase B: full comprehensive run (all 50 bases, all classes, NO limit) ---
+# --- Phase B: full comprehensive run (all 50 bases, both classes, NO limit) ---
 python gcg_optimize.py --mode per_prompt --out gcg_suffixes.json
-python gcg_optimize.py --mode universal --append gcg_suffixes.json
 python build_dataset_v5.py --gcg-suffixes gcg_suffixes.json --out dataset_v5.json [--sweep]
 python generate.py --dataset dataset_v5.json --out v5_generations.json
 # judge (ollama qwen3.6:35b-a3b, or litellm API) per eval_loop_README.md → v5_judged.json
-python report_v5.py --judged v5_judged.json          # per-class table + comparisons
+python report_v5.py --judged v5_judged.json          # per-class table
 ```
 
-`--limit N` exists **only** to scope the Phase-A smoke (and `--mode both` runs per-prompt
-+ universal together on that subset). The Phase-B full run takes no limit — the goal is
-one comprehensive dataset in a single pass. `report_v5.py --inspect` is the manual gate:
-it dumps the prompt→response head for every smoke pair so their well-formedness is
-confirmed by eye, not just by exit code.
+`--limit N` exists **only** to scope the Phase-A smoke. The Phase-B full run takes no
+limit — the goal is one comprehensive dataset in a single pass. `report_v5.py --inspect`
+is the manual gate: it dumps the prompt→response head for every smoke pair so their
+well-formedness is confirmed by eye, not just by exit code.
 
 ## 9. File layout
 
 ```
 scripts/dataset_v5/
-  gcg_optimize.py         # nanoGCG wrapper (per_prompt | universal | smoke)
-  build_dataset_v5.py     # assemble 150 records (many-shot pool + GCG suffixes)
+  gcg_optimize.py         # nanoGCG wrapper (per_prompt | smoke)
+  build_dataset_v5.py     # assemble 100 records (many-shot pool + GCG suffixes)
   generate.py             # clean attributed copy of Tejas's generate_v4
-  report_v5.py            # judge-aware per-class report + comparisons
+  report_v5.py            # judge-aware per-class report
   run_v5_runpod.sh        # orchestration
   README.md               # runbook + provenance
   tests/
     test_build_dataset_v5.py   # CPU unit tests (schema, counts, blob, determinism)
-dataset_v5.json                # 150 records (repo root, like dataset_v3)
+dataset_v5.json                # 100 records (repo root, like dataset_v3)
 new_dataset_results/refusal_results/
   gcg_suffixes.json  v5_generations.json  v5_judged.json  v5_report.md
 ```
@@ -235,19 +230,20 @@ new_dataset_results/refusal_results/
 ## 10. Testing (CPU only — no GPU here)
 
 Unit tests on `build_dataset_v5.py` (the only non-trivial pure logic):
-- **Counts/schema:** 150 records, 50 per class; every record has the common fields +
-  `control:{type:floor_ceiling}`; GCG records carry `gcg.*`, many-shot carry `many_shot.*`.
+- **Counts/schema:** 100 records, 50 per class (2 classes); every record has the common
+  fields + `control:{type:floor_ceiling}`; GCG records carry `gcg.*`, many-shot carry
+  `many_shot.*`.
 - **Many-shot blob:** exactly K `User:/Assistant:` demo pairs; target base is the final
   `User:` turn; **no demo shares the target's base_id**; identical output under a fixed
   seed (determinism); `demo_char_cap` truncates.
-- **GCG:** `attack_text == base + " " + suffix`; universal records all share one suffix;
-  per-prompt records have distinct suffixes; placeholder mode yields `attack_text==base`.
+- **GCG:** `attack_text == base + " " + suffix`; per-prompt records have distinct
+  suffixes; placeholder mode yields `attack_text==base`.
 - **Sweep:** K ∈ {4,8,16,32} variants produced for the subset; nested shot sets
   (K=4 ⊂ K=8 ⊂ …) so the curve isolates count.
 
 GPU pieces (nanoGCG, generate, judge) are validated by the smoke test + reusing Tejas's
 already-validated harness; no CPU unit test can exercise them. **The Phase-A end-to-end
-smoke (§8) is the required GPU gate:** it runs all three classes on 2–3 bases through the
+smoke (§8) is the required GPU gate:** it runs both classes on 2–3 bases through the
 entire pipeline and `report_v5.py --inspect` dumps each prompt→response head for human
 confirmation that (a) every class produces a well-formed `attack_text` and (b) Gemma
 produces a plausible response, before the full 50-base run is launched.
@@ -259,8 +255,6 @@ produces a plausible response, before the full 50-base run is launched.
   empirical unknown; a low comply rate is itself a valid finding (as Tejas framed
   narrative_sandwich at 2% and the v4 encoding survey). We report whatever the honest
   rate is.
-- **Universal transfer across our 50 bases** — one suffix may not generalize; the
-  train/eval split makes generalization measurable rather than assumed.
 - **Prune tolerance** — too loose a loss tolerance in post-hoc pruning could silently
   weaken the suffix; the pass records `prune_asr_held` (did the affirmative continuation
   still generate after pruning) so any regression is visible, and `attack_text` uses the
