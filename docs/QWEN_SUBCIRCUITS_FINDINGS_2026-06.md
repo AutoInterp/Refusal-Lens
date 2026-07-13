@@ -229,3 +229,14 @@ artifact of this. Recovery analysis should be restricted to the strong classes.
 | `…/08_ablation/ablation_summary.json` | Stage 08 (keyword) dissociation + coverage |
 | `qwen_subcircuits/topk_sweep_{zero,proxy}_*.json` | per-generation sweep records (re-scorable) |
 | `qwen_subcircuits/subcircuits_frontend.json` | rule-based + Top-K sets for the viewer |
+
+
+Next Steps:
+
+- Inspect the top 10 features from our Top-K sweep experiments (Manual Audit)
+- Compare those features decoder to the refusal direction (how close are they to the refusal direction?)
+- These experiments show controllability, we want to be surgical on our ablations; subcircuits that implement the jailbreak:
+   - How big do these subcircuits have to be?
+   - How many Features? Edges? etc.
+   - define the lower bound of our subcircuits
+
