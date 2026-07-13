@@ -1062,11 +1062,14 @@ def main():
                                pad_token_id=tok.eos_token_id)
         resp = tok.decode(g[0][plen:], skip_special_tokens=True)
         ended = resp.rstrip().endswith((".", "!", "?", '"', ")", "`"))
-        out["generations"].append({
+        gen = {
             "record_idx": ridx, "class": r["class"], "kind": "attack",
             "base_id": r.get("base_id"), "base": r.get("base"),
             "attack_text": text, "prompt_text": text, "response": resp,
-            "n_chars": len(resp), "ended_naturally": ended})
+            "n_chars": len(resp), "ended_naturally": ended}
+        if "sweep_k" in r:                       # carry K through for the sweep report
+            gen["sweep_k"] = r["sweep_k"]
+        out["generations"].append(gen)
         if k % 10 == 0 or k == len(jobs):
             print(f"[{k}/{len(jobs)}] {r['class']} chars={len(resp)} ended={ended} ({time.time()-t0:.0f}s)")
         Path(args.out).write_text(json.dumps(out, indent=2))
@@ -1096,7 +1099,7 @@ OUT=../../new_dataset_results/refusal_results
 PY=${PY:-python}                       # RunPod: plain python (CUDA torch); dev box: unused
 
 echo "== install =="
-pip install -q transformers torch accelerate nanogcg litellm
+pip install -q transformers accelerate nanogcg litellm   # torch omitted: keep RunPod's CUDA build
 
 echo "== Phase A: smoke gate =="
 $PY gcg_optimize.py --smoke
@@ -1113,8 +1116,11 @@ echo "== Phase B: full run (all 50, no limit) =="
 $PY gcg_optimize.py --mode per_prompt --out "$OUT/gcg_suffixes.json"
 $PY build_dataset_v5.py --gcg-suffixes "$OUT/gcg_suffixes.json" --sweep --out ../../dataset_v5.json
 $PY generate.py --dataset ../../dataset_v5.json --out "$OUT/v5_generations.json"
+$PY generate.py --dataset "$OUT/many_shot_sweep.json" --out "$OUT/v5_sweep_generations.json"
 echo ">>> now judge $OUT/v5_generations.json per README (Ollama/litellm) -> v5_judged.json"
 echo ">>> then: $PY report_v5.py --judged $OUT/v5_judged.json"
+echo ">>> ALSO judge $OUT/v5_sweep_generations.json the same way -> v5_sweep_judged.json"
+echo ">>> then: $PY report_v5.py --sweep-judged $OUT/v5_sweep_judged.json   # K->comply curve"
 ```
 
 - [ ] **Step 4: Create the README (runbook + provenance + judge snippet)**
