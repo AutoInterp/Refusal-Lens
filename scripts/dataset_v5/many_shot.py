@@ -31,9 +31,20 @@ def load_comply_pool(judged_paths: list[Path] = DEFAULT_JUDGED) -> list[dict]:
 
 
 def assemble_many_shot(base_record: dict, pool: list[dict], k: int = 32,
-                       seed: int = 0, demo_char_cap: int | None = None):
+                       seed: int = 0, demo_char_cap: int | None = None) -> tuple[str, list[dict]]:
     bid = base_record["base_id"]
-    eligible = [p for p in pool if p["base_id"] != bid]
+    tgt_base = base_record["base"]
+    seen = set()
+    eligible = []
+    for p in pool:
+        if p["base_id"] == bid:          # exclude same base_id
+            continue
+        if p["base"] == tgt_base:        # exclude the target's own question text
+            continue
+        if p["base"] in seen:            # dedup demo questions -> diverse shots
+            continue
+        seen.add(p["base"])
+        eligible.append(p)
     if len(eligible) < k:
         raise ValueError(f"pool has {len(eligible)} eligible demos, need k={k}")
     rng = random.Random(seed * 1000 + (bid or 0))

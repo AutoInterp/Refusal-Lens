@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from many_shot import assemble_many_shot
 
@@ -51,3 +53,25 @@ def test_demo_char_cap_truncates():
 def test_raises_when_pool_too_small():
     with pytest.raises(ValueError):
         assemble_many_shot(_target(), _pool(3), k=10, seed=0)
+
+
+def test_load_comply_pool_filters_and_maps(tmp_path):
+    from many_shot import load_comply_pool
+    j = {"metadata": {}, "generations": [
+        {"record_idx": 0, "class": "c", "kind": "attack", "judge": "COMPLY",
+         "base_id": 5, "base": "q5?", "response": "a5", "n_chars": 2},
+        {"record_idx": 1, "class": "c", "kind": "attack", "judge": "REFUSE",
+         "base_id": 6, "base": "q6?", "response": "r6", "n_chars": 2},          # dropped: REFUSE
+        {"record_idx": 2, "class": "c", "kind": "control", "judge": "COMPLY",
+         "base_id": 7, "base": "q7?", "response": "a7", "n_chars": 2},          # dropped: not attack
+        {"record_idx": 3, "class": "m", "kind": "attack", "judge": "COMPLY",
+         "base_id": None, "base": "q8?", "response": "a8", "n_chars": 2},
+    ]}
+    p = tmp_path / "judged.json"
+    p.write_text(json.dumps(j))
+    pool = load_comply_pool([p])
+    assert len(pool) == 2                                    # only the two COMPLY attack rows
+    assert {r["record_idx"] for r in pool} == {0, 3}
+    r0 = next(r for r in pool if r["record_idx"] == 0)
+    assert r0 == {"src": "judged", "record_idx": 0, "base_id": 5, "base": "q5?", "response": "a5"}
+    assert next(r for r in pool if r["record_idx"] == 3)["base_id"] is None
