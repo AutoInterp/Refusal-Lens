@@ -255,12 +255,24 @@ def load_comply_pool(judged_paths: list[Path] = DEFAULT_JUDGED) -> list[dict]:
 
 def assemble_many_shot(base_record: dict, pool: list[dict], k: int = 32,
                        seed: int = 0, demo_char_cap: int | None = None):
+    # Dedup eligible demos by QUESTION TEXT (not just base_id): ~30 of the 60 real
+    # COMPLY demos are m2s rows with base_id=None collapsing to 10 unique questions,
+    # so base_id-only exclusion would let ~50% near-duplicate shots through. Keeping
+    # each question once (+ excluding the target's own text) yields 33-34 diverse
+    # demos, enough for the default k=32.
     bid = base_record["base_id"]
-    eligible = [p for p in pool if p["base_id"] != bid]
+    tgt_base = base_record["base"]
+    seen = set()
+    eligible = []
+    for p in pool:
+        if p["base_id"] == bid or p["base"] == tgt_base or p["base"] in seen:
+            continue
+        seen.add(p["base"])
+        eligible.append(p)
     if len(eligible) < k:
         raise ValueError(f"pool has {len(eligible)} eligible demos, need k={k}")
     rng = random.Random(seed * 1000 + (bid or 0))
-    demos = rng.sample(eligible, k)          # nested-friendly: prefixes give K<k subsets
+    demos = rng.sample(eligible, k)          # Task 4 Step 0 changes this to shuffle+slice
     blocks = []
     for p in demos:
         ans = p["response"] if demo_char_cap is None else p["response"][:demo_char_cap]
