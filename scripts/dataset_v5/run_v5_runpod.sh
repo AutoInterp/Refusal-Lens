@@ -8,12 +8,14 @@ OUT=../../new_dataset_results/refusal_results
 PY=${PY:-python}                       # RunPod: plain python (CUDA torch); dev box: unused
 
 echo "== install =="
-# Install nanoGCG first, THEN force transformers 4.57.3: nanoGCG 0.3.0 pins
-# transformers<=4.47.1, but Gemma-3 needs >=4.50. A single combined install lets pip's
-# resolver downgrade transformers to 4.47.1 to satisfy nanoGCG -> Gemma-3 KeyError. The
-# 4.57.3 override is safe because gcg_optimize.py sets use_prefix_cache=False (the only
-# nanoGCG path that breaks on new transformers). torch omitted: keep the pod's CUDA build.
-pip install -q accelerate litellm nanogcg
+# nanoGCG 0.3.0 pins transformers<=4.47.1, but Gemma-3 needs >=4.50. ANY pip command that
+# resolves nanoGCG's deps will downgrade transformers to 4.47.1 -> Gemma-3 KeyError. So we
+# install nanoGCG's real runtime deps explicitly, install nanoGCG itself with --no-deps
+# (its stale transformers pin is ignored), then pin transformers LAST. This is safe because
+# gcg_optimize.py sets use_prefix_cache=False (the only nanoGCG path that breaks on new
+# transformers). torch omitted: keep the pod's CUDA build.
+pip install -q accelerate litellm protobuf scipy sentencepiece
+pip install -q --no-deps nanogcg
 pip install -q "transformers==4.57.3"
 
 echo "== Phase A: smoke gate =="
