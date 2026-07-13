@@ -1,9 +1,10 @@
 """GCG adversarial-suffix optimization on Gemma-3-4B (RunPod GPU).
 
-Wraps nanoGCG (per-prompt), then applies post-hoc greedy pruning (gcg_prune) to
-yield a compact high-impact suffix alongside the full one. Not runnable on the
-CPU-only dev box; run via run_v5_runpod.sh. (gcg_universal deferred — nanoGCG has
-no multi-prompt API; see spec.)
+Wraps nanoGCG (per-prompt) with a per-base affirmative target (gcg_prep._gcg_target)
+and a token filter excluding Gemma special/control tokens (gcg_prep.excluded_token_ids),
+then applies post-hoc greedy pruning (gcg_prune) to yield a compact high-impact suffix
+alongside the full one. Not runnable on the CPU-only dev box; run via run_v5_runpod.sh.
+(gcg_universal deferred — nanoGCG has no multi-prompt API; see spec.)
 
     export HF_TOKEN=...
     python gcg_optimize.py --smoke
@@ -23,9 +24,17 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from base_prompts import load_base_prompts
 from gcg_prune import prune_suffix
+from gcg_prep import _gcg_target, excluded_token_ids
 
 MODEL = "google/gemma-3-4b-it"
-TARGET = "Sure, here are the detailed steps:"
+
+
+def _install_token_filter(tok):
+    """Monkeypatch nanoGCG's get_nonascii_toks so allow_non_ascii=False also drops
+    Gemma special/added/<...> tokens (they decode to ASCII strings and otherwise slip
+    through — they backfired in the v5 smoke)."""
+    ids = excluded_token_ids(tok)
+    nanogcg.gcg.get_nonascii_toks = lambda tokenizer, device="cpu": torch.tensor(ids, device=device)
 
 
 def _load_model():
@@ -46,18 +55,18 @@ def _cfg(steps, suffix_len, search_width, topk):
     # (short) base-prompt prefix per candidate — a bit slower, same result. Verified.
     return GCGConfig(num_steps=steps, optim_str_init="x " * suffix_len,
                      search_width=search_width, topk=topk, seed=0, verbosity="WARNING",
-                     use_prefix_cache=False)
+                     use_prefix_cache=False, allow_non_ascii=False)
 
 
-def _suffix_loss_fn(model, tok, base):
-    """Return loss_fn(ids)->float: NLL of TARGET given base + decoded suffix ids."""
+def _suffix_loss_fn(model, tok, base, target):
+    """Return loss_fn(ids)->float: NLL of `target` given base + decoded suffix ids."""
     def loss_fn(ids):
         suffix = tok.decode(ids)
         msgs = [{"role": "user", "content": f"{base} {suffix}"}]
         prompt = tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-        full = prompt + TARGET
+        full = prompt + target
         enc = tok(full, return_tensors="pt").to(model.device)
-        tgt = tok(TARGET, add_special_tokens=False, return_tensors="pt").input_ids
+        tgt = tok(target, add_special_tokens=False, return_tensors="pt").input_ids
         labels = enc.input_ids.clone()
         labels[:, :-tgt.shape[1]] = -100
         with torch.no_grad():
@@ -66,12 +75,13 @@ def _suffix_loss_fn(model, tok, base):
 
 
 def _optimize_one(model, tok, base):
-    res = nanogcg.run(model, tok, base, TARGET, _cfg(ARGS.steps, ARGS.suffix_len,
+    target = _gcg_target(base)
+    res = nanogcg.run(model, tok, base, target, _cfg(ARGS.steps, ARGS.suffix_len,
                                                      ARGS.search_width, ARGS.topk))
     suffix = res.best_string
     ids = tok(suffix, add_special_tokens=False).input_ids
-    pr = prune_suffix(ids, _suffix_loss_fn(model, tok, base), tol=ARGS.prune_tol)
-    return {"suffix": suffix, "final_loss": float(res.best_loss),
+    pr = prune_suffix(ids, _suffix_loss_fn(model, tok, base, target), tol=ARGS.prune_tol)
+    return {"suffix": suffix, "final_loss": float(res.best_loss), "target": target,
             "suffix_pruned": tok.decode(pr["kept_ids"]),
             "pruned_n_tokens": len(pr["kept_ids"]), "prune_asr_held": pr["asr_held"]}
 
@@ -104,6 +114,7 @@ def main():
     if ARGS.limit:
         bases = bases[:ARGS.limit]
     model, tok = _load_model()
+    _install_token_filter(tok)
 
     if ARGS.smoke or ARGS.mode == "smoke":
         ARGS.steps, bases = 2, bases[:1]
@@ -112,7 +123,8 @@ def main():
         return
 
     cfg_meta = {"suffix_len": ARGS.suffix_len, "num_steps": ARGS.steps,
-                "search_width": ARGS.search_width, "topk": ARGS.topk, "target": TARGET}
+                "search_width": ARGS.search_width, "topk": ARGS.topk,
+                "target": "per_base (gcg_prep._gcg_target)", "token_filter": "ascii+special_excluded"}
     data = {"config": cfg_meta, "per_prompt": run_per_prompt(model, tok, bases)}
     ARGS.out.write_text(json.dumps(data, indent=2))
     print(f"[gcg] wrote {ARGS.out}")

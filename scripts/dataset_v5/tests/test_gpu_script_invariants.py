@@ -6,9 +6,10 @@ PKG = Path(__file__).resolve().parents[1]
 def test_gcg_optimize_invariants():
     src = (PKG / "gcg_optimize.py").read_text()
     for needle in ['import nanogcg', "google/gemma-3-4b-it", "prune_suffix",
-                   "suffix_len", "Sure, here are the detailed steps:",
+                   "suffix_len",
                    '"per_prompt"', '"smoke"', '"--smoke"',
-                   "use_prefix_cache=False"]:   # required for nanoGCG on transformers>=4.50
+                   "use_prefix_cache=False", "from gcg_prep import",
+                   "get_nonascii_toks", "allow_non_ascii=False", "_gcg_target"]:
         assert needle in src, needle
     # default L=30 per the spec (robust-alignment tier)
     assert "default=30" in src
