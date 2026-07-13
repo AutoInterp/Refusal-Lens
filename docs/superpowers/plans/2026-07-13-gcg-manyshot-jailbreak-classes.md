@@ -843,7 +843,7 @@ def test_gcg_optimize_invariants():
     src = (PKG / "gcg_optimize.py").read_text()
     for needle in ['import nanogcg', "google/gemma-3-4b-it", "prune_suffix",
                    "suffix_len", "Sure, here are the detailed steps:",
-                   '"per_prompt"', '"smoke"']:
+                   '"per_prompt"', '"smoke"', '"--smoke"']:
         assert needle in src, needle
     # default L=30 per the spec (robust-alignment tier)
     assert "default=30" in src
@@ -947,6 +947,8 @@ def main():
     global ARGS
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["per_prompt", "smoke"], default="per_prompt")
+    ap.add_argument("--smoke", action="store_true",
+                    help="fast nanoGCG<->Gemma-3 integration gate (2 steps, 1 prompt)")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--steps", type=int, default=500)
     ap.add_argument("--suffix-len", type=int, default=30)
@@ -961,7 +963,7 @@ def main():
         bases = bases[:ARGS.limit]
     model, tok = _load_model()
 
-    if ARGS.mode == "smoke":
+    if ARGS.smoke or ARGS.mode == "smoke":
         ARGS.steps, bases = 2, bases[:1]
         r = run_per_prompt(model, tok, bases)
         print("[smoke] nanoGCG↔Gemma-3 OK:", r)
