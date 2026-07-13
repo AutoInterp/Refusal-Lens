@@ -27,8 +27,9 @@ $PY build_dataset_v5.py --gcg-suffixes "$OUT/gcg_suffixes_smoke.json" --limit 3 
     --out ../../dataset_v5_smoke.json
 $PY generate.py --dataset ../../dataset_v5_smoke.json --out "$OUT/v5_smoke_generations.json"
 $PY report_v5.py --generations "$OUT/v5_smoke_generations.json" --inspect
-echo ">>> INSPECT the blocks above: both classes must show a well-formed attack AND a"
-echo ">>> plausible response. Re-run with RUN_FULL=1 to launch the full run."
+echo ">>> INSPECT the blocks above: 12 records (3 bases x 4 classes). For each base check"
+echo ">>> refusal_suppression (natural) + _prefill (forced) + gcg + many_shot -> refuse/comply."
+echo ">>> Re-run with RUN_FULL=1 to launch the full run."
 [ "${RUN_FULL:-0}" = "1" ] || { echo "stopping after smoke (set RUN_FULL=1 to continue)"; exit 0; }
 
 echo "== Phase B: full run (all 50, no limit) =="
