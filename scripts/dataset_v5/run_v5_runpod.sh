@@ -8,7 +8,7 @@ OUT=../../new_dataset_results/refusal_results
 PY=${PY:-python}                       # RunPod: plain python (CUDA torch); dev box: unused
 
 echo "== install =="
-pip install -q transformers torch accelerate nanogcg litellm
+pip install -q transformers accelerate nanogcg litellm
 
 echo "== Phase A: smoke gate =="
 $PY gcg_optimize.py --smoke
@@ -25,5 +25,8 @@ echo "== Phase B: full run (all 50, no limit) =="
 $PY gcg_optimize.py --mode per_prompt --out "$OUT/gcg_suffixes.json"
 $PY build_dataset_v5.py --gcg-suffixes "$OUT/gcg_suffixes.json" --sweep --out ../../dataset_v5.json
 $PY generate.py --dataset ../../dataset_v5.json --out "$OUT/v5_generations.json"
+$PY generate.py --dataset "$OUT/many_shot_sweep.json" --out "$OUT/v5_sweep_generations.json"
 echo ">>> now judge $OUT/v5_generations.json per README (Ollama/litellm) -> v5_judged.json"
 echo ">>> then: $PY report_v5.py --judged $OUT/v5_judged.json"
+echo ">>> ALSO judge $OUT/v5_sweep_generations.json the same way -> v5_sweep_judged.json"
+echo ">>> then: $PY report_v5.py --sweep-judged $OUT/v5_sweep_judged.json"

@@ -15,6 +15,9 @@ export HF_TOKEN=...
 bash run_v5_runpod.sh            # Phase A smoke + inspect gate; stops
 RUN_FULL=1 bash run_v5_runpod.sh # after inspecting, full run
 ```
+Phase B also produces `v5_sweep_generations.json` (many-shot K-sweep); judge it the
+same way as the main file to get `v5_sweep_judged.json`, then run
+`report_v5.py --sweep-judged v5_sweep_judged.json` for the K -> comply-rate curve.
 
 ## Judge (Ollama local or any litellm API), from the repo root
 ```bash

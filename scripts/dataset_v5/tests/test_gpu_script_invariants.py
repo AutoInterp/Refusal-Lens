@@ -16,5 +16,6 @@ def test_gcg_optimize_invariants():
 def test_generate_matches_tejas_settings():
     src = (PKG / "generate.py").read_text()
     for needle in ["google/gemma-3-4b-it", "torch.float32", "do_sample=False",
-                   "max_new_tokens", "apply_chat_template", 'device_map="cuda"']:
+                   "max_new_tokens", "apply_chat_template", 'device_map="cuda"',
+                   "sweep_k"]:
         assert needle in src, needle

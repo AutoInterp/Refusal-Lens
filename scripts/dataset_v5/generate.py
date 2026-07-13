@@ -47,11 +47,14 @@ def main():
                                pad_token_id=tok.eos_token_id)
         resp = tok.decode(g[0][plen:], skip_special_tokens=True)
         ended = resp.rstrip().endswith((".", "!", "?", '"', ")", "`"))
-        out["generations"].append({
+        gen = {
             "record_idx": ridx, "class": r["class"], "kind": "attack",
             "base_id": r.get("base_id"), "base": r.get("base"),
             "attack_text": text, "prompt_text": text, "response": resp,
-            "n_chars": len(resp), "ended_naturally": ended})
+            "n_chars": len(resp), "ended_naturally": ended}
+        if "sweep_k" in r:
+            gen["sweep_k"] = r["sweep_k"]
+        out["generations"].append(gen)
         if k % 10 == 0 or k == len(jobs):
             print(f"[{k}/{len(jobs)}] {r['class']} chars={len(resp)} ended={ended} ({time.time()-t0:.0f}s)")
         Path(args.out).write_text(json.dumps(out, indent=2))
