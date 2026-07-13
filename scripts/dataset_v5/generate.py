@@ -37,19 +37,22 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(args.model, dtype=torch.bfloat16,
                                                  device_map="cuda").eval()
 
-    jobs = [(i, r["attack_text"]) for i, r in enumerate(records) if r.get("attack_text")]
+    jobs = [(i, r["attack_text"], r.get("prefill", "")) for i, r in enumerate(records)
+            if r.get("attack_text")]
     out = {"metadata": {"model": args.model, "max_new_tokens": args.max_new_tokens,
                         "n_records": len(records), "n_generations": len(jobs)},
            "generations": []}
     t0 = time.time()
-    for k, (ridx, text) in enumerate(jobs, 1):
+    for k, (ridx, text, prefill) in enumerate(jobs, 1):
         r = records[ridx]
-        ids = tok(format_gemma(tok, text), return_tensors="pt").to(model.device)
+        prompt = format_gemma(tok, text) + prefill      # prefill seeds the assistant turn
+        ids = tok(prompt, return_tensors="pt").to(model.device)
         plen = ids.input_ids.shape[1]
         with torch.no_grad():
             g = model.generate(**ids, do_sample=False, max_new_tokens=args.max_new_tokens,
                                pad_token_id=tok.eos_token_id)
-        resp = tok.decode(g[0][plen:], skip_special_tokens=True)
+        cont = tok.decode(g[0][plen:], skip_special_tokens=True)
+        resp = (prefill + cont) if prefill else cont     # judge sees the full assistant msg
         ended = resp.rstrip().endswith((".", "!", "?", '"', ")", "`"))
         gen = {
             "record_idx": ridx, "class": r["class"], "kind": "attack",
