@@ -36,8 +36,13 @@ def _load_model():
 
 
 def _cfg(steps, suffix_len, search_width, topk):
+    # use_prefix_cache=False is REQUIRED: nanoGCG 0.3.0's prefix-cache path assumes the
+    # legacy tuple KV-cache and breaks on transformers >=4.50 (needed for Gemma-3) with
+    # "'list' object has no attribute 'get_seq_length'". Disabling it recomputes the
+    # (short) base-prompt prefix per candidate — a bit slower, same result. Verified.
     return GCGConfig(num_steps=steps, optim_str_init="x " * suffix_len,
-                     search_width=search_width, topk=topk, seed=0, verbosity="WARNING")
+                     search_width=search_width, topk=topk, seed=0, verbosity="WARNING",
+                     use_prefix_cache=False)
 
 
 def _suffix_loss_fn(model, tok, base):
