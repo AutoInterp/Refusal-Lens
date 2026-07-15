@@ -62,12 +62,26 @@ def _load(p):
     return d["generations"] if "generations" in d else d["records"]
 
 
+def report_path(judged: Path, override: Path | None = None) -> Path:
+    """Derive the report name from the input so a side-run can't clobber the main
+    v5_report.md: `v5_judged.json` -> `v5_report.md` (unchanged), but
+    `v5_msfaithful_judged.json` -> `v5_msfaithful_report.md`."""
+    if override:
+        return override
+    stem = judged.stem
+    if stem.endswith("_judged"):
+        stem = stem[: -len("_judged")]
+    return judged.parent / f"{stem}_report.md"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--judged", type=Path)
     ap.add_argument("--generations", type=Path)
     ap.add_argument("--inspect", action="store_true")
     ap.add_argument("--sweep-judged", type=Path)
+    ap.add_argument("--report-out", type=Path, default=None,
+                    help="override report path (default: derived from --judged filename)")
     ap.add_argument("--head", type=int, default=400)
     args = ap.parse_args()
 
@@ -83,7 +97,7 @@ def main():
         lines += ["", "## Reference (Tejas)"] + [f"- {k}: {v}%" for k, v in REF.items()]
         report = "\n".join(lines)
         print(report)
-        out = args.judged.parent / "v5_report.md"
+        out = report_path(args.judged, args.report_out)
         out.write_text(report + "\n")
         print(f"\n[report] wrote {out}")
         ts = tier_summary(recs)

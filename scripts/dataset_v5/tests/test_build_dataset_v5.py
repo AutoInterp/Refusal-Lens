@@ -66,6 +66,15 @@ def test_placeholder_mode_without_gcg():
     assert pp[0]["gcg"]["suffix"] == ""
 
 
+def test_ms_only_builds_single_class_with_shot_source():
+    recs = build_records(BASES, POOL, GCG, k=4, seed=0, ms_only=True,
+                         shot_source="gemma_comply_v5:refusal_suppression")
+    assert len(recs) == 5                                  # 5 bases x 1 class
+    assert {r["class"] for r in recs} == {"many_shot_icl"}
+    assert all(r["many_shot"]["shot_source"] == "gemma_comply_v5:refusal_suppression"
+               for r in recs)
+
+
 def test_limit_scopes_bases():
     recs = build_records(BASES, POOL, GCG, k=4, seed=0, limit=2)
     assert len({r["base_id"] for r in recs}) == 2

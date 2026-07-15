@@ -17,13 +17,25 @@ DEFAULT_JUDGED = [REPO / "new_dataset_results/refusal_results/v3_judged.json",
                   REPO / "new_dataset_results/refusal_results/v4_judged.json"]
 
 
-def load_comply_pool(judged_paths: list[Path] = DEFAULT_JUDGED) -> list[dict]:
+def load_comply_pool(judged_paths: list[Path] = DEFAULT_JUDGED,
+                     classes: set[str] | None = None) -> list[dict]:
+    """Demo pool of (harmful question -> compliant answer) from judged generations.
+
+    `classes=None` keeps every COMPLY attack row (original v3/v4 behaviour). Pass a
+    set (e.g. {"refusal_suppression"}) to keep only genuinely-harmful demos — the
+    v3/v4 pool is dominated by soft fiction-frame deflections that teach deflection,
+    so a faithful MSJ test sources demos from the refusal_suppression COMPLY answers
+    instead. `base` is always the RAW question (not the attack wrapper), so a demo is
+    a clean (raw harmful Q -> harmful A) pair regardless of how the answer was elicited.
+    """
     pool: list[dict] = []
     for p in judged_paths:
         d = json.loads(Path(p).read_text())
         src = Path(p).stem
         for g in d["generations"]:
             if g.get("kind") == "attack" and g.get("judge") == "COMPLY":
+                if classes is not None and g.get("class") not in classes:
+                    continue
                 pool.append({"src": src, "record_idx": g["record_idx"],
                              "base_id": g.get("base_id"), "base": g["base"],
                              "response": g["response"]})

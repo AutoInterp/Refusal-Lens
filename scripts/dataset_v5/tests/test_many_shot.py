@@ -75,3 +75,24 @@ def test_load_comply_pool_filters_and_maps(tmp_path):
     r0 = next(r for r in pool if r["record_idx"] == 0)
     assert r0 == {"src": "judged", "record_idx": 0, "base_id": 5, "base": "q5?", "response": "a5"}
     assert next(r for r in pool if r["record_idx"] == 3)["base_id"] is None
+
+
+def test_load_comply_pool_class_filter_keeps_only_named_classes(tmp_path):
+    # faithful-MSJ pool: keep only refusal_suppression COMPLY (genuinely-harmful demos),
+    # drop the soft many_shot/gcg COMPLY rows. `base` stays the RAW question.
+    from many_shot import load_comply_pool
+    j = {"metadata": {}, "generations": [
+        {"record_idx": 0, "class": "refusal_suppression", "kind": "attack",
+         "judge": "COMPLY", "base_id": 1, "base": "raw q1?",
+         "attack_text": "WRAPPED q1", "response": "Sure, here is <harmful a1>"},
+        {"record_idx": 1, "class": "many_shot_icl", "kind": "attack", "judge": "COMPLY",
+         "base_id": 2, "base": "raw q2?", "response": "soft deflection"},   # dropped: class
+        {"record_idx": 2, "class": "gcg_per_prompt", "kind": "attack", "judge": "COMPLY",
+         "base_id": 3, "base": "raw q3?", "response": "a3"},                # dropped: class
+    ]}
+    p = tmp_path / "v5_judged.json"
+    p.write_text(json.dumps(j))
+    pool = load_comply_pool([p], classes={"refusal_suppression"})
+    assert len(pool) == 1
+    assert pool[0]["base"] == "raw q1?"                       # raw question, not the wrapper
+    assert pool[0]["response"] == "Sure, here is <harmful a1>"

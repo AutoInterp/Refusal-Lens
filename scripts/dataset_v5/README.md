@@ -33,6 +33,36 @@ json.dump(d,open('new_dataset_results/refusal_results/v5_judged.json','w'),inden
 .venv/bin/python scripts/dataset_v5/report_v5.py --judged new_dataset_results/refusal_results/v5_judged.json
 ```
 
+## Faithful many-shot re-run (valid demos)
+
+The original `many_shot_icl` (0%) sourced demos from Gemma's v3/v4 COMPLY outputs, which
+are mostly soft fiction-frame deflections — demonstrating deflection, not compliance, so
+0% is not a faithful MSJ test (a strawman like GCG's token-mismatch 4%). Re-source demos
+from the genuinely-harmful `refusal_suppression` COMPLY answers (98% run) instead, keeping
+the RAW question so each demo is a clean (harmful Q -> harmful A) pair:
+
+```bash
+# build MSJ-only dataset (+K-sweep) from the refusal_suppression demo pool; distinct names
+.venv/bin/python scripts/dataset_v5/build_dataset_v5.py --ms-only \
+  --ms-pool-v5 new_dataset_results/refusal_results/v5_judged.json \
+  --sweep --sweep-out new_dataset_results/refusal_results/many_shot_sweep_msfaithful.json \
+  --out new_dataset_results/refusal_results/dataset_v5_msfaithful.json
+# generate (GPU, bf16; ~35k-tok prompts -> expandable_segments)
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python scripts/dataset_v5/generate.py \
+  --dataset new_dataset_results/refusal_results/dataset_v5_msfaithful.json \
+  --out new_dataset_results/refusal_results/v5_msfaithful_generations.json
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python scripts/dataset_v5/generate.py \
+  --dataset new_dataset_results/refusal_results/many_shot_sweep_msfaithful.json \
+  --out new_dataset_results/refusal_results/v5_msfaithful_sweep_generations.json
+# judge each with the same Ollama snippet below (swap the in/out filenames), then:
+.venv/bin/python scripts/dataset_v5/report_v5.py \
+  --judged new_dataset_results/refusal_results/v5_msfaithful_judged.json \
+  --sweep-judged new_dataset_results/refusal_results/v5_msfaithful_sweep_judged.json
+# -> writes v5_msfaithful_report.md (report name derives from --judged; won't touch v5_report.md)
+```
+Interpretation: still ~0% with valid demos = robust true negative (Gemma resists MSJ); a
+rising K-curve / non-trivial rate = MSJ lands and becomes a 3rd traceable class.
+
 ## Local CPU checks (no GPU)
 ```bash
 .venv/bin/python -m pytest scripts/dataset_v5/tests/ -v

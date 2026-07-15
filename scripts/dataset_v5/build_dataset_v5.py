@@ -50,10 +50,10 @@ def _gcg_pp(b, gcg):
     return rec
 
 
-def _many_shot(b, pool, k, seed, cap, sweep_k=None):
+def _many_shot(b, pool, k, seed, cap, sweep_k=None, shot_source="gemma_comply_v3v4"):
     at, refs = assemble_many_shot(b, pool, k=k, seed=seed, demo_char_cap=cap)
     rec = _common(b, "many_shot_icl", at, MS_SRC)
-    rec["many_shot"] = {"n_shots": k, "shot_source": "gemma_comply_v3v4",
+    rec["many_shot"] = {"n_shots": k, "shot_source": shot_source,
                         "render": "single_turn_blob", "seed": seed,
                         "demo_char_cap": cap, "shot_refs": refs}
     if sweep_k is not None:
@@ -76,23 +76,27 @@ def _refusal_suppression_prefill(b):
     return rec
 
 
-def build_records(bases, pool, gcg, k=32, seed=0, demo_char_cap=None, limit=None):
+def build_records(bases, pool, gcg, k=32, seed=0, demo_char_cap=None, limit=None,
+                  ms_only=False, shot_source="gemma_comply_v3v4"):
     if limit is not None:
         bases = bases[:limit]
     out = []
     for b in bases:
-        out.append(_gcg_pp(b, gcg))
-        out.append(_many_shot(b, pool, k, seed, demo_char_cap))
-        out.append(_refusal_suppression(b))
-        out.append(_refusal_suppression_prefill(b))
+        if not ms_only:
+            out.append(_gcg_pp(b, gcg))
+        out.append(_many_shot(b, pool, k, seed, demo_char_cap, shot_source=shot_source))
+        if not ms_only:
+            out.append(_refusal_suppression(b))
+            out.append(_refusal_suppression_prefill(b))
     return out
 
 
-def build_sweep(bases, pool, ks=(4, 8, 16, 32), n_bases=8, seed=0):
+def build_sweep(bases, pool, ks=(4, 8, 16, 32), n_bases=8, seed=0,
+                shot_source="gemma_comply_v3v4"):
     out = []
     for b in bases[:n_bases]:
         for kk in ks:
-            out.append(_many_shot(b, pool, kk, seed, None, sweep_k=kk))
+            out.append(_many_shot(b, pool, kk, seed, None, sweep_k=kk, shot_source=shot_source))
     return out
 
 
@@ -106,27 +110,49 @@ def main():
     ap.add_argument("--demo-char-cap", type=int, default=None)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--sweep", action="store_true")
+    ap.add_argument("--sweep-out", type=Path, default=None,
+                    help="override sweep output path (avoids clobbering many_shot_sweep.json)")
+    ap.add_argument("--ms-only", action="store_true",
+                    help="build only many_shot_icl records (cheap faithful-MSJ re-run)")
+    ap.add_argument("--ms-pool-v5", type=Path, nargs="+", default=None,
+                    help="source MSJ demos from these judged files (e.g. v5_judged.json) "
+                         "instead of the v3/v4 soft-deflection pool")
+    ap.add_argument("--ms-pool-classes", nargs="+", default=["refusal_suppression"],
+                    help="with --ms-pool-v5, keep only COMPLY demos of these classes")
     ap.add_argument("--out", type=Path, default=REPO / "dataset_v5.json")
     args = ap.parse_args()
 
     bases = load_base_prompts(args.v4)
-    pool = load_comply_pool(args.judged)
+    if args.ms_pool_v5:
+        pool = load_comply_pool(args.ms_pool_v5, classes=set(args.ms_pool_classes))
+        shot_source = "gemma_comply_v5:" + "+".join(args.ms_pool_classes)
+    else:
+        pool = load_comply_pool(args.judged)
+        shot_source = "gemma_comply_v3v4"
+    print(f"[build] MSJ demo pool: {len(pool)} demos  source={shot_source}")
     gcg = json.loads(args.gcg_suffixes.read_text()) if args.gcg_suffixes else None
     records = build_records(bases, pool, gcg, k=args.k, seed=args.seed,
-                            demo_char_cap=args.demo_char_cap, limit=args.limit)
-    meta = {"version": "v5.1", "classes": ["gcg_per_prompt", "many_shot_icl",
-                        "refusal_suppression", "refusal_suppression_prefill"],
+                            demo_char_cap=args.demo_char_cap, limit=args.limit,
+                            ms_only=args.ms_only, shot_source=shot_source)
+    all_classes = ["many_shot_icl"] if args.ms_only else [
+        "gcg_per_prompt", "many_shot_icl", "refusal_suppression", "refusal_suppression_prefill"]
+    meta = {"version": "v5.1", "classes": all_classes,
             "n_base": len(set(r["base_id"] for r in records)), "n_records": len(records),
             "k": args.k, "seed": args.seed, "gcg_from": str(args.gcg_suffixes),
-            "placeholder_gcg": gcg is None}
+            "placeholder_gcg": gcg is None, "ms_shot_source": shot_source,
+            "ms_only": args.ms_only}
     args.out.write_text(json.dumps({"metadata": meta, "records": records}, indent=2))
     print(f"[build] wrote {args.out}  ({len(records)} records, placeholder_gcg={gcg is None})")
 
     if args.sweep:
-        sweep = build_sweep(bases, pool, seed=args.seed)
-        sp = args.out.parent / "new_dataset_results/refusal_results/many_shot_sweep.json"
-        sp = sp if sp.parent.exists() else args.out.with_name("many_shot_sweep.json")
-        sp.write_text(json.dumps({"metadata": {"version": "v5-sweep"}, "records": sweep}, indent=2))
+        sweep = build_sweep(bases, pool, seed=args.seed, shot_source=shot_source)
+        if args.sweep_out:
+            sp = args.sweep_out
+        else:
+            sp = args.out.parent / "new_dataset_results/refusal_results/many_shot_sweep.json"
+            sp = sp if sp.parent.exists() else args.out.with_name("many_shot_sweep.json")
+        sp.write_text(json.dumps({"metadata": {"version": "v5-sweep",
+                                               "ms_shot_source": shot_source}, "records": sweep}, indent=2))
         print(f"[build] wrote sweep {sp}  ({len(sweep)} records)")
 
 

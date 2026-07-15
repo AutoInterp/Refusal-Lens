@@ -24,6 +24,18 @@ def test_inspect_lines_show_class_and_heads():
     assert "A" * 50 in blob and "A" * 51 not in blob
 
 
+def test_report_path_derives_from_input_and_never_clobbers():
+    from pathlib import Path
+    from report_v5 import report_path
+    d = Path("/x/res")
+    # main run keeps its historical name...
+    assert report_path(d / "v5_judged.json") == d / "v5_report.md"
+    # ...but a side-run gets a distinct name, so it can't overwrite v5_report.md
+    assert report_path(d / "v5_msfaithful_judged.json") == d / "v5_msfaithful_report.md"
+    # explicit override wins
+    assert report_path(d / "v5_judged.json", d / "custom.md") == d / "custom.md"
+
+
 def test_tier_summary():
     from report_v5 import tier_summary
     def row(base_id, cls, judge):
